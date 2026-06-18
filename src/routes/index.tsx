@@ -7,8 +7,30 @@ import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
 import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
-import { ensurePermission, getPermission } from "@/lib/notifications";
+import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
+
+async function fireTestNotifications() {
+  await ensurePermission();
+  notify({ title: "Test nudge ✨", body: "If you see this, in-app notifications work.", kind: "info" });
+  try {
+    const { isNative, scheduleNativeAt, hashId } = await import("@/lib/native");
+    if (isNative()) {
+      await scheduleNativeAt(
+        hashId("test-10s-" + Date.now()),
+        "Focus Flow test",
+        "Scheduled 10 seconds ago — native alarms are working.",
+        new Date(Date.now() + 10_000),
+      );
+    } else if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      setTimeout(() => {
+        try {
+          new Notification("Focus Flow test", { body: "Scheduled 10s ago — browser notifications work." });
+        } catch { /* ignore */ }
+      }, 10_000);
+    }
+  } catch { /* ignore */ }
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
