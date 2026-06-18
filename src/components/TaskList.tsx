@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
+import { isNative, scheduleNativeAt, cancelNative, hashId } from "@/lib/native";
 
 type Task = {
   id: string;
@@ -53,8 +54,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
       remindAt = d.toISOString();
     }
+    const id = crypto.randomUUID();
+    if (remindAt && isNative()) {
+      void scheduleNativeAt(hashId("task:" + id), "Reminder", title.trim(), new Date(remindAt));
+    }
     setTasks([
-      { id: crypto.randomUUID(), title: title.trim(), done: false, remindAt, createdAt: Date.now() },
+      { id, title: title.trim(), done: false, remindAt, createdAt: Date.now() },
       ...tasks,
     ]);
     setTitle("");
@@ -72,7 +77,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     );
   };
 
-  const remove = (id: string) => setTasks(tasks.filter((t) => t.id !== id));
+  const remove = (id: string) => {
+    if (isNative()) void cancelNative([hashId("task:" + id)]);
+    setTasks(tasks.filter((t) => t.id !== id));
+  };
 
   return (
     <div className="flex flex-col gap-5">

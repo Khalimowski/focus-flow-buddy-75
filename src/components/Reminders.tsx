@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
+import { isNative, scheduleNativeDaily, cancelNative, hashId } from "@/lib/native";
 
 type Reminder = {
   id: string;
