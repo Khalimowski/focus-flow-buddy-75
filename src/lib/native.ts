@@ -33,10 +33,11 @@ export async function nativeNotify(title: string, body?: string) {
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: Math.floor(Math.random() * 2_000_000_000),
+          id: hashId(title),
           title,
           body: body ?? "",
           schedule: { at: new Date(Date.now() + 200) },
+          channelId: "boink_channel_v3",
         },
       ],
     });
@@ -51,7 +52,7 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
   try {
     const { LocalNotifications } = await import("@capacitor/local-notifications");
     await LocalNotifications.schedule({
-      notifications: [{ id, title, body, schedule: { at } }],
+      notifications: [{ id, title, body, schedule: { at }, channelId: "boink_channel_v3" }],
     });
   } catch {
     /* ignore */
@@ -70,6 +71,7 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
           title,
           body,
           schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
+          channelId: "boink_channel_v3",
         },
       ],
     });

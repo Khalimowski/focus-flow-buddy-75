@@ -9,6 +9,7 @@ import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
 import { ensurePermission, getPermission } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
+import { Settings } from "@/components/Settings";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -48,8 +49,13 @@ function Home() {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-6 sm:pt-10">
       <InAppToaster />
 
-      <header className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* Absolute positioned settings for maximum visibility */}
+      <div className="fixed right-4 top-6 z-[100]">
+        <Settings />
+      </div>
+
+      <header className="mb-8 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 shrink-0">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -62,12 +68,14 @@ function Home() {
             <p className="text-xs text-muted-foreground">Calm focus for ADHD brains</p>
           </div>
         </div>
-        {perm !== "granted" && perm !== "unsupported" && (
-          <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full">
-            {perm === "denied" ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
-            {perm === "denied" ? "Notifications blocked" : "Enable nudges"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {perm !== "granted" && perm !== "unsupported" && (
+            <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-9 whitespace-nowrap">
+              {perm === "denied" ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
+              {perm === "denied" ? "Blocked" : "Enable"}
+            </Button>
+          )}
+        </div>
       </header>
 
       <StreakStrip streak={streak} />
