@@ -18,10 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useI18nStore, useTranslation } from "@/lib/i18n";
 
 export function Settings() {
   const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [language, setLanguage] = useState<"en" | "pl">("en");
+  const { language, setLanguage } = useI18nStore();
+  const { t } = useTranslation();
 
   useEffect(() => {
     // Sync with HTML class for tailwind dark mode
@@ -42,16 +44,14 @@ export function Settings() {
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="rounded-full bg-background/80 backdrop-blur border-primary/20 shadow-lg">
           <SettingsIcon className="size-6 text-primary" />
-          <span className="sr-only">Settings</span>
+          <span className="sr-only">{t('settings')}</span>
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-[300px] sm:w-[400px]">
         <SheetHeader>
-          <SheetTitle>{language === "en" ? "Settings" : "Ustawienia"}</SheetTitle>
+          <SheetTitle>{t('settings')}</SheetTitle>
           <SheetDescription>
-            {language === "en"
-              ? "Customize your Focus Flow experience."
-              : "Dostosuj swoje doświadczenie z Focus Flow."}
+            {t('settings_desc')}
           </SheetDescription>
         </SheetHeader>
 
@@ -60,7 +60,7 @@ export function Settings() {
             <div className="flex items-center gap-3">
               {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
               <Label htmlFor="dark-mode" className="text-sm font-medium">
-                {language === "en" ? "Dark Mode" : "Tryb Ciemny"}
+                {t('dark_mode')}
               </Label>
             </div>
             <Switch
@@ -74,7 +74,7 @@ export function Settings() {
             <div className="flex items-center gap-3">
               <Languages className="size-4" />
               <Label className="text-sm font-medium">
-                {language === "en" ? "Language" : "Język"}
+                {t('language')}
               </Label>
             </div>
             <Select
@@ -93,7 +93,7 @@ export function Settings() {
         </div>
 
         <div className="absolute bottom-8 left-6 right-6 text-center text-[10px] text-muted-foreground">
-          {language === "en" ? "Version 1.0.0" : "Wersja 1.0.0"}
+          {t('version')} 1.0.0
         </div>
       </SheetContent>
     </Sheet>
