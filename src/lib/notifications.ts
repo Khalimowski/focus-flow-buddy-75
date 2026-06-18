@@ -17,7 +17,13 @@ export function subscribeNotif(l: Listener) {
   return () => listeners.delete(l);
 }
 
+import { isNative, ensureNativeNotifPermission, nativeNotify } from "./native";
+
 export async function ensurePermission(): Promise<NotificationPermission> {
+  if (isNative()) {
+    const ok = await ensureNativeNotifPermission();
+    return ok ? "granted" : "denied";
+  }
   if (typeof window === "undefined" || !("Notification" in window)) return "denied";
   if (Notification.permission === "default") {
     try {
@@ -30,6 +36,7 @@ export async function ensurePermission(): Promise<NotificationPermission> {
 }
 
 export function getPermission(): NotificationPermission | "unsupported" {
+  if (isNative()) return "granted";
   if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
   return Notification.permission;
 }
@@ -45,6 +52,11 @@ export function notify(input: { title: string; body?: string; kind?: InAppNotif[
   };
   // Fire in-app
   listeners.forEach((l) => l(n));
+  // Native (Android via Capacitor)
+  if (isNative()) {
+    void nativeNotify(input.title, input.body);
+    return n;
+  }
   // Fire system
   if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
     try {
