@@ -7,10 +7,13 @@ export function InAppToaster() {
   const [items, setItems] = useState<InAppNotif[]>([]);
 
   useEffect(() => {
-    return subscribeNotif((n) => {
+    const unsub = subscribeNotif((n) => {
       setItems((cur) => [n, ...cur]);
       setTimeout(() => setItems((cur) => cur.filter((x) => x.id !== n.id)), 6000);
     });
+    return () => {
+      unsub();
+    };
   }, []);
 
   return (
