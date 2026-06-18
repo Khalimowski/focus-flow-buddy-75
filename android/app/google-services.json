@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "741211379140",
+    "project_id": "adhd-fc3d0",
+    "storage_bucket": "adhd-fc3d0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:741211379140:android:6541f0940b1cbada148091",
+        "android_client_info": {
+          "package_name": "app.lovable.focusflow"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBOWlfhkJQcHfqjfNwWVQnmw3Os6khc98U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

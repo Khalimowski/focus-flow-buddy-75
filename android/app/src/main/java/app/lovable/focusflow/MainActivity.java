@@ -31,9 +31,9 @@ public class MainActivity extends BridgeActivity {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            String channelId = "boink_channel_v3";
-            CharSequence name = "Nudge Notifications";
-            String description = "Channel for nudge notifications";
+            String channelId = "boink_channel_v5";
+            CharSequence name = getString(R.string.nudge_channel_name);
+            String description = getString(R.string.nudge_channel_description);
             int importance = NotificationManager.IMPORTANCE_HIGH;
 
             NotificationManager notificationManager = getSystemService(NotificationManager.class);

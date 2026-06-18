@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeDaily, cancelNative, hashId } from "@/lib/native";
+import { useTranslation } from "@/lib/i18n";
 
 type Reminder = {
   id: string;
@@ -16,22 +17,24 @@ type Reminder = {
   lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
 
-const PRESETS = [
-  { label: "Drink water", icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
-  { label: "Take meds", icon: Pill, times: ["08:00"] },
-  { label: "Stand & stretch", icon: StretchHorizontal, times: ["10:30", "14:30"] },
-];
-
-const today = () => new Date().toISOString().slice(0, 10);
-const nowHM = () => {
-  const d = new Date();
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-};
-
 export function Reminders() {
+  const { t } = useTranslation();
+
+  const nowHM = () => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
+  const today = () => new Date().toISOString().split("T")[0];
+
+  const PRESETS = [
+    { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
+    { label: t('take_meds'), icon: Pill, times: ["08:00"] },
+    { label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
+  ];
+
   const [items, setItems] = useState<Reminder[]>([]);
   const [label, setLabel] = useState("");
-  const [time, setTime] = useState("");
+  const [times, setTimes] = useState<string[]>([""]);
 
   useEffect(() => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, [])), []);
   useEffect(() => saveJSON(STORAGE_KEYS.reminders, items), [items]);
@@ -46,7 +49,7 @@ export function Reminders() {
       const next = ref.current.map((r) => {
         if (!r.enabled) return r;
         if (r.times.includes(hm) && r.lastFired[hm] !== d) {
-          notify({ title: r.label, body: "Gentle nudge ✨", kind: "reminder" });
+          notify({ title: r.label, body: t('gentle_nudge_emoji'), kind: "reminder" });
           changed = true;
           return { ...r, lastFired: { ...r.lastFired, [hm]: d } };
         }
@@ -57,13 +60,14 @@ export function Reminders() {
     tick();
     const id = setInterval(tick, 20000);
     return () => clearInterval(id);
-  }, []);
+  }, [t]);
 
   const scheduleAll = (r: Reminder) => {
     if (!isNative()) return;
-    r.times.forEach((t, idx) => {
-      const [h, m] = t.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, "Gentle nudge ✨", h, m);
+    r.times.forEach((t_str, idx) => {
+      if (!t_str) return;
+      const [h, m] = t_str.split(":").map(Number);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m);
     });
   };
   const cancelAll = (r: Reminder) => {
@@ -79,12 +83,25 @@ export function Reminders() {
   };
 
   const addCustom = () => {
-    if (!label.trim() || !time) return;
-    const r: Reminder = { id: crypto.randomUUID(), label: label.trim(), times: [time], enabled: true, lastFired: {} };
+    const validTimes = times.filter(Boolean);
+    if (!label.trim() || validTimes.length === 0) return;
+    const r: Reminder = { id: crypto.randomUUID(), label: label.trim(), times: validTimes, enabled: true, lastFired: {} };
     scheduleAll(r);
     setItems([...items, r]);
     setLabel("");
-    setTime("");
+    setTimes([""]);
+  };
+
+  const updateTime = (idx: number, val: string) => {
+    const next = [...times];
+    next[idx] = val;
+    setTimes(next);
+  };
+
+  const addTimeSlot = () => setTimes([...times, ""]);
+  const removeTimeSlot = (idx: number) => {
+    if (times.length === 1) return;
+    setTimes(times.filter((_, i) => i !== idx));
   };
 
   const toggle = (id: string) =>
@@ -107,7 +124,7 @@ export function Reminders() {
     <div className="flex flex-col gap-6">
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Quick add
+          {t('quick_add')}
         </h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {PRESETS.map((p) => {
@@ -133,31 +150,62 @@ export function Reminders() {
 
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Custom reminder
+          {t('custom_reminder')}
         </h3>
-        <div className="flex flex-col gap-2 rounded-2xl border bg-card/50 p-4 sm:flex-row">
+        <div className="flex flex-col gap-3 rounded-2xl border bg-card/50 p-4">
           <Input
-            placeholder="What should I nudge you about?"
+            placeholder={t('nudge_placeholder')}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className="flex-1"
           />
-          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-32 font-mono" />
-          <Button onClick={addCustom}>
-            <Plus className="size-4" />
+          <div className="flex flex-wrap gap-2">
+            {times.map((t_val, idx) => (
+              <div key={idx} className="flex items-center gap-1">
+                <Input
+                  type="time"
+                  value={t_val}
+                  onChange={(e) => updateTime(idx, e.target.value)}
+                  className="w-32 font-mono"
+                />
+                {times.length > 1 && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeTimeSlot(idx)}
+                    className="size-8 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <Button
+              size="outline"
+              variant="secondary"
+              onClick={addTimeSlot}
+              className="h-10 px-3 border-dashed"
+            >
+              <Plus className="size-4 mr-1" />
+              <span className="text-xs">{t('add_time')}</span>
+            </Button>
+          </div>
+          <Button onClick={addCustom} className="w-full sm:w-auto self-end">
+            <Plus className="size-4 mr-2" />
+            {t('add_nudge')}
           </Button>
         </div>
       </section>
 
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Your daily nudges
+          {t('your_daily_nudges')}
         </h3>
         <ul className="flex flex-col gap-2">
           <AnimatePresence initial={false}>
             {items.length === 0 && (
               <li className="flex items-center justify-center gap-2 rounded-2xl border border-dashed py-8 text-sm text-muted-foreground">
-                <Sparkles className="size-4" /> Add a preset or your own.
+                <Sparkles className="size-4" /> {t('add_preset_or_own')}
               </li>
             )}
             {items.map((r) => (
@@ -172,9 +220,9 @@ export function Reminders() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm">{r.label}</div>
                   <div className="mt-0.5 flex flex-wrap gap-1 font-mono text-[11px] text-muted-foreground">
-                    {r.times.map((t) => (
-                      <span key={t} className="rounded-md bg-secondary px-1.5 py-0.5">
-                        {t}
+                    {r.times.map((t_str) => (
+                      <span key={t_str} className="rounded-md bg-secondary px-1.5 py-0.5">
+                        {t_str}
                       </span>
                     ))}
                   </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Languages, Bell } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -19,24 +19,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { nativeNotify } from "@/lib/native";
 
 export function Settings() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const { language, setLanguage } = useI18nStore();
+  const { language, setLanguage, theme, setTheme } = useI18nStore();
   const { t } = useTranslation();
 
   useEffect(() => {
     // Sync with HTML class for tailwind dark mode
     const root = window.document.documentElement;
     if (theme === "dark") {
+      root.classList.remove("light");
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
+      root.classList.add("light");
     }
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (
@@ -89,6 +91,17 @@ export function Settings() {
                 <SelectItem value="pl">Polski</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => nativeNotify("Test Notification", "This is a test from Focus Flow! ✨")}
+            >
+              <Bell className="mr-2 size-4" />
+              Test Notification
+            </Button>
           </div>
         </div>
 
