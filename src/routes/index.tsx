@@ -90,6 +90,9 @@ function Home() {
             {perm === "denied" ? "Notifications blocked" : "Enable nudges"}
           </Button>
         )}
+        <Button size="sm" variant="outline" onClick={fireTestNotifications} className="rounded-full">
+          Test
+        </Button>
       </header>
 
       <StreakStrip streak={streak} />
