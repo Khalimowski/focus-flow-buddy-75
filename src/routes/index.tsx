@@ -34,7 +34,10 @@ function Home() {
   const [perm, setPerm] = useState<string>("default");
   const { streak, markToday } = useStreak();
 
-  useEffect(() => setPerm(getPermission()), []);
+  useEffect(() => {
+    setPerm(getPermission());
+    void import("@/lib/native").then((m) => m.initNative());
+  }, []);
 
   const askPerm = async () => {
     const p = await ensurePermission();

@@ -59,27 +59,49 @@ export function Reminders() {
     return () => clearInterval(id);
   }, []);
 
+  const scheduleAll = (r: Reminder) => {
+    if (!isNative()) return;
+    r.times.forEach((t, idx) => {
+      const [h, m] = t.split(":").map(Number);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, "Gentle nudge ✨", h, m);
+    });
+  };
+  const cancelAll = (r: Reminder) => {
+    if (!isNative()) return;
+    void cancelNative(r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`)));
+  };
+
   const addPreset = (p: (typeof PRESETS)[number]) => {
     if (items.some((i) => i.label === p.label)) return;
-    setItems([
-      ...items,
-      { id: crypto.randomUUID(), label: p.label, times: p.times, enabled: true, lastFired: {} },
-    ]);
+    const r: Reminder = { id: crypto.randomUUID(), label: p.label, times: p.times, enabled: true, lastFired: {} };
+    scheduleAll(r);
+    setItems([...items, r]);
   };
 
   const addCustom = () => {
     if (!label.trim() || !time) return;
-    setItems([
-      ...items,
-      { id: crypto.randomUUID(), label: label.trim(), times: [time], enabled: true, lastFired: {} },
-    ]);
+    const r: Reminder = { id: crypto.randomUUID(), label: label.trim(), times: [time], enabled: true, lastFired: {} };
+    scheduleAll(r);
+    setItems([...items, r]);
     setLabel("");
     setTime("");
   };
 
   const toggle = (id: string) =>
-    setItems(items.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r)));
-  const remove = (id: string) => setItems(items.filter((r) => r.id !== id));
+    setItems(
+      items.map((r) => {
+        if (r.id !== id) return r;
+        const next = { ...r, enabled: !r.enabled };
+        if (next.enabled) scheduleAll(next);
+        else cancelAll(next);
+        return next;
+      }),
+    );
+  const remove = (id: string) => {
+    const r = items.find((x) => x.id === id);
+    if (r) cancelAll(r);
+    setItems(items.filter((r) => r.id !== id));
+  };
 
   return (
     <div className="flex flex-col gap-6">
