@@ -73,14 +73,26 @@ export function Reminders() {
 
   const addPreset = (p: (typeof PRESETS)[number]) => {
     if (items.some((i) => i.label === p.label)) return;
-    const r: Reminder = { id: crypto.randomUUID(), label: p.label, times: p.times, enabled: true, lastFired: {} };
+    const r: Reminder = {
+      id: crypto.randomUUID(),
+      label: p.label,
+      times: p.times,
+      enabled: true,
+      lastFired: {},
+    };
     scheduleAll(r);
     setItems([...items, r]);
   };
 
   const addCustom = () => {
     if (!label.trim() || !time) return;
-    const r: Reminder = { id: crypto.randomUUID(), label: label.trim(), times: [time], enabled: true, lastFired: {} };
+    const r: Reminder = {
+      id: crypto.randomUUID(),
+      label: label.trim(),
+      times: [time],
+      enabled: true,
+      lastFired: {},
+    };
     scheduleAll(r);
     setItems([...items, r]);
     setLabel("");
@@ -142,7 +154,12 @@ export function Reminders() {
             onChange={(e) => setLabel(e.target.value)}
             className="flex-1"
           />
-          <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-32 font-mono" />
+          <Input
+            type="time"
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
+            className="w-32 font-mono"
+          />
           <Button onClick={addCustom}>
             <Plus className="size-4" />
           </Button>

@@ -58,10 +58,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (remindAt && isNative()) {
       void scheduleNativeAt(hashId("task:" + id), "Reminder", title.trim(), new Date(remindAt));
     }
-    setTasks([
-      { id, title: title.trim(), done: false, remindAt, createdAt: Date.now() },
-      ...tasks,
-    ]);
+    setTasks([{ id, title: title.trim(), done: false, remindAt, createdAt: Date.now() }, ...tasks]);
     setTitle("");
     setTime("");
   };
@@ -136,19 +133,26 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 onClick={() => toggle(t.id)}
                 aria-label="toggle"
                 className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
-                  t.done ? "border-mint bg-mint text-mint-foreground" : "border-border hover:border-primary"
+                  t.done
+                    ? "border-mint bg-mint text-mint-foreground"
+                    : "border-border hover:border-primary"
                 }`}
               >
                 {t.done && <Check className="size-3.5" strokeWidth={3} />}
               </button>
               <div className="flex-1 min-w-0">
-                <div className={`truncate text-sm ${t.done ? "text-muted-foreground line-through" : ""}`}>
+                <div
+                  className={`truncate text-sm ${t.done ? "text-muted-foreground line-through" : ""}`}
+                >
                   {t.title}
                 </div>
                 {t.remindAt && (
                   <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
                     <Clock className="size-3" />
-                    {new Date(t.remindAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(t.remindAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </div>
                 )}
               </div>

@@ -4,7 +4,7 @@ import { Play, Pause, RotateCcw, Coffee, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
-import { notify } from "@/lib/notifications";
+import { notify, unlockNotificationAudio } from "@/lib/notifications";
 
 type TimerState = {
   focusMin: number;
@@ -50,7 +50,11 @@ export function FocusTimer() {
         if (phase === "focus") {
           const next = { ...s, completedToday: s.completedToday + 1, lastDay: today() };
           setS(next);
-          notify({ title: "Focus session done", body: "Nice work. Time for a short break.", kind: "timer" });
+          notify({
+            title: "Focus session done",
+            body: "Nice work. Time for a short break.",
+            kind: "timer",
+          });
           setPhase("break");
           setRemaining(s.breakMin * 60);
         } else {
@@ -64,6 +68,7 @@ export function FocusTimer() {
   }, [running, phase, s]);
 
   const start = () => {
+    void unlockNotificationAudio();
     endRef.current = Date.now() + remaining * 1000;
     setRunning(true);
   };
@@ -96,7 +101,9 @@ export function FocusTimer() {
               setRemaining((p === "focus" ? s.focusMin : s.breakMin) * 60);
             }}
             className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
-              phase === p ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              phase === p
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {p === "focus" ? <Brain className="size-4" /> : <Coffee className="size-4" />}
@@ -107,7 +114,14 @@ export function FocusTimer() {
 
       <div className="relative">
         <svg width="300" height="300" className="-rotate-90">
-          <circle cx="150" cy="150" r={R} fill="none" stroke="var(--color-border)" strokeWidth="6" />
+          <circle
+            cx="150"
+            cy="150"
+            r={R}
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth="6"
+          />
           <motion.circle
             cx="150"
             cy="150"
@@ -118,7 +132,10 @@ export function FocusTimer() {
             strokeLinecap="round"
             strokeDasharray={C}
             strokeDashoffset={C * (1 - pct)}
-            style={{ filter: "drop-shadow(0 0 12px color-mix(in oklab, var(--color-primary) 60%, transparent))" }}
+            style={{
+              filter:
+                "drop-shadow(0 0 12px color-mix(in oklab, var(--color-primary) 60%, transparent))",
+            }}
             transition={{ ease: "linear" }}
           />
         </svg>
@@ -206,7 +223,13 @@ function Setting({
           {value} {unit}
         </span>
       </div>
-      <Slider value={[value]} min={min} max={max} step={step} onValueChange={(v) => onChange(v[0])} />
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={(v) => onChange(v[0])}
+      />
     </div>
   );
 }
