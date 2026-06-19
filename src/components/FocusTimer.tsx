@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
-import { useTranslation } from "@/lib/i18n";
 
 type TimerState = {
   focusMin: number;
@@ -23,7 +22,6 @@ export function FocusTimer() {
   const [running, setRunning] = useState(false);
   const [remaining, setRemaining] = useState(25 * 60);
   const endRef = useRef<number | null>(null);
-  const { t } = useTranslation();
 
   // load
   useEffect(() => {
@@ -52,18 +50,18 @@ export function FocusTimer() {
         if (phase === "focus") {
           const next = { ...s, completedToday: s.completedToday + 1, lastDay: today() };
           setS(next);
-          notify({ title: t('focus_timer_done'), body: t('focus_timer_done_body'), kind: "timer" });
+          notify({ title: "Focus session done", body: "Nice work. Time for a short break.", kind: "timer" });
           setPhase("break");
           setRemaining(s.breakMin * 60);
         } else {
-          notify({ title: t('break_over'), body: t('break_over_body'), kind: "timer" });
+          notify({ title: "Break over", body: "Ready for another focus session?", kind: "timer" });
           setPhase("focus");
           setRemaining(s.focusMin * 60);
         }
       }
     }, 250);
     return () => clearInterval(id);
-  }, [running, phase, s, t]);
+  }, [running, phase, s]);
 
   const start = () => {
     endRef.current = Date.now() + remaining * 1000;
@@ -102,7 +100,7 @@ export function FocusTimer() {
             }`}
           >
             {p === "focus" ? <Brain className="size-4" /> : <Coffee className="size-4" />}
-            {p === "focus" ? t('focus') : t('break_over').split(' ')[0]} {/* Simple fallback for 'Break' */}
+            {p === "focus" ? "Focus" : "Break"}
           </button>
         ))}
       </div>
@@ -129,7 +127,7 @@ export function FocusTimer() {
             {mm}:{ss}
           </div>
           <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {phase === "focus" ? t('focus_timer_stay') : "BREATHE"}
+            {phase === "focus" ? "Stay with it" : "Breathe"}
           </div>
         </div>
       </div>
@@ -137,11 +135,11 @@ export function FocusTimer() {
       <div className="flex gap-3">
         {running ? (
           <Button size="lg" variant="secondary" onClick={pause} className="rounded-full px-8">
-            <Pause className="mr-2 size-4" /> {t('focus_timer_pause')}
+            <Pause className="mr-2 size-4" /> Pause
           </Button>
         ) : (
           <Button size="lg" onClick={start} className="rounded-full px-8 shadow-glow">
-            <Play className="mr-2 size-4" /> {t('focus_timer_start')}
+            <Play className="mr-2 size-4" /> Start
           </Button>
         )}
         <Button size="lg" variant="ghost" onClick={reset} className="rounded-full">
@@ -149,9 +147,9 @@ export function FocusTimer() {
         </Button>
       </div>
 
-      <div className="grid w-full max-sm gap-5 rounded-2xl border bg-card/50 p-5 backdrop-blur">
+      <div className="grid w-full max-w-sm gap-5 rounded-2xl border bg-card/50 p-5 backdrop-blur">
         <Setting
-          label={t('focus')}
+          label="Focus"
           value={s.focusMin}
           min={5}
           max={60}
@@ -163,7 +161,7 @@ export function FocusTimer() {
           }}
         />
         <Setting
-          label={t('break_over').split(' ')[0]}
+          label="Break"
           value={s.breakMin}
           min={1}
           max={20}
@@ -175,7 +173,7 @@ export function FocusTimer() {
           }}
         />
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{t('focus')} {t('nudges').toLowerCase()} {t('tasks').toLowerCase()}</span>
+          <span className="text-muted-foreground">Sessions today</span>
           <span className="font-mono text-mint">{s.completedToday}</span>
         </div>
       </div>
