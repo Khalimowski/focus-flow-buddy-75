@@ -1,0 +1,17 @@
+[33mcommit 8f8749dd789ffa0fbe1ef4768be8ea8b6f4268b0[m[33m ([m[1;31morigin/codex/investigate-notifications-and-sound-issues[m[33m)[m
+Author: Kacper Szymanski <93475605+Khalimowski@users.noreply.github.com>
+Date:   Fri Jun 19 17:39:34 2026 +0200
+
+    Improve notification timing and sounds
+
+ capacitor.config.ts           |  1 [32m+[m
+ src/components/FocusTimer.tsx | 35 [32m++++++++++++++[m[31m---[m
+ src/components/Reminders.tsx  | 23 [32m+++++++++[m[31m--[m
+ src/components/Streaks.tsx    | 14 [32m+++++[m[31m--[m
+ src/components/TaskList.tsx   | 18 [32m+++++[m[31m----[m
+ src/lib/native.ts             | 90 [32m++++++++++++++++++++++++++++++++++++++[m[31m-----[m
+ src/lib/notifications.ts      | 50 [32m+++++++++++++++++++++++[m[31m-[m
+ src/routeTree.gen.ts          | 10 [32m+++++[m
+ src/routes/__root.tsx         | 12 [32m+++++[m[31m-[m
+ src/routes/index.tsx          | 46 [32m++++++++++++++++++[m[31m----[m
+ 10 files changed, 260 insertions(+), 39 deletions(-)
