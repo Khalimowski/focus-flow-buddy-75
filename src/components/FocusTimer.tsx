@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
+import { useTranslation } from "@/lib/i18n";
 
 type TimerState = {
   focusMin: number;
@@ -22,6 +23,7 @@ export function FocusTimer() {
   const [running, setRunning] = useState(false);
   const [remaining, setRemaining] = useState(25 * 60);
   const endRef = useRef<number | null>(null);
+  const { t } = useTranslation();
 
   // load
   useEffect(() => {
@@ -50,11 +52,11 @@ export function FocusTimer() {
         if (phase === "focus") {
           const next = { ...s, completedToday: s.completedToday + 1, lastDay: today() };
           setS(next);
-          notify({ title: "Focus session done", body: "Nice work. Time for a short break.", kind: "timer" });
+          notify({ title: t('focus_timer_done'), body: t('focus_timer_done_body'), kind: "timer" });
           setPhase("break");
           setRemaining(s.breakMin * 60);
         } else {
-          notify({ title: "Break over", body: "Ready for another focus session?", kind: "timer" });
+          notify({ title: t('break_over'), body: t('break_over_body'), kind: "timer" });
           setPhase("focus");
           setRemaining(s.focusMin * 60);
         }
@@ -100,7 +102,7 @@ export function FocusTimer() {
             }`}
           >
             {p === "focus" ? <Brain className="size-4" /> : <Coffee className="size-4" />}
-            {p === "focus" ? "Focus" : "Break"}
+            {p === "focus" ? t('focus') : t('break_label')}
           </button>
         ))}
       </div>
@@ -127,7 +129,7 @@ export function FocusTimer() {
             {mm}:{ss}
           </div>
           <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            {phase === "focus" ? "Stay with it" : "Breathe"}
+            {phase === "focus" ? t('focus_timer_stay') : t('breathe')}
           </div>
         </div>
       </div>
@@ -135,11 +137,11 @@ export function FocusTimer() {
       <div className="flex gap-3">
         {running ? (
           <Button size="lg" variant="secondary" onClick={pause} className="rounded-full px-8">
-            <Pause className="mr-2 size-4" /> Pause
+            <Pause className="mr-2 size-4" /> {t('focus_timer_pause')}
           </Button>
         ) : (
           <Button size="lg" onClick={start} className="rounded-full px-8 shadow-glow">
-            <Play className="mr-2 size-4" /> Start
+            <Play className="mr-2 size-4" /> {t('focus_timer_start')}
           </Button>
         )}
         <Button size="lg" variant="ghost" onClick={reset} className="rounded-full">
@@ -149,31 +151,31 @@ export function FocusTimer() {
 
       <div className="grid w-full max-w-sm gap-5 rounded-2xl border bg-card/50 p-5 backdrop-blur">
         <Setting
-          label="Focus"
+          label={t('focus')}
           value={s.focusMin}
           min={5}
           max={60}
           step={5}
-          unit="min"
+          unit={t('minute_unit')}
           onChange={(v) => {
             setS({ ...s, focusMin: v });
             if (phase === "focus" && !running) setRemaining(v * 60);
           }}
         />
         <Setting
-          label="Break"
+          label={t('break_label')}
           value={s.breakMin}
           min={1}
           max={20}
           step={1}
-          unit="min"
+          unit={t('minute_unit')}
           onChange={(v) => {
             setS({ ...s, breakMin: v });
             if (phase === "break" && !running) setRemaining(v * 60);
           }}
         />
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Sessions today</span>
+          <span className="text-muted-foreground">{t('sessions_today')}</span>
           <span className="font-mono text-mint">{s.completedToday}</span>
         </div>
       </div>

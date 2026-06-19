@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Droplet, Pill, StretchHorizontal, Sparkles } from "lucide-react";
+import { Plus, Trash2, Droplet, Pill, StretchHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeDaily, cancelNative, hashId } from "@/lib/native";
+import { useTranslation } from "@/lib/i18n";
 
 type Reminder = {
   id: string;
@@ -15,12 +16,6 @@ type Reminder = {
   enabled: boolean;
   lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
-
-const PRESETS = [
-  { label: "Drink water", icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
-  { label: "Take meds", icon: Pill, times: ["08:00"] },
-  { label: "Stand & stretch", icon: StretchHorizontal, times: ["10:30", "14:30"] },
-];
 
 const today = () => new Date().toISOString().slice(0, 10);
 const nowHM = () => {
@@ -31,7 +26,14 @@ const nowHM = () => {
 export function Reminders() {
   const [items, setItems] = useState<Reminder[]>([]);
   const [label, setLabel] = useState("");
-  const [time, setTime] = useState("");
+  const [customTimes, setCustomTimes] = useState<string[]>([""]);
+  const { t } = useTranslation();
+
+  const PRESETS = [
+    { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
+    { label: t('take_meds'), icon: Pill, times: ["08:00"] },
+    { label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
+  ];
 
   useEffect(() => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, [])), []);
   useEffect(() => saveJSON(STORAGE_KEYS.reminders, items), [items]);
@@ -46,7 +48,7 @@ export function Reminders() {
       const next = ref.current.map((r) => {
         if (!r.enabled) return r;
         if (r.times.includes(hm) && r.lastFired[hm] !== d) {
-          notify({ title: r.label, body: "Gentle nudge ✨", kind: "reminder" });
+          notify({ title: r.label, body: t('gentle_nudge_emoji'), kind: "reminder" });
           changed = true;
           return { ...r, lastFired: { ...r.lastFired, [hm]: d } };
         }
@@ -61,9 +63,9 @@ export function Reminders() {
 
   const scheduleAll = (r: Reminder) => {
     if (!isNative()) return;
-    r.times.forEach((t, idx) => {
-      const [h, m] = t.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, "Gentle nudge ✨", h, m);
+    r.times.forEach((t_val, idx) => {
+      const [h, m] = t_val.split(":").map(Number);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m);
     });
   };
   const cancelAll = (r: Reminder) => {
@@ -84,19 +86,32 @@ export function Reminders() {
     setItems([...items, r]);
   };
 
+  const addCustomTime = () => setCustomTimes([...customTimes, ""]);
+  const removeCustomTime = (index: number) => {
+    if (customTimes.length > 1) {
+      setCustomTimes(customTimes.filter((_, i) => i !== index));
+    }
+  };
+  const updateCustomTime = (index: number, value: string) => {
+    const next = [...customTimes];
+    next[index] = value;
+    setCustomTimes(next);
+  };
+
   const addCustom = () => {
-    if (!label.trim() || !time) return;
+    const validTimes = customTimes.filter(t => !!t);
+    if (!label.trim() || validTimes.length === 0) return;
     const r: Reminder = {
       id: crypto.randomUUID(),
       label: label.trim(),
-      times: [time],
+      times: validTimes,
       enabled: true,
       lastFired: {},
     };
     scheduleAll(r);
     setItems([...items, r]);
     setLabel("");
-    setTime("");
+    setCustomTimes([""]);
   };
 
   const toggle = (id: string) =>
@@ -119,7 +134,7 @@ export function Reminders() {
     <div className="flex flex-col gap-6">
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Quick add
+          {t('quick_add')}
         </h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {PRESETS.map((p) => {
@@ -145,36 +160,72 @@ export function Reminders() {
 
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Custom reminder
+          {t('custom_reminder')}
         </h3>
-        <div className="flex flex-col gap-2 rounded-2xl border bg-card/50 p-4 sm:flex-row">
+        <div className="flex flex-col gap-3 rounded-2xl border bg-card/50 p-4">
           <Input
-            placeholder="What should I nudge you about?"
+            placeholder={t('nudge_placeholder')}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className="flex-1"
           />
-          <Input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="w-32 font-mono"
-          />
-          <Button onClick={addCustom}>
-            <Plus className="size-4" />
+
+          <div className="space-y-2">
+            <AnimatePresence initial={false}>
+              {customTimes.map((time, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex gap-2 items-center"
+                >
+                  <Input
+                    type="time"
+                    value={time}
+                    onChange={(e) => updateCustomTime(index, e.target.value)}
+                    className="w-32 font-mono"
+                  />
+                  {customTimes.length > 1 && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeCustomTime(index)}
+                      className="size-8"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  )}
+                  {index === customTimes.length - 1 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={addCustomTime}
+                      className="h-9 px-3 rounded-md"
+                    >
+                      <Plus className="size-4 mr-1" /> {t('add_time')}
+                    </Button>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          <Button onClick={addCustom} className="w-full sm:w-auto self-end">
+            {t('add_nudge')}
           </Button>
         </div>
       </section>
 
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Your daily nudges
+          {t('your_daily_nudges')}
         </h3>
         <ul className="flex flex-col gap-2">
           <AnimatePresence initial={false}>
             {items.length === 0 && (
               <li className="flex items-center justify-center gap-2 rounded-2xl border border-dashed py-8 text-sm text-muted-foreground">
-                <Sparkles className="size-4" /> Add a preset or your own.
+                <Sparkles className="size-4" /> {t('add_preset_or_own')}
               </li>
             )}
             {items.map((r) => (

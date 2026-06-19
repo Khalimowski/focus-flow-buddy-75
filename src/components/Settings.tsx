@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
-import { nativeNotify } from "@/lib/native";
+import { notify, ensurePermission } from "@/lib/notifications";
 
 export function Settings() {
   const { language, setLanguage, theme, setTheme } = useI18nStore();
@@ -84,7 +84,7 @@ export function Settings() {
               onValueChange={(val: "en" | "pl") => setLanguage(val)}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select Language" />
+                <SelectValue placeholder={t('select_language')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
@@ -97,10 +97,17 @@ export function Settings() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => nativeNotify("Test Notification", "This is a test from Focus Flow! ✨")}
+              onClick={async () => {
+                await ensurePermission();
+                notify({
+                  title: t('test_notification'),
+                  body: t('test_notification_body'),
+                  kind: "info"
+                });
+              }}
             >
               <Bell className="mr-2 size-4" />
-              Test Notification
+              {t('test_notification')}
             </Button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, BellOff, Brain, ListTodo, Repeat } from "lucide-react";
+import { useTranslation } from "@/lib/i18n";
 import { FocusTimer } from "@/components/FocusTimer";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
@@ -9,28 +10,8 @@ import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
 import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
+import { Settings } from "@/components/Settings";
 
-async function fireTestNotifications() {
-  await ensurePermission();
-  notify({ title: "Test nudge ✨", body: "If you see this, in-app notifications work.", kind: "info" });
-  try {
-    const { isNative, scheduleNativeAt, hashId } = await import("@/lib/native");
-    if (isNative()) {
-      await scheduleNativeAt(
-        hashId("test-10s-" + Date.now()),
-        "Focus Flow test",
-        "Scheduled 10 seconds ago — native alarms are working.",
-        new Date(Date.now() + 10_000),
-      );
-    } else if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      setTimeout(() => {
-        try {
-          new Notification("Focus Flow test", { body: "Scheduled 10s ago — browser notifications work." });
-        } catch { /* ignore */ }
-      }, 10_000);
-    }
-  } catch { /* ignore */ }
-}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,6 +36,7 @@ function Home() {
   const [tab, setTab] = useState<Tab>("focus");
   const [perm, setPerm] = useState<string>("default");
   const { streak, markToday } = useStreak();
+  const { t } = useTranslation();
 
   useEffect(() => {
     setPerm(getPermission());
@@ -80,19 +62,17 @@ function Home() {
             <div className="size-3 rounded-full bg-background/80" />
           </motion.div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Focus Flow</h1>
-            <p className="text-xs text-muted-foreground">Calm focus for ADHD brains</p>
+            <h1 className="text-lg font-semibold tracking-tight">{t('app_name')}</h1>
+            <p className="text-xs text-muted-foreground">{t('tagline')}</p>
           </div>
         </div>
         {perm !== "granted" && perm !== "unsupported" && (
           <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full">
             {perm === "denied" ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
-            {perm === "denied" ? "Notifications blocked" : "Enable nudges"}
+            {perm === "denied" ? t('blocked') : t('enable_nudges')}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={fireTestNotifications} className="rounded-full">
-          Test
-        </Button>
+        <Settings />
       </header>
 
       <StreakStrip streak={streak} />
@@ -100,9 +80,9 @@ function Home() {
       <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur">
         {(
           [
-            { id: "focus", label: "Focus", icon: Brain },
-            { id: "tasks", label: "Tasks", icon: ListTodo },
-            { id: "reminders", label: "Nudges", icon: Repeat },
+            { id: "focus", label: t('focus'), icon: Brain },
+            { id: "tasks", label: t('tasks'), icon: ListTodo },
+            { id: "reminders", label: t('nudges'), icon: Repeat },
           ] as const
         ).map((t) => {
           const Icon = t.icon;
@@ -141,7 +121,7 @@ function Home() {
       </motion.section>
 
       <footer className="mt-12 text-center text-[11px] text-muted-foreground">
-        Tap "Enable nudges" then add this app to your home screen for phone-style reminders.
+        {t('footer_hint')}
       </footer>
     </div>
   );

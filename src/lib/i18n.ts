@@ -75,6 +75,10 @@ export const translations = {
     break_label: "Break",
     add_time: "Add Time",
     add_nudge: "Add Nudge",
+    test_notification: "Test Notification",
+    test_notification_body: "This is a test from Focus Flow! ✨",
+    select_language: "Select Language",
+    footer_hint: "Add this app to your home screen for the best experience.",
   },
   pl: {
     app_name: "Focus Flow",
@@ -125,6 +129,10 @@ export const translations = {
     break_label: "Przerwa",
     add_time: "Dodaj godzinę",
     add_nudge: "Dodaj przypomnienie",
+    test_notification: "Testowe powiadomienie",
+    test_notification_body: "To jest test z Focus Flow! ✨",
+    select_language: "Wybierz język",
+    footer_hint: "Dodaj aplikację do ekranu głównego, aby uzyskać najlepsze wrażenia.",
   }
 };
 

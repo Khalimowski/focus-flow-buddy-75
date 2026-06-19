@@ -1,74 +1,70 @@
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { StatusBar, Style } from "@capacitor/status-bar";
+
 // Capacitor runtime helpers — safe in browser & SSR (lazy imports)
 
 export const isNative = (): boolean => {
   if (typeof window === "undefined") return false;
-  const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  const cap = (window as any).Capacitor;
   return !!cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform();
 };
 
 let permissionGranted = false;
-let nativeInitialized = false;
-
-const NOTIFICATION_CHANNEL_ID = "focus_flow_alerts";
-
-async function getLocalNotifications() {
-  const { LocalNotifications } = await import("@capacitor/local-notifications");
-  return LocalNotifications;
-}
-
-async function ensureNativeNotificationSetup() {
-  if (!isNative() || nativeInitialized) return;
-  const LocalNotifications = await getLocalNotifications();
-
-  try {
-    await LocalNotifications.createChannel({
-      id: NOTIFICATION_CHANNEL_ID,
-      name: "Focus Flow alerts",
-      description: "Focus timer, task, and reminder nudges",
-      importance: 4,
-      visibility: 1,
-      lights: true,
-      lightColor: "#7C9CFF",
-      vibration: true,
-    });
-  } catch {
-    /* channel may already exist, or platform may not support channels */
-  }
-
-  nativeInitialized = true;
-}
+let channelEnsured = false;
 
 export async function ensureNativeNotifPermission(): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    const LocalNotifications = await getLocalNotifications();
+    console.log("Checking notification permissions...");
     const cur = await LocalNotifications.checkPermissions();
-    if (cur.display === "granted") {
-      permissionGranted = true;
-      await ensureNativeNotificationSetup();
-      return true;
+    console.log("Current permissions:", JSON.stringify(cur));
+
+    if (cur.display !== "granted") {
+      console.log("Requesting display permissions...");
+      const req = await LocalNotifications.requestPermissions();
+      if (req.display !== "granted") {
+        console.warn("Display permission denied");
+        return false;
+      }
     }
-    const req = await LocalNotifications.requestPermissions();
-    permissionGranted = req.display === "granted";
-    if (permissionGranted) await ensureNativeNotificationSetup();
-    return permissionGranted;
-  } catch {
+
+    // Check exact alarm permission for Android 12+
+    try {
+      const exact = await LocalNotifications.checkExactNotificationSetting();
+      console.log("Exact alarm setting:", JSON.stringify(exact));
+      if (exact.exact_alarm !== "granted") {
+        console.log("Requesting exact alarm permission via settings...");
+        await LocalNotifications.changeExactNotificationSetting();
+      }
+    } catch (exactErr) {
+      console.warn("Failed to check/request exact alarm setting", exactErr);
+    }
+
+    permissionGranted = true;
+    return true;
+  } catch (e) {
+    console.error("Permission check failed", e);
     return false;
   }
 }
 
-async function checkExactAlarmSetting() {
-  if (!isNative()) return;
+async function ensureChannel() {
+  if (!isNative() || channelEnsured) return;
   try {
-    const LocalNotifications = await getLocalNotifications();
-    const settings = await LocalNotifications.checkExactNotificationSetting();
-    if (settings.exact_alarm === "denied") {
-      console.warn(
-        "Exact alarm notifications are disabled for Focus Flow; scheduled notifications may be delayed.",
-      );
-    }
-  } catch {
-    /* exact alarm settings are Android-specific */
+    console.log("Ensuring notification channel v5...");
+    await LocalNotifications.createChannel({
+      id: "boink_channel_v5",
+      name: "Nudge Notifications",
+      description: "Channel for your calm nudges and reminders",
+      importance: 5, // high
+      visibility: 1, // public
+      sound: "boink",
+      vibration: true,
+    });
+    channelEnsured = true;
+    console.log("Notification channel v5 ensured.");
+  } catch (e) {
+    console.error("Channel creation failed", e);
   }
 }
 
@@ -76,22 +72,25 @@ async function checkExactAlarmSetting() {
 export async function nativeNotify(title: string, body?: string) {
   if (!isNative()) return;
   try {
-    if (!permissionGranted) await ensureNativeNotifPermission();
-    if (!permissionGranted) return;
-    const LocalNotifications = await getLocalNotifications();
+    await ensureChannel();
+    const notifId = hashId(title + Date.now());
+    console.log(`Scheduling immediate notification: ${title} (id: ${notifId})`);
     await LocalNotifications.schedule({
       notifications: [
         {
-          id: Math.floor(Math.random() * 2_000_000_000),
+          id: notifId,
           title,
           body: body ?? "",
-          channelId: NOTIFICATION_CHANNEL_ID,
-          schedule: { at: new Date(Date.now() + 1), allowWhileIdle: true },
+          schedule: { at: new Date(Date.now() + 1000), allowWhileIdle: true },
+          channelId: "boink_channel_v5",
+          smallIcon: "ic_stat_icon",
+          sound: "boink",
         },
       ],
     });
-  } catch {
-    /* ignore */
+    console.log("Immediate notification scheduled.");
+  } catch (e) {
+    console.error("nativeNotify failed", e);
   }
 }
 
@@ -99,63 +98,59 @@ export async function nativeNotify(title: string, body?: string) {
 export async function scheduleNativeAt(id: number, title: string, body: string, at: Date) {
   if (!isNative()) return;
   try {
-    if (!permissionGranted) await ensureNativeNotifPermission();
-    if (!permissionGranted) return;
-    const LocalNotifications = await getLocalNotifications();
-    await checkExactAlarmSetting();
+    await ensureChannel();
+    console.log(`Scheduling notification at ${at.toISOString()}: ${title} (id: ${id})`);
     await LocalNotifications.schedule({
       notifications: [
         {
           id,
           title,
           body,
-          channelId: NOTIFICATION_CHANNEL_ID,
           schedule: { at, allowWhileIdle: true },
-        },
+          channelId: "boink_channel_v5",
+          smallIcon: "ic_stat_icon",
+          sound: "boink",
+        }
       ],
     });
-  } catch {
-    /* ignore */
+    console.log(`Notification ${id} scheduled.`);
+  } catch (e) {
+    console.error("scheduleNativeAt failed", e);
   }
 }
 
 // Schedule a daily-repeating notification at HH:mm
-export async function scheduleNativeDaily(
-  id: number,
-  title: string,
-  body: string,
-  hour: number,
-  minute: number,
-) {
+export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number) {
   if (!isNative()) return;
   try {
-    if (!permissionGranted) await ensureNativeNotifPermission();
-    if (!permissionGranted) return;
-    const LocalNotifications = await getLocalNotifications();
-    await checkExactAlarmSetting();
+    await ensureChannel();
+    console.log(`Scheduling daily notification at ${hour}:${minute}: ${title} (id: ${id})`);
     await LocalNotifications.schedule({
       notifications: [
         {
           id,
           title,
           body,
-          channelId: NOTIFICATION_CHANNEL_ID,
           schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
+          channelId: "boink_channel_v5",
+          smallIcon: "ic_stat_icon",
+          sound: "boink",
         },
       ],
     });
-  } catch {
-    /* ignore */
+    console.log(`Daily notification ${id} scheduled.`);
+  } catch (e) {
+    console.error("scheduleNativeDaily failed", e);
   }
 }
 
 export async function cancelNative(ids: number[]) {
   if (!isNative() || ids.length === 0) return;
   try {
-    const LocalNotifications = await getLocalNotifications();
+    console.log("Cancelling notifications:", ids);
     await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
-  } catch {
-    /* ignore */
+  } catch (e) {
+    console.error("cancelNative failed", e);
   }
 }
 
@@ -169,13 +164,14 @@ export function hashId(s: string): number {
 // Call once at app boot
 export async function initNative() {
   if (!isNative()) return;
+  console.log("Initializing native features...");
   await ensureNativeNotifPermission();
-  await checkExactAlarmSetting();
+  await ensureChannel();
   try {
-    const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: Style.Dark });
     await StatusBar.setBackgroundColor({ color: "#0F1115" });
-  } catch {
-    /* ignore */
+    console.log("Status bar initialized.");
+  } catch (e) {
+    console.warn("StatusBar initialization failed", e);
   }
 }

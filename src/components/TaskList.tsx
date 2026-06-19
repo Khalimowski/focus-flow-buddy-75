@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeAt, cancelNative, hashId } from "@/lib/native";
+import { useTranslation } from "@/lib/i18n";
 
 type Task = {
   id: string;
@@ -20,6 +21,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const { t } = useTranslation();
 
   useEffect(() => setTasks(loadJSON<Task[]>(STORAGE_KEYS.tasks, [])), []);
   useEffect(() => saveJSON(STORAGE_KEYS.tasks, tasks), [tasks]);
@@ -31,13 +33,13 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     const id = setInterval(() => {
       const now = Date.now();
       let changed = false;
-      const next = ref.current.map((t) => {
-        if (!t.done && !t.notified && t.remindAt && new Date(t.remindAt).getTime() <= now) {
-          notify({ title: "Reminder", body: t.title, kind: "task" });
+      const next = ref.current.map((t_item) => {
+        if (!t_item.done && !t_item.notified && t_item.remindAt && new Date(t_item.remindAt).getTime() <= now) {
+          notify({ title: t('reminder_title'), body: t_item.title, kind: "task" });
           changed = true;
-          return { ...t, notified: true };
+          return { ...t_item, notified: true };
         }
-        return t;
+        return t_item;
       });
       if (changed) setTasks(next);
     }, 15000);
@@ -56,7 +58,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
     const id = crypto.randomUUID();
     if (remindAt && isNative()) {
-      void scheduleNativeAt(hashId("task:" + id), "Reminder", title.trim(), new Date(remindAt));
+      void scheduleNativeAt(hashId("task:" + id), t('reminder_title'), title.trim(), new Date(remindAt));
     }
     setTasks([{ id, title: title.trim(), done: false, remindAt, createdAt: Date.now() }, ...tasks]);
     setTitle("");
@@ -84,7 +86,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur">
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
-            placeholder="What's one small thing?"
+            placeholder={t('task_input_placeholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
@@ -104,7 +106,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         </div>
         {time && (
           <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="size-3" /> You'll be nudged at {time}
+            <Clock className="size-3" /> {t('nudge_at_time')} {time}
           </p>
         )}
       </div>
@@ -117,7 +119,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               animate={{ opacity: 1 }}
               className="rounded-2xl border border-dashed py-10 text-center text-sm text-muted-foreground"
             >
-              Quiet for now. Add one tiny task above.
+              {t('tasks_empty')}
             </motion.li>
           )}
           {tasks.map((t) => (
