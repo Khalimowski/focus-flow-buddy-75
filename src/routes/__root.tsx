@@ -91,8 +91,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Focus Flow" },
       { property: "og:description", content: "Calm focus & reminders for ADHD brains." },
       { name: "twitter:description", content: "Calm focus & reminders for ADHD brains." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png",
+      },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [

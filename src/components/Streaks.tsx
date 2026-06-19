@@ -14,7 +14,10 @@ const yesterday = () => {
 export function useStreak() {
   const [s, setS] = useState<Streak>({ days: [], current: 0, best: 0 });
 
-  useEffect(() => setS(loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 })), []);
+  useEffect(
+    () => setS(loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 })),
+    [],
+  );
 
   const markToday = () => {
     setS((prev) => {
@@ -43,7 +46,9 @@ export function StreakStrip({ streak }: { streak: Streak }) {
     <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current streak</div>
+          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Current streak
+          </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-mono text-4xl font-semibold">{streak.current}</span>
             <span className="text-sm text-muted-foreground">days</span>
@@ -54,7 +59,10 @@ export function StreakStrip({ streak }: { streak: Streak }) {
           <span className="font-mono">Best {streak.best}</span>
         </div>
       </div>
-      <div className="grid grid-cols-14 gap-1.5" style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}>
+      <div
+        className="grid grid-cols-14 gap-1.5"
+        style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}
+      >
         {cells.map((c) => (
           <div
             key={c.key}

@@ -2,26 +2,73 @@
 
 export const isNative = (): boolean => {
   if (typeof window === "undefined") return false;
-  const cap = (window as any).Capacitor;
+  const cap = (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
   return !!cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform();
 };
 
 let permissionGranted = false;
+let nativeInitialized = false;
+
+const NOTIFICATION_CHANNEL_ID = "focus_flow_alerts";
+
+async function getLocalNotifications() {
+  const { LocalNotifications } = await import("@capacitor/local-notifications");
+  return LocalNotifications;
+}
+
+async function ensureNativeNotificationSetup() {
+  if (!isNative() || nativeInitialized) return;
+  const LocalNotifications = await getLocalNotifications();
+
+  try {
+    await LocalNotifications.createChannel({
+      id: NOTIFICATION_CHANNEL_ID,
+      name: "Focus Flow alerts",
+      description: "Focus timer, task, and reminder nudges",
+      importance: 4,
+      visibility: 1,
+      lights: true,
+      lightColor: "#7C9CFF",
+      vibration: true,
+    });
+  } catch {
+    /* channel may already exist, or platform may not support channels */
+  }
+
+  nativeInitialized = true;
+}
 
 export async function ensureNativeNotifPermission(): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    const LocalNotifications = await getLocalNotifications();
     const cur = await LocalNotifications.checkPermissions();
     if (cur.display === "granted") {
       permissionGranted = true;
+      await ensureNativeNotificationSetup();
       return true;
     }
     const req = await LocalNotifications.requestPermissions();
     permissionGranted = req.display === "granted";
+    if (permissionGranted) await ensureNativeNotificationSetup();
     return permissionGranted;
   } catch {
     return false;
+  }
+}
+
+async function checkExactAlarmSetting() {
+  if (!isNative()) return;
+  try {
+    const LocalNotifications = await getLocalNotifications();
+    const settings = await LocalNotifications.checkExactNotificationSetting();
+    if (settings.exact_alarm === "denied") {
+      console.warn(
+        "Exact alarm notifications are disabled for Focus Flow; scheduled notifications may be delayed.",
+      );
+    }
+  } catch {
+    /* exact alarm settings are Android-specific */
   }
 }
 
@@ -29,14 +76,17 @@ export async function ensureNativeNotifPermission(): Promise<boolean> {
 export async function nativeNotify(title: string, body?: string) {
   if (!isNative()) return;
   try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    if (!permissionGranted) await ensureNativeNotifPermission();
+    if (!permissionGranted) return;
+    const LocalNotifications = await getLocalNotifications();
     await LocalNotifications.schedule({
       notifications: [
         {
           id: Math.floor(Math.random() * 2_000_000_000),
           title,
           body: body ?? "",
-          schedule: { at: new Date(Date.now() + 200) },
+          channelId: NOTIFICATION_CHANNEL_ID,
+          schedule: { at: new Date(Date.now() + 1), allowWhileIdle: true },
         },
       ],
     });
@@ -49,9 +99,20 @@ export async function nativeNotify(title: string, body?: string) {
 export async function scheduleNativeAt(id: number, title: string, body: string, at: Date) {
   if (!isNative()) return;
   try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    if (!permissionGranted) await ensureNativeNotifPermission();
+    if (!permissionGranted) return;
+    const LocalNotifications = await getLocalNotifications();
+    await checkExactAlarmSetting();
     await LocalNotifications.schedule({
-      notifications: [{ id, title, body, schedule: { at } }],
+      notifications: [
+        {
+          id,
+          title,
+          body,
+          channelId: NOTIFICATION_CHANNEL_ID,
+          schedule: { at, allowWhileIdle: true },
+        },
+      ],
     });
   } catch {
     /* ignore */
@@ -59,16 +120,26 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
 }
 
 // Schedule a daily-repeating notification at HH:mm
-export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number) {
+export async function scheduleNativeDaily(
+  id: number,
+  title: string,
+  body: string,
+  hour: number,
+  minute: number,
+) {
   if (!isNative()) return;
   try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    if (!permissionGranted) await ensureNativeNotifPermission();
+    if (!permissionGranted) return;
+    const LocalNotifications = await getLocalNotifications();
+    await checkExactAlarmSetting();
     await LocalNotifications.schedule({
       notifications: [
         {
           id,
           title,
           body,
+          channelId: NOTIFICATION_CHANNEL_ID,
           schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
         },
       ],
@@ -81,7 +152,7 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
 export async function cancelNative(ids: number[]) {
   if (!isNative() || ids.length === 0) return;
   try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+    const LocalNotifications = await getLocalNotifications();
     await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
   } catch {
     /* ignore */
@@ -99,6 +170,7 @@ export function hashId(s: string): number {
 export async function initNative() {
   if (!isNative()) return;
   await ensureNativeNotifPermission();
+  await checkExactAlarmSetting();
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     await StatusBar.setStyle({ style: Style.Dark });

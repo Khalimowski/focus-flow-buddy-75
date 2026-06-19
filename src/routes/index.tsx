@@ -7,12 +7,22 @@ import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
 import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
-import { ensurePermission, getPermission, notify } from "@/lib/notifications";
+import {
+  ensurePermission,
+  getPermission,
+  notify,
+  unlockNotificationAudio,
+} from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 
 async function fireTestNotifications() {
+  await unlockNotificationAudio();
   await ensurePermission();
-  notify({ title: "Test nudge ✨", body: "If you see this, in-app notifications work.", kind: "info" });
+  notify({
+    title: "Test nudge ✨",
+    body: "If you see this, in-app notifications work.",
+    kind: "info",
+  });
   try {
     const { isNative, scheduleNativeAt, hashId } = await import("@/lib/native");
     if (isNative()) {
@@ -22,14 +32,24 @@ async function fireTestNotifications() {
         "Scheduled 10 seconds ago — native alarms are working.",
         new Date(Date.now() + 10_000),
       );
-    } else if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+    } else if (
+      typeof window !== "undefined" &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
       setTimeout(() => {
         try {
-          new Notification("Focus Flow test", { body: "Scheduled 10s ago — browser notifications work." });
-        } catch { /* ignore */ }
+          new Notification("Focus Flow test", {
+            body: "Scheduled 10s ago — browser notifications work.",
+          });
+        } catch {
+          /* ignore */
+        }
       }, 10_000);
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export const Route = createFileRoute("/")({
@@ -62,6 +82,7 @@ function Home() {
   }, []);
 
   const askPerm = async () => {
+    await unlockNotificationAudio();
     const p = await ensurePermission();
     setPerm(p);
   };
@@ -86,11 +107,20 @@ function Home() {
         </div>
         {perm !== "granted" && perm !== "unsupported" && (
           <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full">
-            {perm === "denied" ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
+            {perm === "denied" ? (
+              <BellOff className="mr-2 size-4" />
+            ) : (
+              <Bell className="mr-2 size-4" />
+            )}
             {perm === "denied" ? "Notifications blocked" : "Enable nudges"}
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={fireTestNotifications} className="rounded-full">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={fireTestNotifications}
+          className="rounded-full"
+        >
           Test
         </Button>
       </header>
