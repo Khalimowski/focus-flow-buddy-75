@@ -268,14 +268,35 @@ export function hashId(s: string): number {
 // Call once at app boot
 export async function initNative() {
   if (!isNative()) return;
-  console.log("Initializing native features...");
+  console.log("[Native] Initializing features...");
   await ensureNativeNotifPermission();
   await ensureChannel();
+
+  // Set default state
   try {
-    await StatusBar.setStyle({ style: Style.Dark });
+    // Ensure the webview does not overlap the status bar area
+    await StatusBar.setOverlaysWebView({ overlay: false });
+    // Force a specific background color to ensure the status bar is solid
     await StatusBar.setBackgroundColor({ color: "#0F1115" });
-    console.log("Status bar initialized.");
   } catch (e) {
-    console.warn("StatusBar initialization failed", e);
+    console.warn("[Native] StatusBar overlay setup failed", e);
   }
 }
+
+// Dynamically update status bar based on theme
+export async function updateStatusBar(theme: "light" | "dark") {
+  if (!isNative()) return;
+  try {
+    if (theme === "dark") {
+      await StatusBar.setStyle({ style: Style.Dark });
+      await StatusBar.setBackgroundColor({ color: "#0F1115" }); // Matches dark background
+    } else {
+      await StatusBar.setStyle({ style: Style.Light });
+      await StatusBar.setBackgroundColor({ color: "#F9FAFB" }); // Matches light background
+    }
+    console.log(`[Native] Status bar updated for ${theme} mode`);
+  } catch (e) {
+    console.warn("[Native] updateStatusBar failed", e);
+  }
+}
+

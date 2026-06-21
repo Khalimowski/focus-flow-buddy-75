@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History } from "lucide-react";
 import { App } from "@capacitor/app";
 import {
   Sheet,
@@ -9,6 +9,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -19,9 +27,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { useHistoryStore } from "@/lib/history";
 import { notify, ensurePermission } from "@/lib/notifications";
-import { isNative, ensureCalendarPermission } from "@/lib/native";
+import { isNative, ensureCalendarPermission, updateStatusBar } from "@/lib/native";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -31,6 +41,7 @@ export function Settings() {
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync
   } = useI18nStore();
+  const { events, getDaysSinceLaunch } = useHistoryStore();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -43,6 +54,9 @@ export function Settings() {
       root.classList.remove("dark");
       root.classList.add("light");
     }
+
+    // Update native status bar icons
+    void updateStatusBar(theme);
   }, [theme]);
 
   // Handle Android Back Button via History API (most reliable for Capacitor)
@@ -103,7 +117,7 @@ export function Settings() {
           <span className="sr-only">{t('settings')}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+      <SheetContent side="right" className="w-[300px] sm:w-[400px] pt-safe-top">
         <SheetHeader>
           <SheetTitle>{t('settings')}</SheetTitle>
           <SheetDescription>
@@ -177,6 +191,63 @@ export function Settings() {
                 <SelectItem value="pl">Polski</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="pt-6 border-t">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+              <Database className="size-3" /> {t('ai_insights')}
+            </h4>
+
+            <div className="rounded-2xl bg-secondary/30 p-4 space-y-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">{t('collected_data')}</span>
+                <span className="font-mono font-bold">{events.length} {t('data_points')}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Learning progress</span>
+                <span className="font-mono font-bold">{getDaysSinceLaunch()} / 3 {t('days')}</span>
+              </div>
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] uppercase font-bold tracking-tight">
+                    <History className="mr-1.5 size-3" /> Inspect AI Memory
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[90vw] sm:max-w-[500px] h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl">
+                  <DialogHeader className="p-6 pb-2">
+                    <DialogTitle>AI Activity Log</DialogTitle>
+                    <DialogDescription>
+                      This is the local history the AI uses to understand your schedule.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <ScrollArea className="flex-1 p-6 pt-0">
+                    <div className="space-y-3">
+                      {events.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-10">No events recorded yet.</p>
+                      ) : (
+                        [...events].reverse().map((ev) => (
+                          <div key={ev.id} className="border-l-2 border-primary/30 pl-4 py-1">
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-[10px] font-bold uppercase text-primary">
+                                {ev.type.replace('_', ' ')}
+                              </span>
+                              <span className="text-[9px] font-mono text-muted-foreground">
+                                {new Date(ev.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-foreground mt-0.5">
+                              {ev.metadata?.title || ev.metadata?.label || "User Action"}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           <div className="pt-4 border-t">

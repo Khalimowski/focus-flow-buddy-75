@@ -12,7 +12,8 @@ import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
 import { Onboarding } from "@/components/Onboarding";
-import { isNative } from "@/lib/native";
+import { AICoach } from "@/components/AICoach";
+import { isNative, updateStatusBar } from "@/lib/native";
 
 
 export const Route = createFileRoute("/")({
@@ -53,16 +54,16 @@ function Home() {
 
     setMounted(true);
     setPerm(getPermission());
-    void import("@/lib/native").then((m) => m.initNative());
+    void import("@/lib/native").then((m) => {
+      m.initNative();
+      m.updateStatusBar(theme);
+    });
 
-    // Prevent app exit on back button if we are not at the top level of history
+    // On Main Screen, back button should minimize instead of exit
     if (isNative()) {
       const backListener = App.addListener("backButton", ({ canGoBack }) => {
         if (!canGoBack) {
-          // If we can't go back in browser history, and an overlay is NOT handled
-          // elsewhere, we can decide here whether to exit.
-          // For now, we just log to help debugging.
-          console.log("[Native] Back button pressed, no browser history.");
+          void App.minimizeApp();
         }
       });
       return () => {
@@ -79,8 +80,9 @@ function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-6 sm:pt-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-safe-top">
       {!tutorialCompleted && <Onboarding />}
+      <AICoach />
       <InAppToaster />
 
       <header className="mb-10 relative flex items-center justify-center min-h-[64px]">

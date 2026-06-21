@@ -8,6 +8,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
+import { useHistoryStore } from "@/lib/history";
 
 type Reminder = {
   id: string;
@@ -29,6 +30,7 @@ export function Reminders() {
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
   const { t } = useTranslation();
   const { nudgeCalendarSync } = useI18nStore();
+  const { addEvent } = useHistoryStore();
 
   const PRESETS = [
     { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
@@ -85,6 +87,7 @@ export function Reminders() {
       lastFired: {},
     };
     scheduleAll(r);
+    addEvent('nudge_created', { label: p.label, preset: true });
     setItems([...items, r]);
   };
 
@@ -111,6 +114,7 @@ export function Reminders() {
       lastFired: {},
     };
     scheduleAll(r);
+    addEvent('nudge_created', { label: label.trim(), preset: false });
     setItems([...items, r]);
     setLabel("");
     setCustomTimes([""]);
@@ -128,7 +132,10 @@ export function Reminders() {
     );
   const remove = (id: string) => {
     const r = items.find((x) => x.id === id);
-    if (r) cancelAll(r);
+    if (r) {
+      cancelAll(r);
+      addEvent('nudge_deleted', { label: r.label });
+    }
     setItems(items.filter((r) => r.id !== id));
   };
 

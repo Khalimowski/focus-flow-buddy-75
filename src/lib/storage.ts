@@ -28,4 +28,5 @@ export const STORAGE_KEYS = {
   streak: "ff.streak.v1",
   settings: "ff.settings.v1",
   inAppNotifs: "ff.notifs.v1",
+  history: "ff.history.v1",
 } as const;

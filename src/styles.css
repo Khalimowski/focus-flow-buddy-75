@@ -157,6 +157,9 @@
 }
 
 @layer utilities {
+  .pt-safe-top {
+    padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
+  }
   .font-mono {
     font-family: var(--font-mono);
     font-feature-settings: "tnum", "zero";

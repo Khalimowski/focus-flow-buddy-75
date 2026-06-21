@@ -7,6 +7,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
+import { useHistoryStore } from "@/lib/history";
 
 type Task = {
   id: string;
@@ -55,6 +56,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [editTime, setEditTime] = useState("");
   const { t } = useTranslation();
   const { calendarSync } = useI18nStore();
+  const { addEvent } = useHistoryStore();
 
   useEffect(() => {
     const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
@@ -106,6 +108,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       void scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync);
     }
 
+    addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt });
     setTasks(prev => sortTasks([{ id, title: title.trim(), done: false, remindAt, createdAt: Date.now() }, ...prev]));
     setTitle("");
     setTime("");
@@ -155,6 +158,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
     setTasks(prev => {
       const updated = prev.map(item => item.id === editingId ? { ...item, title: editTitle.trim(), remindAt, notified: false } : item);
+      addEvent('task_edited', { id: editingId, newTitle: editTitle.trim() });
       return sortTasks(updated);
     });
     cancelEdit();
@@ -165,7 +169,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       const updated = prev.map((item) => {
         if (item.id !== id) return item;
         const becoming = !item.done;
-        if (becoming) onComplete?.();
+        if (becoming) {
+          onComplete?.();
+          addEvent('task_completed', { title: item.title });
+        }
         return { ...item, done: becoming };
       });
       return sortTasks(updated);
@@ -178,6 +185,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       const task = tasks.find(item => item.id === id);
       if (task) {
         await deleteFromCalendar(task.title);
+        addEvent('task_deleted', { title: task.title });
       }
     }
     setTasks(prev => prev.filter((item) => item.id !== id));
