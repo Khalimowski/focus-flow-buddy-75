@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar } from "lucide-react";
+import { App } from "@capacitor/app";
 import {
   Sheet,
   SheetContent,
@@ -20,10 +21,16 @@ import {
 } from "@/components/ui/select";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { notify, ensurePermission } from "@/lib/notifications";
-import { ensureCalendarPermission } from "@/lib/native";
+import { isNative, ensureCalendarPermission } from "@/lib/native";
 
 export function Settings() {
-  const { language, setLanguage, theme, setTheme, calendarSync, setCalendarSync } = useI18nStore();
+  const [open, setOpen] = useState(false);
+  const {
+    language, setLanguage,
+    theme, setTheme,
+    calendarSync, setCalendarSync,
+    nudgeCalendarSync, setNudgeCalendarSync
+  } = useI18nStore();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -37,6 +44,30 @@ export function Settings() {
       root.classList.add("light");
     }
   }, [theme]);
+
+  // Handle Android Back Button via History API (most reliable for Capacitor)
+  useEffect(() => {
+    if (!open) return;
+
+    // Push a dummy state to history when settings open
+    const state = { settings: true };
+    window.history.pushState(state, "");
+
+    const handlePopState = (e: PopStateEvent) => {
+      // If we go back and the state is gone, close settings
+      setOpen(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // If menu is closed manually (not via back button), remove the dummy state
+      if (window.history.state?.settings) {
+        window.history.back();
+      }
+    };
+  }, [open]);
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
@@ -53,8 +84,19 @@ export function Settings() {
     setCalendarSync(enabled);
   };
 
+  const handleNudgeCalendarSyncChange = async (enabled: boolean) => {
+    if (enabled) {
+      const granted = await ensureCalendarPermission();
+      if (!granted) {
+        setNudgeCalendarSync(false);
+        return;
+      }
+    }
+    setNudgeCalendarSync(enabled);
+  };
+
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="rounded-full bg-background/80 backdrop-blur border-primary/20 shadow-lg">
           <SettingsIcon className="size-6 text-primary" />
@@ -97,6 +139,22 @@ export function Settings() {
               id="calendar-sync"
               checked={calendarSync}
               onCheckedChange={handleCalendarSyncChange}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="size-4 opacity-70" />
+              <div className="flex flex-col">
+                <Label htmlFor="nudge-calendar-sync" className="text-sm font-medium">
+                  {t('sync_nudges_calendar')}
+                </Label>
+              </div>
+            </div>
+            <Switch
+              id="nudge-calendar-sync"
+              checked={nudgeCalendarSync}
+              onCheckedChange={handleNudgeCalendarSyncChange}
             />
           </div>
 

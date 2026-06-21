@@ -28,7 +28,7 @@ export function Reminders() {
   const [label, setLabel] = useState("");
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
   const { t } = useTranslation();
-  const { calendarSync } = useI18nStore();
+  const { nudgeCalendarSync } = useI18nStore();
 
   const PRESETS = [
     { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
@@ -66,7 +66,7 @@ export function Reminders() {
     if (!isNative()) return;
     r.times.forEach((t_val, idx) => {
       const [h, m] = t_val.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, calendarSync);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync);
     });
   };
   const cancelAll = (r: Reminder) => {

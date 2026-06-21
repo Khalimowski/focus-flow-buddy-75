@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, BellOff, ListTodo, Repeat } from "lucide-react";
-import { useTranslation } from "@/lib/i18n";
+import { App } from "@capacitor/app";
+import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
 import { StreakStrip, useStreak } from "@/components/Streaks";
@@ -10,6 +11,8 @@ import { InAppToaster } from "@/components/InAppToaster";
 import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
+import { Onboarding } from "@/components/Onboarding";
+import { isNative } from "@/lib/native";
 
 
 export const Route = createFileRoute("/")({
@@ -34,21 +37,50 @@ type Tab = "tasks" | "reminders";
 function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
+  const [mounted, setMounted] = useState(false);
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
+  const { tutorialCompleted, theme } = useI18nStore();
 
   useEffect(() => {
+    // Sync theme on mount to prevent flashing
+    const root = window.document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+
+    setMounted(true);
     setPerm(getPermission());
     void import("@/lib/native").then((m) => m.initNative());
-  }, []);
+
+    // Prevent app exit on back button if we are not at the top level of history
+    if (isNative()) {
+      const backListener = App.addListener("backButton", ({ canGoBack }) => {
+        if (!canGoBack) {
+          // If we can't go back in browser history, and an overlay is NOT handled
+          // elsewhere, we can decide here whether to exit.
+          // For now, we just log to help debugging.
+          console.log("[Native] Back button pressed, no browser history.");
+        }
+      });
+      return () => {
+        void backListener.then(l => l.remove());
+      };
+    }
+  }, [theme]);
 
   const askPerm = async () => {
     const p = await ensurePermission();
     setPerm(p);
   };
 
+  if (!mounted) return null;
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-6 sm:pt-10">
+      {!tutorialCompleted && <Onboarding />}
       <InAppToaster />
 
       <header className="mb-10 relative flex items-center justify-center min-h-[64px]">

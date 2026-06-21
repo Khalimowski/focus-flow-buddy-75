@@ -8,9 +8,13 @@ interface I18nState {
   language: Language;
   theme: Theme;
   calendarSync: boolean;
+  nudgeCalendarSync: boolean;
+  tutorialCompleted: boolean;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
+  setNudgeCalendarSync: (enabled: boolean) => void;
+  setTutorialCompleted: (completed: boolean) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -19,9 +23,13 @@ export const useI18nStore = create<I18nState>()(
       language: 'en',
       theme: 'dark',
       calendarSync: false,
+      nudgeCalendarSync: false,
+      tutorialCompleted: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
+      setNudgeCalendarSync: (nudgeCalendarSync) => set({ nudgeCalendarSync }),
+      setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
     }),
     {
       name: 'focus-flow-settings',
@@ -50,7 +58,8 @@ export const translations = {
     version: "Version",
     sync_calendar: "Sync to Calendar",
     sync_calendar_desc: "Automatically add reminders to your phone calendar.",
-    tasks_placeholder: "Add a tiny task...",
+    sync_nudges_calendar: "Sync Nudges to Calendar",
+    tasks_placeholder: "Add a task...",
     reminders_title: "Gentle Nudges",
     reminders_desc: "Daily reminders to keep you on track.",
     boink_channel_name: "Nudge Notifications",
@@ -63,9 +72,9 @@ export const translations = {
     drink_water: "Drink water",
     take_meds: "Take meds",
     stand_stretch: "Stand & stretch",
-    task_input_placeholder: "What's one small thing?",
+    task_input_placeholder: "What needs to be done?",
     nudge_at_time: "You'll be nudged at",
-    tasks_empty: "Quiet for now. Add one tiny task above.",
+    tasks_empty: "Quiet for now. Add one task above.",
     reminder_title: "Reminder",
     add_time: "Add Time",
     add_nudge: "Add Nudge",
@@ -76,6 +85,15 @@ export const translations = {
     test_notification_body: "This is a test from Focus Flow! ✨",
     select_language: "Select Language",
     footer_hint: "Add this app to your home screen for the best experience.",
+    onboarding_welcome: "Welcome to Focus Flow",
+    onboarding_tasks_title: "Tiny Tasks",
+    onboarding_tasks_desc: "Break your day into small, manageable wins. Set a time to get a gentle reminder.",
+    onboarding_nudges_title: "Daily Nudges",
+    onboarding_nudges_desc: "Build healthy habits with recurring reminders for water, meds, or stretching.",
+    onboarding_sync_title: "Stay in Sync",
+    onboarding_sync_desc: "Optionally sync your tasks to your phone's local calendar to see them everywhere.",
+    next: "Next",
+    get_started: "Get Started",
   },
   pl: {
     app_name: "Focus Flow",
@@ -90,13 +108,14 @@ export const translations = {
     streak_desc: "Działaj dalej, by utrzymać Streak.",
     days: "dni",
     settings: "Ustawienia",
-    settings_desc: "Dostosuj Focus Flow do swoich potrzeb.",
+    settings_desc: "Dostosuj aplikację do swoich potrzeb.",
     dark_mode: "Tryb ciemny",
     light_mode: "Tryb jasny",
     language: "Język",
     version: "Wersja",
     sync_calendar: "Synchronizuj z kalendarzem",
     sync_calendar_desc: "Automatycznie dodawaj przypomnienia do kalendarza telefonu.",
+    sync_nudges_calendar: "Synchr. przypominajki z kalendarzem",
     tasks_placeholder: "Coś małego na teraz...",
     reminders_title: "Przypominajki",
     reminders_desc: "Łagodne przypomnienia, które pomogą Ci zostać na fali.",
@@ -112,7 +131,7 @@ export const translations = {
     stand_stretch: "Wstań i przeciągnij się",
     task_input_placeholder: "Co musisz zrobić?",
     nudge_at_time: "Dostaniesz informacje o",
-    tasks_empty: "Na razie cicho. Dodaj zadanie powyżej.",
+    tasks_empty: "Nic w planach na dziś? Dodaj zadanie powyżej.",
     reminder_title: "Przypomnienie",
     add_time: "Dodaj godzinę",
     add_nudge: "Dodaj przypomnienie",
@@ -123,13 +142,23 @@ export const translations = {
     test_notification_body: "To jest test z Focus Flow! ✨",
     select_language: "Wybierz język",
     footer_hint: "Dodaj aplikację do ekranu głównego, aby uzyskać najlepsze wrażenia.",
+    onboarding_welcome: "Witaj w Focus Flow",
+    onboarding_tasks_title: "Małe Zadania",
+    onboarding_tasks_desc: "Podziel dzień na małe sukcesy. Ustaw godzinę, by otrzymać łagodne przypomnienie.",
+    onboarding_nudges_title: "Codzienne Przypominajki",
+    onboarding_nudges_desc: "Buduj zdrowe nawyki dzięki przypomnieniom o wodzie, lekach czy rozciąganiu.",
+    onboarding_sync_title: "Pełna Synchronizacja",
+    onboarding_sync_desc: "Synchronizuj zadania z kalendarzem telefonu.",
+    next: "Dalej",
+    get_started: "Zaczynamy",
   }
 };
 
 export function useTranslation() {
   const { language } = useI18nStore();
   const t = (key: keyof typeof translations.en) => {
-    return translations[language][key] || translations.en[key];
+    const lang = translations[language] || translations.en;
+    return lang[key] || translations.en[key] || "";
   };
   return { t, language };
 }
