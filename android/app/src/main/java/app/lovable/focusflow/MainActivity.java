@@ -31,7 +31,7 @@ public class MainActivity extends BridgeActivity {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            String channelId = "boink_channel_v5";
+            String channelId = "boink_channel_v8";
             CharSequence name = getString(R.string.nudge_channel_name);
             String description = getString(R.string.nudge_channel_description);
             int importance = NotificationManager.IMPORTANCE_HIGH;
@@ -42,7 +42,7 @@ public class MainActivity extends BridgeActivity {
             NotificationChannel channel = new NotificationChannel(channelId, name, importance);
             channel.setDescription(description);
             channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 1000});
+            channel.setVibrationPattern(new long[]{0, 2000});
 
             Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/raw/boink");
             AudioAttributes audioAttributes = new AudioAttributes.Builder()

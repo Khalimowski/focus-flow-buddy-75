@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { useTranslation } from "@/lib/i18n";
 
 type Streak = { days: string[]; current: number; best: number };
 
@@ -34,6 +35,7 @@ export function useStreak() {
 }
 
 export function StreakStrip({ streak }: { streak: Streak }) {
+  const { t } = useTranslation();
   // last 14 days
   const cells = Array.from({ length: 14 }).map((_, i) => {
     const d = new Date();
@@ -47,16 +49,16 @@ export function StreakStrip({ streak }: { streak: Streak }) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-            Current streak
+            {t('streak_current')}
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-mono text-4xl font-semibold">{streak.current}</span>
-            <span className="text-sm text-muted-foreground">days</span>
+            <span className="text-sm text-muted-foreground">{t('days')}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm">
           <Flame className="size-4 text-mint" />
-          <span className="font-mono">Best {streak.best}</span>
+          <span className="font-mono">{t('streak_best')} {streak.best}</span>
         </div>
       </div>
       <div
@@ -78,7 +80,7 @@ export function StreakStrip({ streak }: { streak: Streak }) {
         ))}
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Complete one task or finish a focus session to keep the chain alive.
+        {t('streak_desc')}
       </p>
     </div>
   );

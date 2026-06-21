@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, Brain, ListTodo, Repeat } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { FocusTimer } from "@/components/FocusTimer";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
 import { StreakStrip, useStreak } from "@/components/Streaks";
@@ -30,10 +29,10 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Tab = "focus" | "tasks" | "reminders";
+type Tab = "tasks" | "reminders";
 
 function Home() {
-  const [tab, setTab] = useState<Tab>("focus");
+  const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
@@ -52,27 +51,31 @@ function Home() {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-6 sm:pt-10">
       <InAppToaster />
 
-      <header className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="mb-10 relative flex items-center justify-center min-h-[64px]">
+        <div className="absolute left-0 top-1/2 -translate-y-1/2">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-glow"
+            className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
           >
             <div className="size-3 rounded-full bg-background/80" />
           </motion.div>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">{t('app_name')}</h1>
-            <p className="text-xs text-muted-foreground">{t('tagline')}</p>
-          </div>
         </div>
-        {perm !== "granted" && perm !== "unsupported" && (
-          <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full">
-            {perm === "denied" ? <BellOff className="mr-2 size-4" /> : <Bell className="mr-2 size-4" />}
-            {perm === "denied" ? t('blocked') : t('enable_nudges')}
-          </Button>
-        )}
-        <Settings />
+
+        <div className="text-center">
+          <h1 className="text-xl font-bold tracking-tight">{t('app_name')}</h1>
+          <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
+        </div>
+
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          {perm !== "granted" && perm !== "unsupported" && (
+            <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-8 w-8 p-0 sm:w-auto sm:px-3">
+              {perm === "denied" ? <BellOff className="size-3.5 sm:mr-1.5" /> : <Bell className="size-3.5 sm:mr-1.5" />}
+              <span className="hidden sm:inline text-xs">{perm === "denied" ? t('blocked') : t('enable_nudges')}</span>
+            </Button>
+          )}
+          <Settings />
+        </div>
       </header>
 
       <StreakStrip streak={streak} />
@@ -80,7 +83,6 @@ function Home() {
       <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur">
         {(
           [
-            { id: "focus", label: t('focus'), icon: Brain },
             { id: "tasks", label: t('tasks'), icon: ListTodo },
             { id: "reminders", label: t('nudges'), icon: Repeat },
           ] as const
@@ -115,7 +117,6 @@ function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {tab === "focus" && <FocusTimer />}
         {tab === "tasks" && <TaskList onComplete={markToday} />}
         {tab === "reminders" && <Reminders />}
       </motion.section>

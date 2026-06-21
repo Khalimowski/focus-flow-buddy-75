@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
-import { isNative, scheduleNativeDaily, cancelNative, hashId } from "@/lib/native";
-import { useTranslation } from "@/lib/i18n";
+import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
+import { useTranslation, useI18nStore } from "@/lib/i18n";
 
 type Reminder = {
   id: string;
@@ -28,6 +28,7 @@ export function Reminders() {
   const [label, setLabel] = useState("");
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
   const { t } = useTranslation();
+  const { calendarSync } = useI18nStore();
 
   const PRESETS = [
     { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
@@ -65,12 +66,13 @@ export function Reminders() {
     if (!isNative()) return;
     r.times.forEach((t_val, idx) => {
       const [h, m] = t_val.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, calendarSync);
     });
   };
   const cancelAll = (r: Reminder) => {
     if (!isNative()) return;
     void cancelNative(r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`)));
+    void deleteFromCalendar(r.label);
   };
 
   const addPreset = (p: (typeof PRESETS)[number]) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages, Bell } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -20,9 +20,10 @@ import {
 } from "@/components/ui/select";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { notify, ensurePermission } from "@/lib/notifications";
+import { ensureCalendarPermission } from "@/lib/native";
 
 export function Settings() {
-  const { language, setLanguage, theme, setTheme } = useI18nStore();
+  const { language, setLanguage, theme, setTheme, calendarSync, setCalendarSync } = useI18nStore();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -39,6 +40,17 @@ export function Settings() {
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  const handleCalendarSyncChange = async (enabled: boolean) => {
+    if (enabled) {
+      const granted = await ensureCalendarPermission();
+      if (!granted) {
+        setCalendarSync(false);
+        return;
+      }
+    }
+    setCalendarSync(enabled);
   };
 
   return (
@@ -62,13 +74,29 @@ export function Settings() {
             <div className="flex items-center gap-3">
               {theme === "dark" ? <Moon className="size-4" /> : <Sun className="size-4" />}
               <Label htmlFor="dark-mode" className="text-sm font-medium">
-                {t('dark_mode')}
+                {theme === "dark" ? t('dark_mode') : t('light_mode')}
               </Label>
             </div>
             <Switch
               id="dark-mode"
               checked={theme === "dark"}
               onCheckedChange={toggleTheme}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="size-4" />
+              <div className="flex flex-col">
+                <Label htmlFor="calendar-sync" className="text-sm font-medium">
+                  {t('sync_calendar')}
+                </Label>
+              </div>
+            </div>
+            <Switch
+              id="calendar-sync"
+              checked={calendarSync}
+              onCheckedChange={handleCalendarSyncChange}
             />
           </div>
 

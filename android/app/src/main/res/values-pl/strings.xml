@@ -6,6 +6,6 @@
     <string name="custom_url_scheme">app.lovable.focusflow</string>
 
     <!-- Notification Channel Strings -->
-    <string name="nudge_channel_name">Łagodne Przypominajki</string>
+    <string name="nudge_channel_name">Przypominajki</string>
     <string name="nudge_channel_description">Kanał dla Twoich spokojnych impulsów do działania</string>
 </resources>
