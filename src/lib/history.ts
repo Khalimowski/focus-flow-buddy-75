@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { generateId } from './utils';
 
 export type UserAction =
   | 'task_created'
@@ -38,7 +39,7 @@ export const useHistoryStore = create<HistoryState>()(
       addEvent: (type, metadata) => {
         const now = Date.now();
         const newEvent: HistoryEvent = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           type,
           timestamp: now,
           metadata

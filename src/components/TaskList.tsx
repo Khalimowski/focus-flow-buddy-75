@@ -1,29 +1,31 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
+import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { format, addDays, isSameDay, startOfDay, parseISO } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 type Task = {
   id: string;
   title: string;
   done: boolean;
   remindAt: string | null; // ISO
+  dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
 };
 
 const sortTasks = (list: Task[]) => {
   return [...list].sort((a, b) => {
-    // 1. Uncompleted before completed
     if (a.done !== b.done) return a.done ? 1 : -1;
-
-    // 2. Both have reminders -> sort by "Time of Day" (HH:mm)
     if (a.remindAt && b.remindAt) {
       const getHM = (iso: string) => {
         const d = new Date(iso);
@@ -31,17 +33,11 @@ const sortTasks = (list: Task[]) => {
       };
       const hmA = getHM(a.remindAt);
       const hmB = getHM(b.remindAt);
-
       if (hmA !== hmB) return hmA - hmB;
-      // Identical times -> secondary sort by creation
       return a.createdAt - b.createdAt;
     }
-
-    // 3. One has reminder -> reminder first
     if (a.remindAt) return -1;
     if (b.remindAt) return 1;
-
-    // 4. Neither has reminder -> oldest first (grows downwards)
     return a.createdAt - b.createdAt;
   });
 };
@@ -49,18 +45,29 @@ const sortTasks = (list: Task[]) => {
 export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const [newTaskDate, setNewTaskDate] = useState<Date>(startOfDay(new Date()));
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editTime, setEditTime] = useState("");
+  const [editDate, setEditDate] = useState<Date>(new Date());
+
   const { t } = useTranslation();
   const { calendarSync } = useI18nStore();
   const { addEvent } = useHistoryStore();
 
   useEffect(() => {
     const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
-    setTasks(sortTasks(data));
+    // Migration: ensure all tasks have a dueDate and handle missing createdAt
+    const migrated = data.map(task => ({
+      ...task,
+      createdAt: task.createdAt || Date.now(),
+      dueDate: task.dueDate || (task.remindAt ? format(parseISO(task.remindAt), 'yyyy-MM-dd') : format(new Date(task.createdAt || Date.now()), 'yyyy-MM-dd'))
+    }));
+    setTasks(sortTasks(migrated));
     setLoaded(true);
   }, []);
 
@@ -70,53 +77,56 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
   }, [tasks, loaded]);
 
-  // poll for due reminders
-  const ref = useRef(tasks);
-  ref.current = tasks;
-  useEffect(() => {
-    const id = setInterval(() => {
-      const now = Date.now();
-      let changed = false;
-      const next = ref.current.map((task_item) => {
-        if (!task_item.done && !task_item.notified && task_item.remindAt && new Date(task_item.remindAt).getTime() <= now) {
-          notify({ title: t('reminder_title'), body: task_item.title, kind: "task" });
-          changed = true;
-          return { ...task_item, notified: true };
-        }
-        return task_item;
-      });
-      if (changed) setTasks(next);
-    }, 15000);
-    return () => clearInterval(id);
-  }, [t]);
+  const filteredTasks = useMemo(() => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return tasks.filter(t => t.dueDate === dateStr);
+  }, [tasks, selectedDate]);
+
+  // Daily Strip dates (-2, -1, 0, +1, +2, +3, +4)
+  const dayStrip = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => addDays(new Date(), i - 1));
+  }, []);
 
   const add = async () => {
     if (!title.trim()) return;
+
     let remindAt: string | null = null;
+    const dueDate = format(newTaskDate, 'yyyy-MM-dd');
+
     if (time) {
       const [h, m] = time.split(":").map(Number);
-      const d = new Date();
+      const d = new Date(newTaskDate);
       d.setHours(h, m, 0, 0);
-      if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
       remindAt = d.toISOString();
     }
-    const id = crypto.randomUUID();
+
+    const id = generateId();
 
     if (isNative() && remindAt) {
-      // Sync cleanup
       await deleteFromCalendar(title.trim());
       void scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync);
     }
 
-    addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt });
-    setTasks(prev => sortTasks([{ id, title: title.trim(), done: false, remindAt, createdAt: Date.now() }, ...prev]));
+    addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt, date: dueDate });
+    setTasks(prev => sortTasks([{
+      id,
+      title: title.trim(),
+      done: false,
+      remindAt,
+      dueDate,
+      createdAt: Date.now()
+    }, ...prev]));
+
     setTitle("");
     setTime("");
+    // Reset date selection to the currently viewed date for convenience
+    setNewTaskDate(selectedDate);
   };
 
   const startEdit = (task: Task) => {
     setEditingId(task.id);
     setEditTitle(task.title);
+    setEditDate(parseISO(task.dueDate));
     if (task.remindAt) {
       const d = new Date(task.remindAt);
       setEditTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
@@ -135,29 +145,34 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (!editingId || !editTitle.trim()) return;
 
     let remindAt: string | null = null;
+    const dueDate = format(editDate, 'yyyy-MM-dd');
+
     if (editTime) {
       const [h, m] = editTime.split(":").map(Number);
-      const d = new Date();
+      const d = new Date(editDate);
       d.setHours(h, m, 0, 0);
-      if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
       remindAt = d.toISOString();
     }
 
     if (isNative()) {
       void cancelNative([hashId("task:" + editingId)]);
-
       const oldTask = tasks.find(item => item.id === editingId);
       if (oldTask) {
         await deleteFromCalendar(oldTask.title);
       }
-
       if (remindAt) {
         void scheduleNativeAt(hashId("task:" + editingId), editTitle.trim(), t('reminder_title'), new Date(remindAt), calendarSync);
       }
     }
 
     setTasks(prev => {
-      const updated = prev.map(item => item.id === editingId ? { ...item, title: editTitle.trim(), remindAt, notified: false } : item);
+      const updated = prev.map(item => item.id === editingId ? {
+        ...item,
+        title: editTitle.trim(),
+        remindAt,
+        dueDate,
+        notified: false
+      } : item);
       addEvent('task_edited', { id: editingId, newTitle: editTitle.trim() });
       return sortTasks(updated);
     });
@@ -193,23 +208,84 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* Daily Strip */}
+      <div className="flex items-center justify-between gap-2 overflow-x-auto py-3 px-1 scrollbar-hide">
+        {dayStrip.map((date, i) => {
+          const active = isSameDay(date, selectedDate);
+          const isToday = isSameDay(date, new Date());
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                setSelectedDate(startOfDay(date));
+                setNewTaskDate(startOfDay(date));
+              }}
+              className={`flex min-w-[50px] flex-col items-center rounded-2xl py-3.5 transition-all ${
+                active
+                  ? "bg-primary text-primary-foreground shadow-glow scale-102 ring-1 ring-primary/20"
+                  : "bg-card/40 text-muted-foreground hover:bg-card/60"
+              }`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-tighter opacity-70">
+                {format(date, 'EEE')}
+              </span>
+              <span className="text-sm font-bold leading-none mt-1">{format(date, 'd')}</span>
+              {isToday && !active && <div className="mt-1 size-1 rounded-full bg-primary animate-pulse" />}
+            </button>
+          );
+        })}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-2xl bg-card/40 size-[50px] shrink-0 hover:bg-card/60">
+              <CalendarIcon className="size-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 rounded-3xl" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => d && setSelectedDate(startOfDay(d))}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-col gap-3">
           <Input
             placeholder={t('task_input_placeholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
-            className="flex-1"
+            className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
           />
-          <div className="flex gap-2">
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-32 font-mono"
-            />
-            <Button onClick={add} className="shrink-0 bg-primary hover:bg-primary/90">
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <div className="flex gap-2">
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-28 font-mono h-8 text-xs rounded-full bg-secondary/50 border-none"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" size="sm" className="h-8 rounded-full px-3 text-[10px] font-bold gap-1.5">
+                    <CalendarIcon className="size-3" />
+                    {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, 'MMM d')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-3xl" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newTaskDate}
+                    onSelect={(d) => d && setNewTaskDate(startOfDay(d))}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <Button onClick={add} size="sm" className="size-8 rounded-full p-0 shadow-soft">
               <Plus className="size-4" />
             </Button>
           </div>
@@ -217,17 +293,17 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       </div>
 
       <ul className="flex flex-col gap-2">
-        <AnimatePresence initial={false}>
-          {tasks.length === 0 && (
+        <AnimatePresence initial={false} mode="popLayout">
+          {filteredTasks.length === 0 && (
             <motion.li
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed py-10 text-center text-sm text-muted-foreground"
+              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10"
             >
               {t('tasks_empty')}
             </motion.li>
           )}
-          {tasks.map((task) => (
+          {filteredTasks.map((task) => (
             <motion.li
               key={task.id}
               layout
@@ -237,28 +313,46 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               className="flex items-center gap-3 rounded-2xl border bg-card/40 p-3 backdrop-blur"
             >
               {editingId === task.id ? (
-                <div className="flex flex-col gap-2 w-full">
-                  <div className="flex gap-2">
-                    <Input
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      className="flex-1 h-9"
-                      autoFocus
-                    />
-                    <Input
-                      type="time"
-                      value={editTime}
-                      onChange={(e) => setEditTime(e.target.value)}
-                      className="w-24 font-mono h-9"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-8">
-                      <X className="size-3.5 mr-1" /> {t('cancel')}
-                    </Button>
-                    <Button size="sm" onClick={saveEdit} className="h-8">
-                      <Save className="size-3.5 mr-1" /> {t('save')}
-                    </Button>
+                <div className="flex flex-col gap-3 w-full p-1">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-2">
+                      <Input
+                        type="time"
+                        value={editTime}
+                        onChange={(e) => setEditTime(e.target.value)}
+                        className="w-24 font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
+                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="secondary" size="sm" className="h-7 rounded-full px-2.5 text-[9px] font-bold gap-1">
+                            <CalendarIcon className="size-2.5" />
+                            {format(editDate, 'MMM d')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-3xl" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={editDate}
+                            onSelect={(d) => d && setEditDate(startOfDay(d))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-2 text-[10px]">
+                        <X className="size-3 mr-1" /> {t('cancel')}
+                      </Button>
+                      <Button size="sm" onClick={saveEdit} className="h-7 px-2 text-[10px]">
+                        <Save className="size-3 mr-1" /> {t('save')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (

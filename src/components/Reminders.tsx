@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
+import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
@@ -26,6 +27,7 @@ const nowHM = () => {
 
 export function Reminders() {
   const [items, setItems] = useState<Reminder[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [label, setLabel] = useState("");
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
   const { t } = useTranslation();
@@ -38,8 +40,16 @@ export function Reminders() {
     { label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
   ];
 
-  useEffect(() => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, [])), []);
-  useEffect(() => saveJSON(STORAGE_KEYS.reminders, items), [items]);
+  useEffect(() => {
+    setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []));
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (loaded) {
+      saveJSON(STORAGE_KEYS.reminders, items);
+    }
+  }, [items, loaded]);
 
   const ref = useRef(items);
   ref.current = items;
@@ -80,7 +90,7 @@ export function Reminders() {
   const addPreset = (p: (typeof PRESETS)[number]) => {
     if (items.some((i) => i.label === p.label)) return;
     const r: Reminder = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: p.label,
       times: p.times,
       enabled: true,
@@ -107,7 +117,7 @@ export function Reminders() {
     const validTimes = customTimes.filter(t => !!t);
     if (!label.trim() || validTimes.length === 0) return;
     const r: Reminder = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       label: label.trim(),
       times: validTimes,
       enabled: true,
