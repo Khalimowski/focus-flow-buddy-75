@@ -9,7 +9,7 @@ import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
-import { format, addDays, isSameDay, startOfDay, parseISO } from "date-fns";
+import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
@@ -82,9 +82,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     return tasks.filter(t => t.dueDate === dateStr);
   }, [tasks, selectedDate]);
 
-  // Daily Strip dates (-2, -1, 0, +1, +2, +3, +4)
+  // Daily Strip dates (Monday to Sunday of current week)
   const dayStrip = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => addDays(new Date(), i - 1));
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 7 }).map((_, i) => addDays(start, i));
   }, []);
 
   const add = async () => {
@@ -187,6 +188,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         if (becoming) {
           onComplete?.();
           addEvent('task_completed', { title: item.title });
+
+          // Remove from native notifications and calendar when done
+          if (isNative()) {
+            void cancelNative([hashId("task:" + id)]);
+            void deleteFromCalendar(item.title);
+          }
         }
         return { ...item, done: becoming };
       });
@@ -246,6 +253,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               selected={selectedDate}
               onSelect={(d) => d && setSelectedDate(startOfDay(d))}
               initialFocus
+              weekStartsOn={1}
             />
           </PopoverContent>
         </Popover>
@@ -281,6 +289,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                     selected={newTaskDate}
                     onSelect={(d) => d && setNewTaskDate(startOfDay(d))}
                     initialFocus
+                    weekStartsOn={1}
                   />
                 </PopoverContent>
               </Popover>
@@ -320,17 +329,17 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                     className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
                     autoFocus
                   />
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex gap-1.5 shrink-0">
                       <Input
                         type="time"
                         value={editTime}
                         onChange={(e) => setEditTime(e.target.value)}
-                        className="w-24 font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
+                        className="w-[84px] font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
                       />
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="secondary" size="sm" className="h-7 rounded-full px-2.5 text-[9px] font-bold gap-1">
+                          <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
                             <CalendarIcon className="size-2.5" />
                             {format(editDate, 'MMM d')}
                           </Button>
@@ -341,15 +350,16 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                             selected={editDate}
                             onSelect={(d) => d && setEditDate(startOfDay(d))}
                             initialFocus
+                            weekStartsOn={1}
                           />
                         </PopoverContent>
                       </Popover>
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-2 text-[10px]">
+                    <div className="flex gap-1 ml-auto shrink-0">
+                      <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-1.5 text-[10px]">
                         <X className="size-3 mr-1" /> {t('cancel')}
                       </Button>
-                      <Button size="sm" onClick={saveEdit} className="h-7 px-2 text-[10px]">
+                      <Button size="sm" onClick={saveEdit} className="h-7 px-2.5 text-[10px] shadow-sm">
                         <Save className="size-3 mr-1" /> {t('save')}
                       </Button>
                     </div>

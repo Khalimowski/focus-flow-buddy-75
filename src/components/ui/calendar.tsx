@@ -132,6 +132,7 @@ function Calendar({
         ...components,
       }}
       {...props}
+      weekStartsOn={1}
     />
   );
 }
@@ -170,6 +171,7 @@ function CalendarDayButton({
         className,
       )}
       {...props}
+      weekStartsOn={1}
     />
   );
 }
