@@ -7,11 +7,19 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;
+import com.capacitorjs.plugins.app.AppPlugin;
+import com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin;
+import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
+import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
 import dev.barooni.capacitor.calendar.CapacitorCalendarPlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AppPlugin.class);
+        registerPlugin(LocalNotificationsPlugin.class);
+        registerPlugin(StatusBarPlugin.class);
+        registerPlugin(SplashScreenPlugin.class);
         registerPlugin(CapacitorCalendarPlugin.class);
         super.onCreate(savedInstanceState);
     }
@@ -48,6 +56,4 @@ public class MainActivity extends BridgeActivity {
             notificationManager.createNotificationChannel(channel);
         }
     }
-
-
 }

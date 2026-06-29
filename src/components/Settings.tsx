@@ -88,48 +88,86 @@ export function Settings() {
   };
 
   const handleCalendarSyncChange = async (enabled: boolean) => {
-    if (enabled) {
-      try {
+    try {
+      if (enabled) {
+        console.log("[Settings] Enabling calendar sync...");
         const granted = await ensureCalendarPermission();
         if (!granted) {
+          console.warn("[Settings] Calendar permission denied");
           setCalendarSync(false);
+          notify({
+            title: "Permission Denied",
+            body: "Focus Flow needs calendar access to sync your tasks. Please enable it in your phone settings.",
+            kind: "info"
+          });
           return;
         }
 
+        console.log("[Settings] Calendar permission granted, syncing...");
         setCalendarSync(true);
         // Perform bulk sync for existing items when first enabled
         const tasks = loadJSON(STORAGE_KEYS.tasks, []);
         const reminders = loadJSON(STORAGE_KEYS.reminders, []);
-        void syncAllToCalendar(tasks, reminders);
-      } catch (err) {
-        console.error("Sync enable failed", err);
+        syncAllToCalendar(tasks, reminders).catch(e => console.error(e));
+
+        notify({
+          title: "Calendar Sync Enabled",
+          body: "Your tasks and reminders will now appear in your phone calendar.",
+          kind: "info"
+        });
+      } else {
         setCalendarSync(false);
       }
-    } else {
+    } catch (err) {
+      console.error("[Settings] Sync enable failed", err);
       setCalendarSync(false);
+      notify({
+        title: "Sync Error",
+        body: "Failed to enable calendar sync. Please check your phone settings.",
+        kind: "info"
+      });
     }
   };
 
   const handleNudgeCalendarSyncChange = async (enabled: boolean) => {
-    if (enabled) {
-      try {
+    try {
+      if (enabled) {
+        console.log("[Settings] Enabling nudge calendar sync...");
         const granted = await ensureCalendarPermission();
         if (!granted) {
+          console.warn("[Settings] Calendar permission denied for nudges");
           setNudgeCalendarSync(false);
+          notify({
+            title: "Permission Denied",
+            body: "Focus Flow needs calendar access to sync your nudges. Please enable it in your phone settings.",
+            kind: "info"
+          });
           return;
         }
 
+        console.log("[Settings] Calendar permission granted for nudges, syncing...");
         setNudgeCalendarSync(true);
         // Perform bulk sync for nudges
         const tasks = loadJSON(STORAGE_KEYS.tasks, []);
         const reminders = loadJSON(STORAGE_KEYS.reminders, []);
-        void syncAllToCalendar(tasks, reminders);
-      } catch (err) {
-        console.error("Nudge sync enable failed", err);
+        syncAllToCalendar(tasks, reminders).catch(e => console.error(e));
+
+        notify({
+          title: "Nudge Sync Enabled",
+          body: "Your recurring nudges will now appear in your phone calendar.",
+          kind: "info"
+        });
+      } else {
         setNudgeCalendarSync(false);
       }
-    } else {
+    } catch (err) {
+      console.error("[Settings] Nudge sync enable failed", err);
       setNudgeCalendarSync(false);
+      notify({
+        title: "Sync Error",
+        body: "Failed to enable nudge sync. Please check your phone settings.",
+        kind: "info"
+      });
     }
   };
 

@@ -13,7 +13,8 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-splash-screen')
     implementation project(':capacitor-status-bar')
-    implementation project(':ebarooni-calendar')
+    implementation project(':ebarooni-capacitor-calendar')
+
 }
 
 
