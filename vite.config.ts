@@ -14,4 +14,16 @@ export default defineConfig({
     // Enable SPA mode so it generates the static HTML file Capacitor needs
     spa: { enabled: true },
   },
+  vite: {
+    ssr: {
+      external: [
+        "@capacitor/core",
+        "@capacitor/app",
+        "@capacitor/status-bar",
+        "@capacitor/splash-screen",
+        "@capacitor/local-notifications",
+        "capacitor-calendar",
+      ],
+    },
+  },
 });

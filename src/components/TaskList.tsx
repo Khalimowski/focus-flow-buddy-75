@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -21,6 +21,14 @@ type Task = {
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
+};
+
+type Reminder = {
+  id: string;
+  label: string;
+  times: string[]; // "HH:mm"
+  enabled: boolean;
+  lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
 
 const sortTasks = (list: Task[]) => {
@@ -44,6 +52,7 @@ const sortTasks = (list: Task[]) => {
 
 export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [title, setTitle] = useState("");
@@ -61,6 +70,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   useEffect(() => {
     const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
+    const reminderData = loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []);
+    setReminders(reminderData);
+
     // Migration: ensure all tasks have a dueDate and handle missing createdAt
     const migrated = data.map(task => ({
       ...task,
@@ -77,10 +89,44 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
   }, [tasks, loaded]);
 
-  const filteredTasks = useMemo(() => {
+  const displayItems = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    return tasks.filter(t => t.dueDate === dateStr);
-  }, [tasks, selectedDate]);
+    const filteredTasks = tasks.filter(t => t.dueDate === dateStr).map(t => ({ ...t, kind: 'task' as const }));
+
+    const nudgeItems = reminders
+      .filter(r => r.enabled)
+      .flatMap(r => r.times.map(time => ({
+        id: `${r.id}-${time}`,
+        title: r.label,
+        done: r.lastFired[time] === dateStr,
+        remindAt: time,
+        kind: 'nudge' as const,
+        originalId: r.id,
+        time: time
+      })));
+
+    return [...filteredTasks, ...nudgeItems].sort((a, b) => {
+      // Sort logic: Done items at bottom
+      if (a.done !== b.done) return a.done ? 1 : -1;
+
+      const getMinutes = (item: any) => {
+        if (item.kind === 'task') {
+          if (!item.remindAt) return 9999;
+          const d = new Date(item.remindAt);
+          return d.getHours() * 60 + d.getMinutes();
+        } else {
+          const [h, m] = item.time.split(':').map(Number);
+          return h * 60 + m;
+        }
+      };
+
+      const minA = getMinutes(a);
+      const minB = getMinutes(b);
+
+      if (minA !== minB) return minA - minB;
+      return 0;
+    });
+  }, [tasks, reminders, selectedDate]);
 
   // Daily Strip dates (Monday to Sunday of current week)
   const dayStrip = useMemo(() => {
@@ -91,37 +137,44 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const add = async () => {
     if (!title.trim()) return;
 
-    let remindAt: string | null = null;
-    const dueDate = format(newTaskDate, 'yyyy-MM-dd');
+    try {
+      let remindAt: string | null = null;
+      const dueDate = format(newTaskDate, 'yyyy-MM-dd');
 
-    if (time) {
-      const [h, m] = time.split(":").map(Number);
-      const d = new Date(newTaskDate);
-      d.setHours(h, m, 0, 0);
-      remindAt = d.toISOString();
+      if (time) {
+        const [h, m] = time.split(":").map(Number);
+        const d = new Date(newTaskDate);
+        d.setHours(h, m, 0, 0);
+        remindAt = d.toISOString();
+      }
+
+      const id = generateId();
+      const newTask: Task = {
+        id,
+        title: title.trim(),
+        done: false,
+        remindAt,
+        dueDate,
+        createdAt: Date.now()
+      };
+
+      // 1. Immediate UI update
+      setTasks(prev => sortTasks([newTask, ...prev]));
+      setTitle("");
+      setTime("");
+      setNewTaskDate(selectedDate);
+
+      // 2. Background native sync
+      if (isNative() && remindAt) {
+        deleteFromCalendar(title.trim()).catch(e => console.error("Sync: delete failed", e));
+        scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync)
+          .catch(e => console.error("Sync: schedule failed", e));
+      }
+
+      addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt, date: dueDate });
+    } catch (e) {
+      console.error("Task add failed", e);
     }
-
-    const id = generateId();
-
-    if (isNative() && remindAt) {
-      await deleteFromCalendar(title.trim());
-      void scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync);
-    }
-
-    addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt, date: dueDate });
-    setTasks(prev => sortTasks([{
-      id,
-      title: title.trim(),
-      done: false,
-      remindAt,
-      dueDate,
-      createdAt: Date.now()
-    }, ...prev]));
-
-    setTitle("");
-    setTime("");
-    // Reset date selection to the currently viewed date for convenience
-    setNewTaskDate(selectedDate);
   };
 
   const startEdit = (task: Task) => {
@@ -202,15 +255,24 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   };
 
   const remove = async (id: string) => {
-    if (isNative()) {
-      void cancelNative([hashId("task:" + id)]);
-      const task = tasks.find(item => item.id === id);
-      if (task) {
-        await deleteFromCalendar(task.title);
-        addEvent('task_deleted', { title: task.title });
+    try {
+      const taskToDelete = tasks.find(item => item.id === id);
+      if (!taskToDelete) return;
+
+      // 1. Immediate UI update
+      setTasks(prev => prev.filter((item) => item.id !== id));
+
+      // 2. Background native cleanup
+      if (isNative()) {
+        cancelNative([hashId("task:" + id)]).catch(e => console.error("Sync: cancel failed", e));
+        deleteFromCalendar(taskToDelete.title).catch(e => console.error("Sync: delete failed", e));
       }
+
+      addEvent('task_deleted', { title: taskToDelete.title });
+    } catch (e) {
+      console.error("Task remove failed", e);
+      setTasks(prev => prev.filter((item) => item.id !== id));
     }
-    setTasks(prev => prev.filter((item) => item.id !== id));
   };
 
   return (
@@ -303,7 +365,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
       <ul className="flex flex-col gap-2">
         <AnimatePresence initial={false} mode="popLayout">
-          {filteredTasks.length === 0 && (
+          {displayItems.length === 0 && (
             <motion.li
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -312,16 +374,20 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               {t('tasks_empty')}
             </motion.li>
           )}
-          {filteredTasks.map((task) => (
+          {displayItems.map((item) => (
             <motion.li
-              key={task.id}
+              key={item.id}
               layout
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="flex items-center gap-3 rounded-2xl border bg-card/40 p-3 backdrop-blur"
+              className={`flex items-center gap-3 rounded-2xl border p-3 backdrop-blur ${
+                item.kind === 'nudge'
+                  ? "bg-amber-500/5 border-amber-500/10 shadow-sm"
+                  : "bg-card/40 border-border"
+              }`}
             >
-              {editingId === task.id ? (
+              {item.kind === 'task' && editingId === item.id ? (
                 <div className="flex flex-col gap-3 w-full p-1">
                   <Input
                     value={editTitle}
@@ -368,50 +434,66 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               ) : (
                 <>
                   <button
-                    onClick={() => toggle(task.id)}
+                    onClick={() => item.kind === 'task' ? toggle(item.id) : null}
                     aria-label="toggle"
                     className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
-                      task.done
-                        ? "border-mint bg-mint text-mint-foreground"
+                      item.done
+                        ? item.kind === 'nudge' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
                         : "border-border hover:border-primary"
-                    }`}
+                    } ${item.kind === 'nudge' ? 'cursor-default' : ''}`}
                   >
-                    {task.done && <Check className="size-3.5" strokeWidth={3} />}
+                    {item.done && <Check className="size-3.5" strokeWidth={3} />}
                   </button>
                   <div className="flex-1 min-w-0">
-                    <div
-                      className={`text-sm font-medium ${task.done ? "text-muted-foreground line-through" : ""}`}
-                    >
-                      {task.title}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`text-sm font-medium ${item.done ? "text-muted-foreground line-through" : ""}`}
+                      >
+                        {item.title}
+                      </div>
+                      {item.kind === 'nudge' && (
+                        <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
+                          {t('nudges')}
+                        </span>
+                      )}
                     </div>
-                    {task.remindAt && (
-                      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-                        <Clock className="size-3" />
-                        {new Date(task.remindAt).toLocaleTimeString([], {
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+                      <Clock className="size-3" />
+                      {item.kind === 'task' && item.remindAt ? (
+                        new Date(item.remindAt).toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
-                        })}
-                      </div>
-                    )}
+                        })
+                      ) : (
+                        item.kind === 'nudge' ? item.time : ""
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => startEdit(task)}
-                      className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
-                    >
-                      <Edit2 className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => remove(task.id)}
-                      className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
+                  {item.kind === 'task' && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => startEdit(item)}
+                        className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
+                      >
+                        <Edit2 className="size-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => remove(item.id)}
+                        className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
+                  {item.kind === 'nudge' && (
+                    <div className="flex items-center justify-center size-8 text-amber-500/40">
+                      <Sparkles className="size-4" />
+                    </div>
+                  )}
                 </>
               )}
             </motion.li>

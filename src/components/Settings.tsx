@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History } from "lucide-react";
-import { App } from "@capacitor/app";
 import {
   Sheet,
   SheetContent,
@@ -31,7 +30,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { notify, ensurePermission } from "@/lib/notifications";
-import { isNative, ensureCalendarPermission, updateStatusBar } from "@/lib/native";
+import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar } from "@/lib/native";
+import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -89,24 +89,48 @@ export function Settings() {
 
   const handleCalendarSyncChange = async (enabled: boolean) => {
     if (enabled) {
-      const granted = await ensureCalendarPermission();
-      if (!granted) {
+      try {
+        const granted = await ensureCalendarPermission();
+        if (!granted) {
+          setCalendarSync(false);
+          return;
+        }
+
+        setCalendarSync(true);
+        // Perform bulk sync for existing items when first enabled
+        const tasks = loadJSON(STORAGE_KEYS.tasks, []);
+        const reminders = loadJSON(STORAGE_KEYS.reminders, []);
+        void syncAllToCalendar(tasks, reminders);
+      } catch (err) {
+        console.error("Sync enable failed", err);
         setCalendarSync(false);
-        return;
       }
+    } else {
+      setCalendarSync(false);
     }
-    setCalendarSync(enabled);
   };
 
   const handleNudgeCalendarSyncChange = async (enabled: boolean) => {
     if (enabled) {
-      const granted = await ensureCalendarPermission();
-      if (!granted) {
+      try {
+        const granted = await ensureCalendarPermission();
+        if (!granted) {
+          setNudgeCalendarSync(false);
+          return;
+        }
+
+        setNudgeCalendarSync(true);
+        // Perform bulk sync for nudges
+        const tasks = loadJSON(STORAGE_KEYS.tasks, []);
+        const reminders = loadJSON(STORAGE_KEYS.reminders, []);
+        void syncAllToCalendar(tasks, reminders);
+      } catch (err) {
+        console.error("Nudge sync enable failed", err);
         setNudgeCalendarSync(false);
-        return;
       }
+    } else {
+      setNudgeCalendarSync(false);
     }
-    setNudgeCalendarSync(enabled);
   };
 
   return (

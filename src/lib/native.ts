@@ -1,7 +1,3 @@
-import { LocalNotifications } from "@capacitor/local-notifications";
-import { StatusBar, Style } from "@capacitor/status-bar";
-import { CapacitorCalendar } from "capacitor-calendar";
-
 // Capacitor runtime helpers — safe in browser & SSR (lazy imports)
 
 export const isNative = (): boolean => {
@@ -10,41 +6,46 @@ export const isNative = (): boolean => {
   return !!cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform();
 };
 
+const getLocalNotifications = () => import("@capacitor/local-notifications").then(m => m.LocalNotifications);
+const getStatusBar = () => import("@capacitor/status-bar").then(m => m.StatusBar);
+
+async function getCapacitorCalendar() {
+  const m = await import("@ebarooni/capacitor-calendar");
+  return m.CapacitorCalendar;
+}
+
 let permissionGranted = false;
 let channelEnsured = false;
 
 export async function ensureNativeNotifPermission(): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    console.log("Checking notification permissions...");
+    const LocalNotifications = await getLocalNotifications();
+    console.log("[Notif] Checking permissions...");
     const cur = await LocalNotifications.checkPermissions();
-    console.log("Current permissions:", JSON.stringify(cur));
+    console.log("[Notif] Current:", JSON.stringify(cur));
 
     if (cur.display !== "granted") {
-      console.log("Requesting display permissions...");
       const req = await LocalNotifications.requestPermissions();
-      if (req.display !== "granted") {
-        console.warn("Display permission denied");
-        return false;
-      }
+      if (req.display !== "granted") return false;
     }
 
-    // Check exact alarm permission for Android 12+
+    // Android 12+ exact alarms
     try {
-      const exact = await LocalNotifications.checkExactNotificationSetting();
-      console.log("Exact alarm setting:", JSON.stringify(exact));
-      if (exact.exact_alarm !== "granted") {
-        console.log("Requesting exact alarm permission via settings...");
-        await LocalNotifications.changeExactNotificationSetting();
+      if ((LocalNotifications as any).checkExactNotificationSetting) {
+        const exact = await (LocalNotifications as any).checkExactNotificationSetting();
+        if (exact.exact_alarm !== "granted") {
+          await (LocalNotifications as any).changeExactNotificationSetting();
+        }
       }
-    } catch (exactErr) {
-      console.warn("Failed to check/request exact alarm setting", exactErr);
+    } catch (e) {
+      console.warn("[Notif] Exact alarm check skipped", e);
     }
 
     permissionGranted = true;
     return true;
   } catch (e) {
-    console.error("Permission check failed", e);
+    console.error("[Notif] Permission check failed", e);
     return false;
   }
 }
@@ -52,21 +53,18 @@ export async function ensureNativeNotifPermission(): Promise<boolean> {
 export async function ensureCalendarPermission(): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    console.log("Checking calendar permissions...");
-    const cur = await CapacitorCalendar.checkPermissions();
-    console.log("Current calendar permissions:", JSON.stringify(cur));
+    const CapacitorCalendar = await getCapacitorCalendar();
 
-    if (cur.calendar !== "granted") {
-      console.log("Requesting calendar permissions...");
-      const req = await CapacitorCalendar.requestPermissions();
-      if (req.calendar !== "granted") {
-        console.warn("Calendar permission denied");
-        return false;
-      }
-    }
-    return true;
+    // Check current state
+    const check = await CapacitorCalendar.checkAllPermissions();
+    if (check.result.readWriteCalendar === "granted") return true;
+
+    // Request full access
+    console.log("[Perm] Requesting full access...");
+    const res = await CapacitorCalendar.requestFullCalendarAccess();
+    return res.result === "granted";
   } catch (e) {
-    console.error("Calendar permission check failed", e);
+    console.error("[Perm] Calendar permission failed", e);
     return false;
   }
 }
@@ -74,20 +72,19 @@ export async function ensureCalendarPermission(): Promise<boolean> {
 async function ensureChannel() {
   if (!isNative() || channelEnsured) return;
   try {
-    console.log("Ensuring notification channel v8...");
+    const LocalNotifications = await getLocalNotifications();
     await LocalNotifications.createChannel({
       id: "boink_channel_v8",
       name: "Nudge Notifications",
       description: "Channel for your calm nudges and reminders",
-      importance: 5, // high
-      visibility: 1, // public
+      importance: 5,
+      visibility: 1,
       sound: "boink",
       vibration: true,
     });
     channelEnsured = true;
-    console.log("Notification channel v8 ensured.");
   } catch (e) {
-    console.error("Channel creation failed", e);
+    console.error("[Notif] Channel creation failed", e);
   }
 }
 
@@ -95,6 +92,7 @@ async function ensureChannel() {
 export async function nativeNotify(title: string, body?: string) {
   if (!isNative()) return;
   try {
+    const LocalNotifications = await getLocalNotifications();
     await ensureChannel();
     const notifId = hashId(title + Date.now());
     console.log(`Scheduling immediate notification: ${title} (id: ${notifId})`);
@@ -121,6 +119,7 @@ export async function nativeNotify(title: string, body?: string) {
 export async function scheduleNativeAt(id: number, title: string, body: string, at: Date, syncCalendar = false) {
   if (!isNative()) return;
   try {
+    const LocalNotifications = await getLocalNotifications();
     await ensureChannel();
     console.log(`[Native] Scheduling notification at ${at.toISOString()}: ${title} (id: ${id})`);
     await LocalNotifications.schedule({
@@ -155,6 +154,7 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
 export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number, syncCalendar = false) {
   if (!isNative()) return;
   try {
+    const LocalNotifications = await getLocalNotifications();
     await ensureChannel();
     console.log(`Scheduling daily notification at ${hour}:${minute}: ${title} (id: ${id})`);
     await LocalNotifications.schedule({
@@ -188,62 +188,49 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
 async function addToCalendar(title: string, date: Date) {
   if (!isNative()) return;
   try {
+    const CapacitorCalendar = await getCapacitorCalendar();
     const hasPerm = await ensureCalendarPermission();
-    if (!hasPerm) {
-      console.warn("Cannot add to calendar: Permission not granted");
-      return;
-    }
+    if (!hasPerm) return;
 
-    // End date is 15 minutes after start by default for a nudge
     const endDate = new Date(date.getTime() + 15 * 60 * 1000);
+    console.log(`[Sync] Adding: ${title}`);
 
-    console.log(`Adding event to calendar: ${title} at ${date.toISOString()}`);
     const res = await CapacitorCalendar.createEvent({
       title,
       startDate: date.getTime(),
       endDate: endDate.getTime(),
-      notes: `Focus Flow: ${title}`,
     });
-    console.log("Calendar event created successfully, id:", res.id);
+
     return res.id;
   } catch (e) {
-    console.warn("Failed to create calendar event", e);
+    console.warn("[Sync] Add failed", e);
     return null;
   }
 }
 
-// Search and delete calendar events by title
 export async function deleteFromCalendar(title: string) {
   if (!isNative()) return;
   try {
+    const CapacitorCalendar = await getCapacitorCalendar();
     const hasPerm = await ensureCalendarPermission();
-    if (!hasPerm) {
-      console.warn("[Calendar] Cannot delete: Permission not granted");
-      return;
-    }
+    if (!hasPerm) return;
 
-    console.log(`[Calendar] Searching for events to delete with title: "${title}"`);
-    // Search for events with this title in a broad range
-    const searchRes = await CapacitorCalendar.findEvent({
-      title,
-      startDate: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days back
-      endDate: Date.now() + 365 * 24 * 60 * 60 * 1000,   // 1 year forward
+    console.log(`[Sync] Deleting: ${title}`);
+    const searchRes = await CapacitorCalendar.listEventsInRange({
+      startTime: Date.now() - 30 * 24 * 60 * 60 * 1000,
+      endTime: Date.now() + 365 * 24 * 60 * 60 * 1000,
     });
 
-    if (searchRes && searchRes.events && searchRes.events.length > 0) {
-      console.log(`[Calendar] Found ${searchRes.events.length} events to delete`);
-      for (const ev of searchRes.events) {
-        if (ev.id) {
-          console.log(`[Calendar] Deleting event ID: ${ev.id}`);
-          await CapacitorCalendar.deleteEventById({ id: String(ev.id) });
-        }
-      }
-      console.log("[Calendar] Deletion cleanup complete.");
-    } else {
-      console.log("[Calendar] No matching events found to delete.");
+    const toDelete = (searchRes.result || [])
+      .filter(ev => ev.title === title)
+      .map(ev => ev.id);
+
+    if (toDelete.length > 0) {
+      await CapacitorCalendar.deleteEventsById({ ids: toDelete });
+      console.log(`[Sync] Deleted ${toDelete.length} events`);
     }
   } catch (e) {
-    console.error("[Calendar] deleteFromCalendar failed", e);
+    console.error("[Sync] Delete failed", e);
   }
 }
 
@@ -251,6 +238,7 @@ export async function deleteFromCalendar(title: string) {
 export async function cancelNative(ids: number[]) {
   if (!isNative() || ids.length === 0) return;
   try {
+    const LocalNotifications = await getLocalNotifications();
     console.log("Cancelling notifications:", ids);
     await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
   } catch (e) {
@@ -274,6 +262,7 @@ export async function initNative() {
 
   // Set default state
   try {
+    const StatusBar = await getStatusBar();
     // Ensure the webview does not overlap the status bar area
     await StatusBar.setOverlaysWebView({ overlay: false });
     // Force a specific background color to ensure the status bar is solid
@@ -287,6 +276,8 @@ export async function initNative() {
 export async function updateStatusBar(theme: "light" | "dark") {
   if (!isNative()) return;
   try {
+    const StatusBar = await getStatusBar();
+    const { Style } = await import("@capacitor/status-bar");
     if (theme === "dark") {
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: "#0F1115" }); // Matches dark background
@@ -298,5 +289,35 @@ export async function updateStatusBar(theme: "light" | "dark") {
   } catch (e) {
     console.warn("[Native] updateStatusBar failed", e);
   }
+}
+
+/**
+ * Performs a full sync of all active tasks/reminders to the system calendar.
+ */
+export async function syncAllToCalendar(tasks: any[], reminders: any[]) {
+  if (!isNative()) return;
+  const hasPerm = await ensureCalendarPermission();
+  if (!hasPerm) return;
+
+  console.log("[Native] Starting bulk calendar sync...");
+  for (const task of tasks) {
+    if (task.remindAt && !task.done) {
+      await deleteFromCalendar(task.title);
+      await addToCalendar(task.title, new Date(task.remindAt));
+    }
+  }
+  for (const reminder of reminders) {
+    if (reminder.enabled) {
+      await deleteFromCalendar(reminder.label);
+      for (const timeStr of reminder.times) {
+        const [h, m] = timeStr.split(":").map(Number);
+        const at = new Date();
+        at.setHours(h, m, 0, 0);
+        if (at.getTime() < Date.now()) at.setDate(at.getDate() + 1);
+        await addToCalendar(reminder.label, at);
+      }
+    }
+  }
+  console.log("[Native] Bulk sync complete.");
 }
 

@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, BellOff, ListTodo, Repeat } from "lucide-react";
-import { App } from "@capacitor/app";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
@@ -61,13 +60,18 @@ function Home() {
 
     // On Main Screen, back button should minimize instead of exit
     if (isNative()) {
-      const backListener = App.addListener("backButton", ({ canGoBack }) => {
-        if (!canGoBack) {
-          void App.minimizeApp();
-        }
-      });
+      const initBackListener = async () => {
+        const { App } = await import("@capacitor/app");
+        const backListener = App.addListener("backButton", ({ canGoBack }) => {
+          if (!canGoBack) {
+            void App.minimizeApp();
+          }
+        });
+        return backListener;
+      };
+      const backListenerPromise = initBackListener();
       return () => {
-        void backListener.then(l => l.remove());
+        void backListenerPromise.then(l => l.remove());
       };
     }
   }, [theme]);
