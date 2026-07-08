@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat, CheckSquare } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat, CheckSquare, Brain } from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
@@ -100,7 +100,7 @@ function Home() {
             animate={{ scale: 1, opacity: 1 }}
             className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
           >
-            <div className="size-3 rounded-full bg-background/80" />
+            <Brain className="size-5 text-background/90" strokeWidth={2.25} />
           </motion.div>
         </div>
 
