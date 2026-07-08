@@ -98,8 +98,8 @@ export function Settings() {
       if (!granted) {
         setCalendarSync(false); // revert
         notify({
-          title: "Permission Denied",
-          body: "Focus Flow needs calendar access to sync your tasks. Please enable it in your phone settings.",
+          title: t('permission_denied'),
+          body: t('calendar_permission_tasks_body'),
           kind: "info"
         });
         return;
@@ -110,16 +110,16 @@ export function Settings() {
       syncAllToCalendar(tasks, reminders).catch(e => console.error("[Settings] Sync failed", e));
 
       notify({
-        title: "Calendar Sync Enabled",
-        body: "Your tasks and reminders will now appear in your phone calendar.",
+        title: t('calendar_sync_enabled'),
+        body: t('calendar_sync_enabled_body'),
         kind: "info"
       });
     } catch (err) {
       console.error("[Settings] Sync enable failed", err);
       setCalendarSync(false); // revert
       notify({
-        title: "Sync Error",
-        body: "Failed to enable calendar sync. Please check your phone settings.",
+        title: t('sync_error'),
+        body: t('calendar_sync_error_body'),
         kind: "info"
       });
     }
@@ -136,8 +136,8 @@ export function Settings() {
       if (!granted) {
         setNudgeCalendarSync(false); // revert
         notify({
-          title: "Permission Denied",
-          body: "Focus Flow needs calendar access to sync your nudges. Please enable it in your phone settings.",
+          title: t('permission_denied'),
+          body: t('calendar_permission_nudges_body'),
           kind: "info"
         });
         return;
@@ -148,16 +148,16 @@ export function Settings() {
       syncAllToCalendar(tasks, reminders).catch(e => console.error("[Settings] Nudge sync failed", e));
 
       notify({
-        title: "Nudge Sync Enabled",
-        body: "Your recurring nudges will now appear in your phone calendar.",
+        title: t('nudge_sync_enabled'),
+        body: t('nudge_sync_enabled_body'),
         kind: "info"
       });
     } catch (err) {
       console.error("[Settings] Nudge sync enable failed", err);
       setNudgeCalendarSync(false); // revert
       notify({
-        title: "Sync Error",
-        body: "Failed to enable nudge sync. Please check your phone settings.",
+        title: t('sync_error'),
+        body: t('nudge_sync_error_body'),
         kind: "info"
       });
     }
@@ -258,28 +258,28 @@ export function Settings() {
                 <span className="font-mono font-bold">{events.length} {t('data_points')}</span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Learning progress</span>
+                <span className="text-muted-foreground">{t('learning_progress')}</span>
                 <span className="font-mono font-bold">{getDaysSinceLaunch()} / 3 {t('days')}</span>
               </div>
 
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] uppercase font-bold tracking-tight">
-                    <History className="mr-1.5 size-3" /> Inspect AI Memory
+                    <History className="mr-1.5 size-3" /> {t('inspect_ai_memory')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-[90vw] sm:max-w-[500px] h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl">
                   <DialogHeader className="p-6 pb-2">
-                    <DialogTitle>AI Activity Log</DialogTitle>
+                    <DialogTitle>{t('ai_activity_log')}</DialogTitle>
                     <DialogDescription>
-                      This is the local history the AI uses to understand your schedule.
+                      {t('ai_activity_log_desc')}
                     </DialogDescription>
                   </DialogHeader>
 
                   <ScrollArea className="flex-1 p-6 pt-0">
                     <div className="space-y-3">
                       {events.length === 0 ? (
-                        <p className="text-center text-sm text-muted-foreground py-10">No events recorded yet.</p>
+                        <p className="text-center text-sm text-muted-foreground py-10">{t('no_events_yet')}</p>
                       ) : (
                         [...events].reverse().map((ev) => (
                           <div key={ev.id} className="border-l-2 border-primary/30 pl-4 py-1">
@@ -292,7 +292,7 @@ export function Settings() {
                               </span>
                             </div>
                             <p className="text-xs text-foreground mt-0.5">
-                              {ev.metadata?.title || ev.metadata?.label || "User Action"}
+                              {ev.metadata?.title || ev.metadata?.label || t('user_action')}
                             </p>
                           </div>
                         ))

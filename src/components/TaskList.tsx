@@ -10,6 +10,7 @@ import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } 
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
+import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
@@ -64,7 +65,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [editTime, setEditTime] = useState("");
   const [editDate, setEditDate] = useState<Date>(new Date());
 
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const dateLocale = language === 'pl' ? pl : undefined;
   const { calendarSync } = useI18nStore();
   const { addEvent } = useHistoryStore();
 
@@ -267,7 +269,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       }
     } catch (e) {
       console.error("Save edit failed", e);
-      notify({ title: "Error", body: "Could not save changes.", kind: "info" });
+      notify({ title: t('save_error'), body: t('save_error_body'), kind: "info" });
     }
   };
 
@@ -334,7 +336,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               }`}
             >
               <span className="text-[10px] font-bold uppercase tracking-tighter opacity-70">
-                {format(date, 'EEE')}
+                {format(date, 'EEE', { locale: dateLocale })}
               </span>
               <span className="text-sm font-bold leading-none mt-1">{format(date, 'd')}</span>
               {isToday && !active && <div className="mt-1 size-1 rounded-full bg-primary animate-pulse" />}
@@ -380,7 +382,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="h-8 rounded-full px-3 text-[10px] font-bold gap-1.5">
                     <CalendarIcon className="size-3" />
-                    {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, 'MMM d')}
+                    {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, 'd MMM', { locale: dateLocale })}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
@@ -446,7 +448,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                         <PopoverTrigger asChild>
                           <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
                             <CalendarIcon className="size-2.5" />
-                            {format(editDate, 'MMM d')}
+                            {format(editDate, 'd MMM', { locale: dateLocale })}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
