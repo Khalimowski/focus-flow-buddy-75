@@ -143,8 +143,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Disable the Android overscroll stretch so the sticky header doesn't deform */
-    overscroll-behavior-y: none;
+    /* Disable Android overscroll stretch (y) and swipe-to-navigate gestures (x) */
+    overscroll-behavior: none;
   }
 
   body {

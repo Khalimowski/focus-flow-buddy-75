@@ -64,9 +64,11 @@ export function Settings() {
   useEffect(() => {
     if (!open) return;
 
-    // Push a dummy state to history when settings open
-    const state = { settings: true };
-    window.history.pushState(state, "");
+    // Push a dummy state to history when settings open.
+    // Keep TanStack Router's internal keys (__TSR_*) — replacing them with a
+    // bare object leaves an entry the router can't resolve (white screen when
+    // the WebView navigates onto it via back/forward swipe gestures).
+    window.history.pushState({ ...window.history.state, settings: true }, "");
 
     const handlePopState = (e: PopStateEvent) => {
       // If we go back and the state is gone, close settings
