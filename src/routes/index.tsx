@@ -88,35 +88,37 @@ function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24 pt-safe-top">
+    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24">
       {!tutorialCompleted && <Onboarding />}
       <AICoach />
       <InAppToaster />
 
-      <header className="mb-10 relative flex items-center justify-center min-h-[64px]">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
-          >
-            <Brain className="size-5 text-background/90" strokeWidth={2.25} />
-          </motion.div>
-        </div>
+      <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top backdrop-blur-xl">
+        <div className="relative flex items-center justify-center min-h-[64px]">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
+            >
+              <Brain className="size-5 text-background/90" strokeWidth={2.25} />
+            </motion.div>
+          </div>
 
-        <div className="text-center">
-          <h1 className="text-xl font-bold tracking-tight">{t('app_name')}</h1>
-          <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
-        </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold tracking-tight">{t('app_name')}</h1>
+            <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
+          </div>
 
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {perm !== "granted" && perm !== "unsupported" && (
-            <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-8 w-8 p-0 sm:w-auto sm:px-3">
-              {perm === "denied" ? <BellOff className="size-3.5 sm:mr-1.5" /> : <Bell className="size-3.5 sm:mr-1.5" />}
-              <span className="hidden sm:inline text-xs">{perm === "denied" ? t('blocked') : t('enable_nudges')}</span>
-            </Button>
-          )}
-          <Settings />
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {perm !== "granted" && perm !== "unsupported" && (
+              <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-8 w-8 p-0 sm:w-auto sm:px-3">
+                {perm === "denied" ? <BellOff className="size-3.5 sm:mr-1.5" /> : <Bell className="size-3.5 sm:mr-1.5" />}
+                <span className="hidden sm:inline text-xs">{perm === "denied" ? t('blocked') : t('enable_nudges')}</span>
+              </Button>
+            )}
+            <Settings />
+          </div>
         </div>
       </header>
 
