@@ -57,7 +57,7 @@ export function SimpleToDo() {
 
     setItems(prev => sortItems([newItem, ...prev]));
     setTitle("");
-    addEvent('todo_created', { title: newItem.title });
+    addEvent('task_created', { title: newItem.title });
   };
 
   const startEdit = (item: ToDoItem) => {

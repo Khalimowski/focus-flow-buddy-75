@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node -e \"import('fs').then(fs => fs.copyFileSync('dist/client/_shell.html', 'dist/client/index.html'))\"",
-    "build:dev": "vite build --mode development && node -e \"import('fs').then(fs => fs.copyFileSync('dist/client/_shell.html', 'dist/client/index.html'))\",",
+    "build:dev": "vite build --mode development && node -e \"import('fs').then(fs => fs.copyFileSync('dist/client/_shell.html', 'dist/client/index.html'))\"",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
