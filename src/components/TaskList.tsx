@@ -67,6 +67,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   const { t, language } = useTranslation();
   const dateLocale = language === 'pl' ? pl : undefined;
+  const shortDateFormat = language === 'pl' ? 'd MMM' : 'MMM d';
   const { calendarSync } = useI18nStore();
   const { addEvent } = useHistoryStore();
 
@@ -356,6 +357,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               onSelect={(d) => d && setSelectedDate(startOfDay(d))}
               initialFocus
               weekStartsOn={1}
+              locale={dateLocale}
             />
           </PopoverContent>
         </Popover>
@@ -382,7 +384,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="h-8 rounded-full px-3 text-[10px] font-bold gap-1.5">
                     <CalendarIcon className="size-3" />
-                    {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, 'd MMM', { locale: dateLocale })}
+                    {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, shortDateFormat, { locale: dateLocale })}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
@@ -392,6 +394,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                     onSelect={(d) => d && setNewTaskDate(startOfDay(d))}
                     initialFocus
                     weekStartsOn={1}
+                    locale={dateLocale}
                   />
                 </PopoverContent>
               </Popover>
@@ -448,7 +451,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                         <PopoverTrigger asChild>
                           <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
                             <CalendarIcon className="size-2.5" />
-                            {format(editDate, 'd MMM', { locale: dateLocale })}
+                            {format(editDate, shortDateFormat, { locale: dateLocale })}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
@@ -458,6 +461,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                             onSelect={(d) => d && setEditDate(startOfDay(d))}
                             initialFocus
                             weekStartsOn={1}
+                            locale={dateLocale}
                           />
                         </PopoverContent>
                       </Popover>
