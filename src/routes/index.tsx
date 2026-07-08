@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
 import { Onboarding } from "@/components/Onboarding";
 import { AICoach } from "@/components/AICoach";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { isNative, updateStatusBar } from "@/lib/native";
 
 
@@ -119,6 +120,7 @@ function Home() {
         </div>
       </header>
 
+      <UpdateBanner />
       <StreakStrip streak={streak} />
 
       <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur">

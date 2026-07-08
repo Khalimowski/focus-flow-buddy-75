@@ -36,6 +36,20 @@ The signed `.apk` lands in `android/app/build/outputs/apk/`.
 bun run build && bunx cap sync android
 ```
 
+## Releasing a new version (in-app update check)
+
+The app checks `version.json` (repo root) on every launch — if its `versionCode`
+is higher than the installed build, users see an "Update available" banner
+linking to `url`. To ship a release:
+
+1. Bump `versionCode` / `versionName` in `android/app/build.gradle`.
+2. Build the signed APK and upload it somewhere reachable (GitHub Release asset, etc.).
+3. Update `version.json` at the repo root with the new `versionCode`,
+   `versionName`, the download `url`, and optional `notes`.
+4. Commit and push `version.json` to `main` — the app reads it from
+   `raw.githubusercontent.com`, so no rebuild is needed for existing installs
+   to see the banner.
+
 ## Notes
 
 - App id: `app.lovable.focusflow` (change in `capacitor.config.ts` before first build).
