@@ -1,32 +1,102 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Wand2, CalendarCheck, RotateCcw } from "lucide-react";
+import { Sparkles, X, Wand2, Check, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/lib/history";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { generateId } from "@/lib/utils";
-import { isNative, scheduleNativeAt, scheduleNativeDaily, hashId } from "@/lib/native";
+import { isNative, scheduleNativeAt, hashId } from "@/lib/native";
 import { format } from "date-fns";
 
 type SuggestionStep = "greeting" | "preview";
 
+type Task = {
+  id: string;
+  title: string;
+  done: boolean;
+  remindAt: string | null; // ISO
+  dueDate: string; // YYYY-MM-DD
+  notified?: boolean;
+  createdAt: number;
+};
+
+type SuggestedTask = {
+  id: string;
+  title: string;
+  time: string | null; // "HH:mm"
+  source: "habit" | "default";
+  selected: boolean;
+};
+
+// Event fired by Settings to open the coach on demand
+export const AI_COACH_OPEN_EVENT = "ff.ai_coach.open";
+
 export function AICoach() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState<SuggestionStep>("greeting");
+  const [suggestions, setSuggestions] = useState<SuggestedTask[]>([]);
   const { getDaysSinceLaunch, getDaysSinceLastAISuggestion, setAISuggestionDate, addEvent } = useHistoryStore();
   const { t } = useTranslation();
-  const { calendarSync, nudgeCalendarSync } = useI18nStore();
+  const { calendarSync } = useI18nStore();
 
+  // Build task suggestions from the user's history: titles that recur
+  // (created/completed at least twice) and aren't already planned today,
+  // topped up with default suggestions.
+  const buildSuggestions = useCallback((): SuggestedTask[] => {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const tasks = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
+    const todayTitles = new Set(
+      tasks.filter((task) => task.dueDate === todayStr).map((task) => task.title.trim().toLowerCase())
+    );
+
+    const counts = new Map<string, { title: string; count: number }>();
+    for (const ev of useHistoryStore.getState().events) {
+      if (ev.type !== "task_created" && ev.type !== "task_completed") continue;
+      const title = typeof ev.metadata?.title === "string" ? ev.metadata.title.trim() : "";
+      if (!title) continue;
+      const key = title.toLowerCase();
+      const entry = counts.get(key) ?? { title, count: 0 };
+      entry.count += 1;
+      counts.set(key, entry);
+    }
+
+    const result: SuggestedTask[] = [];
+    const seen = new Set<string>();
+
+    const habits = [...counts.entries()]
+      .filter(([key, entry]) => entry.count >= 2 && !todayTitles.has(key))
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 3);
+
+    for (const [key, entry] of habits) {
+      seen.add(key);
+      result.push({ id: generateId(), title: entry.title, time: null, source: "habit", selected: true });
+    }
+
+    const defaults: { title: string; time: string }[] = [
+      { title: t("ai_coach_default_plan"), time: "09:00" },
+      { title: t("ai_coach_default_break"), time: "13:00" },
+      { title: t("ai_coach_default_review"), time: "19:00" },
+    ];
+    for (const d of defaults) {
+      if (result.length >= 3) break;
+      const key = d.title.trim().toLowerCase();
+      if (todayTitles.has(key) || seen.has(key)) continue;
+      result.push({ id: generateId(), title: d.title, time: d.time, source: "default", selected: true });
+    }
+
+    return result;
+  }, [t]);
+
+  // Automatic trigger: at least 3 days since launch and 3 days since the
+  // last suggestion interaction, once per session.
   useEffect(() => {
     const daysSinceLaunch = getDaysSinceLaunch();
     const daysSinceLastSuggestion = getDaysSinceLastAISuggestion();
 
-    // Trigger logic:
-    // 1. Must be at least 2 days since launch
-    // 2. Must be at least 2 days since the last suggestion interaction
-    if (daysSinceLaunch >= 2 && daysSinceLastSuggestion >= 2) {
+    if (daysSinceLaunch >= 3 && daysSinceLastSuggestion >= 3) {
       const isAlreadyVisible = sessionStorage.getItem("ff.ai_coach.session_shown") === "true";
       if (!isAlreadyVisible) {
         setVisible(true);
@@ -41,6 +111,17 @@ export function AICoach() {
     }
   }, [getDaysSinceLaunch, getDaysSinceLastAISuggestion, t]);
 
+  // Manual trigger from Settings: skip the greeting and go straight to the preview
+  useEffect(() => {
+    const openFromSettings = () => {
+      setSuggestions(buildSuggestions());
+      setStep("preview");
+      setVisible(true);
+    };
+    window.addEventListener(AI_COACH_OPEN_EVENT, openFromSettings);
+    return () => window.removeEventListener(AI_COACH_OPEN_EVENT, openFromSettings);
+  }, [buildSuggestions]);
+
   const handleRefuse = () => {
     setVisible(false);
     setAISuggestionDate(Date.now());
@@ -48,60 +129,77 @@ export function AICoach() {
     setStep("greeting");
   };
 
-  const handleAccept = async () => {
+  const toggleSuggestion = (id: string) => {
+    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, selected: !s.selected } : s));
+  };
+
+  const handleAccept = () => {
+    const accepted = suggestions.filter(s => s.selected);
     setVisible(false);
     setAISuggestionDate(Date.now());
-    addEvent('ai_suggestion_accepted');
+    setStep("greeting");
+
+    if (accepted.length === 0) {
+      addEvent('ai_suggestion_refused');
+      return;
+    }
 
     try {
       const today = new Date();
       const todayStr = format(today, 'yyyy-MM-dd');
+      const tasks = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
 
-      // 1. Create Suggested Nudges
-      const currentReminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
-
-      const newNudges = [
-        { label: t('ai_coach_morning_hydration'), times: ["09:00"] },
-        { label: t('ai_coach_wind_down'), times: ["19:00"] }
-      ];
-
-      for (const nudge of newNudges) {
-        if (!currentReminders.some(r => r.label === nudge.label)) {
-          const id = generateId();
-          const r = {
-            id,
-            label: nudge.label,
-            times: nudge.times,
-            enabled: true,
-            lastFired: {},
-          };
-          currentReminders.push(r);
-
-          if (isNative()) {
-            nudge.times.forEach((time, idx) => {
-              const [h, m] = time.split(":").map(Number);
-              void scheduleNativeDaily(hashId(`rem:${id}:${idx}`), nudge.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync, id);
-            });
-          }
+      for (const s of accepted) {
+        let remindAt: string | null = null;
+        if (s.time) {
+          const [h, m] = s.time.split(":").map(Number);
+          const d = new Date(today);
+          d.setHours(h, m, 0, 0);
+          // Only attach a reminder if the time hasn't already passed today
+          if (d.getTime() > Date.now()) remindAt = d.toISOString();
         }
+
+        const id = generateId();
+        const newTask: Task = {
+          id,
+          title: s.title,
+          done: false,
+          remindAt,
+          dueDate: todayStr,
+          createdAt: Date.now(),
+        };
+        tasks.unshift(newTask);
+
+        if (isNative() && remindAt) {
+          scheduleNativeAt(hashId("task:" + id), s.title, t('reminder_title'), new Date(remindAt), calendarSync, id)
+            .catch(e => console.error("Sync: schedule failed", e));
+        }
+
+        addEvent('task_created', { title: s.title, hasReminder: !!remindAt, date: todayStr, source: 'ai' });
       }
-      saveJSON(STORAGE_KEYS.reminders, currentReminders);
 
-      // 2. Refresh page to show new data (since we are outside the TaskList/Reminders state)
-      // Alternatively, we could use a global state or event bus, but window.location.reload()
-      // is the simplest reliable way to ensure all components see the updated localStorage.
-      window.location.reload();
+      saveJSON(STORAGE_KEYS.tasks, tasks);
+      addEvent('ai_suggestion_accepted', { count: accepted.length });
 
+      // TaskList listens for this and reloads from localStorage
+      window.dispatchEvent(new Event('ff.data_updated'));
+
+      notify({
+        title: "Focus Flow AI",
+        body: t('ai_coach_tasks_added'),
+        kind: "info"
+      });
     } catch (e) {
       console.error("Failed to apply AI suggestions", e);
     }
-
-    setStep("greeting");
   };
 
   const showPreview = () => {
+    setSuggestions(buildSuggestions());
     setStep("preview");
   };
+
+  const selectedCount = suggestions.filter(s => s.selected).length;
 
   return (
     <AnimatePresence>
@@ -147,31 +245,48 @@ export function AICoach() {
                   </>
                 ) : (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-bold tracking-tight">{t('ai_coach_suggested_title')}</h3>
-                    <div className="rounded-xl bg-secondary/30 p-3 text-[11px] space-y-2 border border-primary/10">
-                      <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-tight">
-                        <CalendarCheck className="size-3" /> {t('ai_coach_peak_focus')} (10:00 - 12:00)
-                      </div>
-                      <p className="text-muted-foreground italic leading-tight">"{t('ai_coach_peak_desc')}"</p>
-                      <div className="border-t border-primary/10 pt-2 space-y-1">
-                        <div className="flex justify-between">
-                          <span>09:00 - {t('ai_coach_morning_hydration')}</span>
-                          <span className="text-mint font-bold text-[9px] uppercase tracking-tighter">+{t('ai_coach_suggested_tag')}</span>
-                        </div>
-                        <div className="flex justify-between opacity-60">
-                          <span>10:30 - {t('tasks')}</span>
-                          <span className="text-[9px] uppercase tracking-tighter">({t('ai_coach_keep_tag')})</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>19:00 - {t('ai_coach_wind_down')}</span>
-                          <span className="text-mint font-bold text-[9px] uppercase tracking-tighter">+{t('ai_coach_suggested_tag')}</span>
-                        </div>
-                      </div>
+                    <h3 className="text-sm font-bold tracking-tight">{t('ai_coach_tasks_title')}</h3>
+                    <p className="text-[11px] leading-tight text-muted-foreground">{t('ai_coach_tasks_desc')}</p>
+
+                    <div className="rounded-xl bg-secondary/30 p-2 space-y-1 border border-primary/10">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => toggleSuggestion(s.id)}
+                          className={`flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition ${
+                            s.selected ? "bg-primary/10" : "opacity-50"
+                          }`}
+                        >
+                          <span
+                            className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${
+                              s.selected ? "border-mint bg-mint text-mint-foreground" : "border-border"
+                            }`}
+                          >
+                            {s.selected && <Check className="size-3" strokeWidth={3} />}
+                          </span>
+                          <span className="flex-1 min-w-0 truncate text-[11px] font-medium">{s.title}</span>
+                          {s.time && (
+                            <span className="flex items-center gap-1 font-mono text-[9px] text-muted-foreground">
+                              <Clock className="size-2.5" /> {s.time}
+                            </span>
+                          )}
+                          <span className={`text-[8px] font-bold uppercase tracking-tighter ${
+                            s.source === "habit" ? "text-primary" : "text-mint"
+                          }`}>
+                            {s.source === "habit" ? t('ai_coach_habit_tag') : t('ai_coach_new_tag')}
+                          </span>
+                        </button>
+                      ))}
                     </div>
 
                     <div className="flex gap-2">
-                      <Button size="sm" onClick={handleAccept} className="flex-1 h-8 rounded-full text-[10px] font-bold uppercase">
-                        {t('ai_coach_accept')}
+                      <Button
+                        size="sm"
+                        onClick={handleAccept}
+                        disabled={selectedCount === 0}
+                        className="flex-1 h-8 rounded-full text-[10px] font-bold uppercase"
+                      >
+                        {t('ai_coach_accept')} ({selectedCount})
                       </Button>
                       <Button size="sm" variant="outline" onClick={handleRefuse} className="h-8 rounded-full px-3 text-[10px] uppercase">
                         <RotateCcw className="mr-1 size-3" /> {t('ai_coach_reject')}

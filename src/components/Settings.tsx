@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History, Sparkles } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -32,6 +32,7 @@ import { useHistoryStore } from "@/lib/history";
 import { notify, ensurePermission } from "@/lib/notifications";
 import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar } from "@/lib/native";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
+import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -301,6 +302,18 @@ export function Settings() {
                   </ScrollArea>
                 </DialogContent>
               </Dialog>
+
+              <Button
+                size="sm"
+                className="w-full mt-1 h-8 text-[10px] uppercase font-bold tracking-tight"
+                onClick={() => {
+                  setOpen(false);
+                  // Let the sheet close animation finish before showing the coach
+                  setTimeout(() => window.dispatchEvent(new Event(AI_COACH_OPEN_EVENT)), 300);
+                }}
+              >
+                <Sparkles className="mr-1.5 size-3" /> {t('settings_suggest_tasks')}
+              </Button>
             </div>
           </div>
 
