@@ -295,6 +295,22 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     });
   };
 
+  const toggleNudge = (reminderId: string, time: string) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const updated = reminders.map(r => {
+      if (r.id !== reminderId) return r;
+      const lastFired = { ...r.lastFired };
+      if (lastFired[time] === dateStr) {
+        delete lastFired[time];
+      } else {
+        lastFired[time] = dateStr;
+      }
+      return { ...r, lastFired };
+    });
+    setReminders(updated);
+    saveJSON(STORAGE_KEYS.reminders, updated);
+  };
+
   const remove = async (id: string) => {
     try {
       const taskToDelete = tasks.find(item => item.id === id);
@@ -479,13 +495,13 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               ) : (
                 <>
                   <button
-                    onClick={() => item.kind === 'task' ? toggle(item.id) : null}
+                    onClick={() => item.kind === 'task' ? toggle(item.id) : toggleNudge(item.originalId, item.time)}
                     aria-label="toggle"
                     className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
                       item.done
                         ? item.kind === 'nudge' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
-                        : "border-border hover:border-primary"
-                    } ${item.kind === 'nudge' ? 'cursor-default' : ''}`}
+                        : item.kind === 'nudge' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
+                    }`}
                   >
                     {item.done && <Check className="size-3.5" strokeWidth={3} />}
                   </button>
