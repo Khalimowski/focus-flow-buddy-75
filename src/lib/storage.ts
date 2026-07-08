@@ -42,7 +42,6 @@ export function saveJSON<T>(key: string, value: T): void {
 export const STORAGE_KEYS = {
   tasks: "ff.tasks.v1",
   reminders: "ff.reminders.v1",
-  timer: "ff.timer.v1",
   streak: "ff.streak.v1",
   settings: "ff.settings.v1",
   inAppNotifs: "ff.notifs.v1",
