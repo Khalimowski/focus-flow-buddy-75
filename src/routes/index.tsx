@@ -64,7 +64,9 @@ function Home() {
       const initBackListener = async () => {
         const { App } = await import("@capacitor/app");
         const backListener = App.addListener("backButton", ({ canGoBack }) => {
-          if (!canGoBack) {
+          if (canGoBack) {
+            window.history.back();
+          } else {
             void App.minimizeApp();
           }
         });
