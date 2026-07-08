@@ -41,8 +41,12 @@ export function Reminders() {
   ];
 
   useEffect(() => {
-    setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []));
+    const load = () => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []));
+    load();
     setLoaded(true);
+
+    window.addEventListener('ff.data_updated', load);
+    return () => window.removeEventListener('ff.data_updated', load);
   }, []);
 
   useEffect(() => {
@@ -78,7 +82,7 @@ export function Reminders() {
     if (!isNative()) return;
     r.times.forEach((t_val, idx) => {
       const [h, m] = t_val.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync, r.id);
     });
   };
   const cancelAll = (r: Reminder) => {

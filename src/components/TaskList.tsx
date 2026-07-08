@@ -69,18 +69,25 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const { addEvent } = useHistoryStore();
 
   useEffect(() => {
-    const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
-    const reminderData = loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []);
-    setReminders(reminderData);
+    const load = () => {
+      const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
+      const reminderData = loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []);
+      setReminders(reminderData);
 
-    // Migration: ensure all tasks have a dueDate and handle missing createdAt
-    const migrated = data.map(task => ({
-      ...task,
-      createdAt: task.createdAt || Date.now(),
-      dueDate: task.dueDate || (task.remindAt ? format(parseISO(task.remindAt), 'yyyy-MM-dd') : format(new Date(task.createdAt || Date.now()), 'yyyy-MM-dd'))
-    }));
-    setTasks(sortTasks(migrated));
+      // Migration: ensure all tasks have a dueDate and handle missing createdAt
+      const migrated = data.map(task => ({
+        ...task,
+        createdAt: task.createdAt || Date.now(),
+        dueDate: task.dueDate || (task.remindAt ? format(parseISO(task.remindAt), 'yyyy-MM-dd') : format(new Date(task.createdAt || Date.now()), 'yyyy-MM-dd'))
+      }));
+      setTasks(sortTasks(migrated));
+    };
+
+    load();
     setLoaded(true);
+
+    window.addEventListener('ff.data_updated', load);
+    return () => window.removeEventListener('ff.data_updated', load);
   }, []);
 
   useEffect(() => {
@@ -167,7 +174,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       // 2. Background native sync
       if (isNative() && remindAt) {
         deleteFromCalendar(title.trim()).catch(e => console.error("Sync: delete failed", e));
-        scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync)
+        scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync, id)
           .catch(e => console.error("Sync: schedule failed", e));
       }
 
@@ -196,41 +203,72 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   };
 
   const saveEdit = async () => {
-    if (!editingId || !editTitle.trim()) return;
-
-    let remindAt: string | null = null;
-    const dueDate = format(editDate, 'yyyy-MM-dd');
-
-    if (editTime) {
-      const [h, m] = editTime.split(":").map(Number);
-      const d = new Date(editDate);
-      d.setHours(h, m, 0, 0);
-      remindAt = d.toISOString();
+    if (!editingId || !editTitle.trim()) {
+      console.warn("[Save] Missing ID or title", { editingId, editTitle });
+      return;
     }
 
-    if (isNative()) {
-      void cancelNative([hashId("task:" + editingId)]);
-      const oldTask = tasks.find(item => item.id === editingId);
-      if (oldTask) {
-        await deleteFromCalendar(oldTask.title);
-      }
-      if (remindAt) {
-        void scheduleNativeAt(hashId("task:" + editingId), editTitle.trim(), t('reminder_title'), new Date(remindAt), calendarSync);
-      }
-    }
+    try {
+      console.log(`[Save] Attempting to save task: ${editingId}`);
+      let remindAt: string | null = null;
 
-    setTasks(prev => {
-      const updated = prev.map(item => item.id === editingId ? {
-        ...item,
-        title: editTitle.trim(),
-        remindAt,
-        dueDate,
-        notified: false
-      } : item);
-      addEvent('task_edited', { id: editingId, newTitle: editTitle.trim() });
-      return sortTasks(updated);
-    });
-    cancelEdit();
+      // Ensure date is valid before formatting
+      let validDate = editDate;
+      if (!validDate || isNaN(validDate.getTime())) {
+        console.warn("[Save] Invalid editDate, defaulting to today");
+        validDate = new Date();
+      }
+      const dueDate = format(validDate, 'yyyy-MM-dd');
+
+      if (editTime) {
+        const [h, m] = editTime.split(":").map(Number);
+        const d = new Date(validDate);
+        d.setHours(h, m, 0, 0);
+        remindAt = d.toISOString();
+      }
+
+      // 1. Capture current values for background sync before clearing state
+      const idToSync = editingId;
+      const titleToSync = editTitle.trim();
+      const oldTask = tasks.find(item => item.id === idToSync);
+      const oldTitle = oldTask?.title;
+
+      // 2. Immediate UI update
+      setTasks(prev => {
+        const updated = prev.map(item => item.id === idToSync ? {
+          ...item,
+          title: titleToSync,
+          remindAt,
+          dueDate,
+          notified: false
+        } : item);
+        return sortTasks(updated);
+      });
+
+      addEvent('task_edited', { id: idToSync, newTitle: titleToSync });
+      cancelEdit();
+
+      // 3. Background native sync (don't block the UI)
+      if (isNative()) {
+        const runNativeSync = async () => {
+          try {
+            await cancelNative([hashId("task:" + idToSync)]);
+            if (oldTitle) {
+              await deleteFromCalendar(oldTitle);
+            }
+            if (remindAt) {
+              await scheduleNativeAt(hashId("task:" + idToSync), titleToSync, t('reminder_title'), new Date(remindAt), calendarSync, idToSync);
+            }
+          } catch (nativeErr) {
+            console.warn("[Native] Task sync failed during edit:", nativeErr);
+          }
+        };
+        void runNativeSync();
+      }
+    } catch (e) {
+      console.error("Save edit failed", e);
+      notify({ title: "Error", body: "Could not save changes.", kind: "info" });
+    }
   };
 
   const toggle = (id: string) => {
@@ -309,7 +347,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               <CalendarIcon className="size-4" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-3xl" align="end">
+          <PopoverContent className="w-auto p-0 rounded-3xl" align="end" sideOffset={12} collisionPadding={16}>
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -345,7 +383,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                     {isSameDay(newTaskDate, new Date()) ? t('today') : format(newTaskDate, 'MMM d')}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-3xl" align="start">
+                <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
                   <Calendar
                     mode="single"
                     selected={newTaskDate}
@@ -392,6 +430,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   <Input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveEdit()}
                     className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
                     autoFocus
                   />
@@ -410,7 +449,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                             {format(editDate, 'MMM d')}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-3xl" align="start">
+                        <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
                           <Calendar
                             mode="single"
                             selected={editDate}

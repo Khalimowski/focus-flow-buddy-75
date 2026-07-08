@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat, CheckSquare } from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
+import { SimpleToDo } from "@/components/SimpleToDo";
 import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
 import { ensurePermission, getPermission, notify } from "@/lib/notifications";
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Tab = "tasks" | "reminders";
+type Tab = "tasks" | "reminders" | "todo";
 
 function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
@@ -122,6 +123,7 @@ function Home() {
         {(
           [
             { id: "tasks", label: t('tasks'), icon: ListTodo },
+            { id: "todo", label: t('todo'), icon: CheckSquare },
             { id: "reminders", label: t('nudges'), icon: Repeat },
           ] as const
         ).map((t) => {
@@ -156,6 +158,7 @@ function Home() {
         transition={{ duration: 0.2 }}
       >
         {tab === "tasks" && <TaskList onComplete={markToday} />}
+        {tab === "todo" && <SimpleToDo />}
         {tab === "reminders" && <Reminders />}
       </motion.section>
 

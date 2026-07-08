@@ -3,8 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, Wand2, CalendarCheck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/lib/history";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
+import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { generateId } from "@/lib/utils";
+import { isNative, scheduleNativeAt, scheduleNativeDaily, hashId } from "@/lib/native";
+import { format } from "date-fns";
 
 type SuggestionStep = "greeting" | "preview";
 
@@ -13,6 +17,7 @@ export function AICoach() {
   const [step, setStep] = useState<SuggestionStep>("greeting");
   const { getDaysSinceLaunch, getDaysSinceLastAISuggestion, setAISuggestionDate, addEvent } = useHistoryStore();
   const { t } = useTranslation();
+  const { calendarSync, nudgeCalendarSync } = useI18nStore();
 
   useEffect(() => {
     const daysSinceLaunch = getDaysSinceLaunch();
@@ -43,12 +48,54 @@ export function AICoach() {
     setStep("greeting");
   };
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     setVisible(false);
     setAISuggestionDate(Date.now());
     addEvent('ai_suggestion_accepted');
-    // Actual implementation would apply logic here
-    alert(t('ai_coach_accept'));
+
+    try {
+      const today = new Date();
+      const todayStr = format(today, 'yyyy-MM-dd');
+
+      // 1. Create Suggested Nudges
+      const currentReminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
+
+      const newNudges = [
+        { label: t('ai_coach_morning_hydration'), times: ["09:00"] },
+        { label: t('ai_coach_wind_down'), times: ["19:00"] }
+      ];
+
+      for (const nudge of newNudges) {
+        if (!currentReminders.some(r => r.label === nudge.label)) {
+          const id = generateId();
+          const r = {
+            id,
+            label: nudge.label,
+            times: nudge.times,
+            enabled: true,
+            lastFired: {},
+          };
+          currentReminders.push(r);
+
+          if (isNative()) {
+            nudge.times.forEach((time, idx) => {
+              const [h, m] = time.split(":").map(Number);
+              void scheduleNativeDaily(hashId(`rem:${id}:${idx}`), nudge.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync, id);
+            });
+          }
+        }
+      }
+      saveJSON(STORAGE_KEYS.reminders, currentReminders);
+
+      // 2. Refresh page to show new data (since we are outside the TaskList/Reminders state)
+      // Alternatively, we could use a global state or event bus, but window.location.reload()
+      // is the simplest reliable way to ensure all components see the updated localStorage.
+      window.location.reload();
+
+    } catch (e) {
+      console.error("Failed to apply AI suggestions", e);
+    }
+
     setStep("greeting");
   };
 
