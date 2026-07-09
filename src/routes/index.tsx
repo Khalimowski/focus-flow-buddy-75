@@ -93,7 +93,7 @@ function Home() {
       <AICoach />
       <InAppToaster />
 
-      <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top backdrop-blur-xl">
+      <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">
           <div className="absolute left-0 top-1/2 -translate-y-1/2">
             <motion.div
