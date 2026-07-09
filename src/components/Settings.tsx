@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History, Sparkles } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History, Sparkles, GraduationCap } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -40,7 +40,8 @@ export function Settings() {
     language, setLanguage,
     theme, setTheme,
     calendarSync, setCalendarSync,
-    nudgeCalendarSync, setNudgeCalendarSync
+    nudgeCalendarSync, setNudgeCalendarSync,
+    setTutorialCompleted
   } = useI18nStore();
   const { events, getDaysSinceLaunch } = useHistoryStore();
   const { t } = useTranslation();
@@ -319,7 +320,7 @@ export function Settings() {
             </div>
           </div>
 
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t space-y-3">
             <Button
               variant="outline"
               className="w-full"
@@ -334,6 +335,18 @@ export function Settings() {
             >
               <Bell className="mr-2 size-4" />
               {t('test_notification')}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                // Let the sheet close before the tour overlay appears
+                setTimeout(() => setTutorialCompleted(false), 300);
+              }}
+            >
+              <GraduationCap className="mr-2 size-4" />
+              {t('replay_tutorial')}
             </Button>
           </div>
         </div>
