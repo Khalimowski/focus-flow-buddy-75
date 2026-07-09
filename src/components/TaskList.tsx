@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -295,6 +295,25 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     });
   };
 
+  const moveToTodo = (id: string) => {
+    const task = tasks.find(item => item.id === id);
+    if (!task) return;
+
+    // Convert to a To-Do item
+    const todos = loadJSON<{ id: string; title: string; done: boolean; createdAt: number }[]>(STORAGE_KEYS.todo, []);
+    todos.unshift({ id: generateId(), title: task.title, done: task.done, createdAt: Date.now() });
+    saveJSON(STORAGE_KEYS.todo, todos);
+
+    // Remove from tasks, including any scheduled notification/calendar entry
+    setTasks(prev => prev.filter(item => item.id !== id));
+    if (isNative()) {
+      cancelNative([hashId("task:" + id)]).catch(e => console.error("Sync: cancel failed", e));
+      deleteFromCalendar(task.title).catch(e => console.error("Sync: delete failed", e));
+    }
+
+    notify({ title: t('moved_to_todo'), body: task.title, kind: "info" });
+  };
+
   const toggleNudge = (reminderId: string, time: string) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const updated = reminders.map(r => {
@@ -532,6 +551,16 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   </div>
                   {item.kind === 'task' && (
                     <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => moveToTodo(item.id)}
+                        aria-label={t('move_to_todo')}
+                        title={t('move_to_todo')}
+                        className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
+                      >
+                        <CheckSquare className="size-4" />
+                      </Button>
                       <Button
                         size="icon"
                         variant="outline"
