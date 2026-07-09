@@ -354,7 +354,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       {/* Daily Strip */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto py-3 px-1 scrollbar-hide">
+      <div className="flex items-center justify-between gap-2 overflow-x-auto py-3 px-1 scrollbar-hide" data-tour="days">
         {dayStrip.map((date, i) => {
           const active = isSameDay(date, selectedDate);
           const isToday = isSameDay(date, new Date());
@@ -398,7 +398,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         </Popover>
       </div>
 
-      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
+      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm" data-tour="add-task">
         <div className="flex flex-col gap-3">
           <Input
             placeholder={t('task_input_placeholder')}

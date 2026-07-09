@@ -116,7 +116,7 @@ function Home() {
             <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
           </div>
 
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2" data-tour="settings">
             {perm !== "granted" && perm !== "unsupported" && (
               <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-8 w-8 p-0 sm:w-auto sm:px-3">
                 {perm === "denied" ? <BellOff className="size-3.5 sm:mr-1.5" /> : <Bell className="size-3.5 sm:mr-1.5" />}
@@ -129,9 +129,11 @@ function Home() {
       </header>
 
       <UpdateBanner />
-      <StreakStrip streak={streak} />
+      <div data-tour="streak">
+        <StreakStrip streak={streak} />
+      </div>
 
-      <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur">
+      <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur" data-tour="tabs">
         {(
           [
             { id: "tasks", label: t('tasks'), icon: ListTodo },
