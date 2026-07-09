@@ -62,6 +62,26 @@ export function AICoach() {
       counts.set(key, entry);
     }
 
+    // The usual time for a recurring task: the most frequent reminder time
+    // among stored tasks with the same title.
+    const usualTimeFor = (key: string): string | null => {
+      const freq = new Map<string, number>();
+      let best: string | null = null;
+      let bestCount = 0;
+      for (const task of tasks) {
+        if (!task.remindAt || task.title.trim().toLowerCase() !== key) continue;
+        const d = new Date(task.remindAt);
+        const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        const n = (freq.get(time) ?? 0) + 1;
+        freq.set(time, n);
+        if (n > bestCount) {
+          bestCount = n;
+          best = time;
+        }
+      }
+      return best;
+    };
+
     const result: SuggestedTask[] = [];
     const seen = new Set<string>();
 
@@ -72,7 +92,7 @@ export function AICoach() {
 
     for (const [key, entry] of habits) {
       seen.add(key);
-      result.push({ id: generateId(), title: entry.title, time: null, source: "habit", selected: true });
+      result.push({ id: generateId(), title: entry.title, time: usualTimeFor(key), source: "habit", selected: true });
     }
 
     const defaults: { title: string; time: string }[] = [
@@ -87,7 +107,8 @@ export function AICoach() {
       result.push({ id: generateId(), title: d.title, time: d.time, source: "default", selected: true });
     }
 
-    return result;
+    // Present as a day plan: earliest first, untimed suggestions last
+    return result.sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
   }, [t]);
 
   // Automatic trigger: at least 3 days since launch and 3 days since the
