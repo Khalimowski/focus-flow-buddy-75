@@ -156,6 +156,16 @@
   ::selection {
     background: color-mix(in oklab, var(--primary) 40%, transparent);
   }
+
+  /* Radix dialogs lock body scroll and compensate for the scrollbar with a
+     body margin. On Samsung WebViews the computed gap can be wildly wrong
+     (visual vs layout viewport mismatch), squeezing the whole app while the
+     settings sheet is open. There are no scrollbar gutters on mobile, so
+     force the compensation off. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+  }
 }
 
 @layer utilities {

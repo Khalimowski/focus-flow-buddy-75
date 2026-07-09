@@ -65,7 +65,13 @@ function Home() {
       const initBackListener = async () => {
         const { App } = await import("@capacitor/app");
         const backListener = App.addListener("backButton", ({ canGoBack }) => {
-          if (canGoBack) {
+          // Only navigate back within entries the app itself created (the
+          // settings sheet's pushed state, or router navigations). Backing
+          // beyond the first entry lands on a page the router can't render
+          // (white screen), so minimize instead.
+          const state = window.history.state as { settings?: boolean; __TSR_index?: number } | null;
+          const hasInAppHistory = !!state?.settings || (state?.__TSR_index ?? 0) > 0;
+          if (canGoBack && hasInAppHistory) {
             window.history.back();
           } else {
             void App.minimizeApp();
