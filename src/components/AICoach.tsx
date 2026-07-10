@@ -236,6 +236,7 @@ export function AICoach() {
 
             <button
               onClick={handleRefuse}
+              aria-label={t('close')}
               className="absolute right-3 top-3 rounded-full p-1 text-muted-foreground hover:bg-secondary"
             >
               <X className="size-4" />

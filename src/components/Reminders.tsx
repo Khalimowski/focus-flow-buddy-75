@@ -271,7 +271,7 @@ export function Reminders() {
                   </div>
                 </div>
                 <Switch checked={r.enabled} onCheckedChange={() => toggle(r.id)} />
-                <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                <Button size="icon" variant="ghost" onClick={() => remove(r.id)} aria-label={t('delete')}>
                   <Trash2 className="size-4" />
                 </Button>
               </motion.li>

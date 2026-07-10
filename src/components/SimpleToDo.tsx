@@ -160,7 +160,7 @@ export function SimpleToDo() {
             onKeyDown={(e) => e.key === "Enter" && add()}
             className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
           />
-          <Button onClick={add} size="sm" className="size-8 rounded-full p-0 shadow-soft shrink-0">
+          <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft shrink-0">
             <Plus className="size-4" />
           </Button>
         </div>
@@ -248,6 +248,8 @@ export function SimpleToDo() {
                 <>
                   <button
                     onClick={() => toggle(item.id)}
+                    aria-label={item.title}
+                    aria-pressed={item.done}
                     className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
                       item.done
                         ? "border-mint bg-mint text-mint-foreground"
@@ -276,6 +278,7 @@ export function SimpleToDo() {
                       size="icon"
                       variant="outline"
                       onClick={() => startEdit(item)}
+                      aria-label={t('edit')}
                       className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
                     >
                       <Edit2 className="size-4" />
@@ -284,6 +287,7 @@ export function SimpleToDo() {
                       size="icon"
                       variant="outline"
                       onClick={() => remove(item.id)}
+                      aria-label={t('delete')}
                       className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
                     >
                       <Trash2 className="size-4" />

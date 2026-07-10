@@ -434,7 +434,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 </PopoverContent>
               </Popover>
             </div>
-            <Button onClick={add} size="sm" className="size-8 rounded-full p-0 shadow-soft">
+            <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft">
               <Plus className="size-4" />
             </Button>
           </div>
@@ -515,7 +515,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <>
                   <button
                     onClick={() => item.kind === 'task' ? toggle(item.id) : toggleNudge(item.originalId, item.time)}
-                    aria-label="toggle"
+                    aria-label={item.title}
+                    aria-pressed={item.done}
                     className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
                       item.done
                         ? item.kind === 'nudge' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
@@ -565,6 +566,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                         size="icon"
                         variant="outline"
                         onClick={() => startEdit(item)}
+                        aria-label={t('edit')}
                         className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
                       >
                         <Edit2 className="size-4" />
@@ -573,6 +575,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                         size="icon"
                         variant="outline"
                         onClick={() => remove(item.id)}
+                        aria-label={t('delete')}
                         className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
                       >
                         <Trash2 className="size-4" />
