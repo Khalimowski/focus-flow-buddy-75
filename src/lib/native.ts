@@ -1,7 +1,8 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { CapacitorCalendar } from "@ebarooni/capacitor-calendar";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
@@ -276,6 +277,79 @@ export async function cancelNative(ids: number[]) {
   }
 }
 
+// --- Home-screen widget bridge (Android) ---
+// Mirrors open tasks into SharedPreferences for TaskWidgetProvider and pulls
+// back ids ticked from the widget while the app was closed.
+
+type WidgetBridgePlugin = {
+  setTasks(options: { tasks: string }): Promise<void>;
+  getPendingDone(): Promise<{ ids: string[] }>;
+};
+const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
+
+type WidgetTask = {
+  id: string;
+  title: string;
+  done: boolean;
+  remindAt: string | null;
+  dueDate: string;
+  createdAt: number;
+};
+
+// Same ordering as the app's task list: reminder time first, then creation;
+// earlier due dates (incl. overdue) come before later ones.
+function sortForWidget(list: WidgetTask[]): WidgetTask[] {
+  return [...list].sort((a, b) => {
+    if (a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+    if (a.remindAt && b.remindAt) {
+      const getHM = (iso: string) => {
+        const d = new Date(iso);
+        return d.getHours() * 60 + d.getMinutes();
+      };
+      const diff = getHM(a.remindAt) - getHM(b.remindAt);
+      if (diff !== 0) return diff;
+      return a.createdAt - b.createdAt;
+    }
+    if (a.remindAt) return -1;
+    if (b.remindAt) return 1;
+    return a.createdAt - b.createdAt;
+  });
+}
+
+export async function pushTasksToWidget() {
+  if (!isNative()) return;
+  try {
+    const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
+    const open = sortForWidget(tasks.filter((t) => !t.done)).map((t) => ({
+      id: t.id,
+      title: t.title,
+    }));
+    await WidgetBridge.setTasks({ tasks: JSON.stringify(open) });
+  } catch (e) {
+    console.warn("[Widget] Failed to push tasks", e);
+  }
+}
+
+export async function syncWidgetTicks() {
+  if (!isNative()) return;
+  try {
+    const { ids } = await WidgetBridge.getPendingDone();
+    if (!ids || ids.length === 0) {
+      void pushTasksToWidget();
+      return;
+    }
+    console.log(`[Widget] Applying ${ids.length} tick(s) from widget`);
+    const idSet = new Set(ids);
+    const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
+    const updated = tasks.map((t) => (idSet.has(t.id) ? { ...t, done: true } : t));
+    saveJSON(STORAGE_KEYS.tasks, updated); // fires ff.tasks_saved -> widget re-push
+    void cancelNative(ids.map((id) => hashId("task:" + id)));
+    window.dispatchEvent(new CustomEvent("ff.data_updated"));
+  } catch (e) {
+    console.warn("[Widget] Failed to sync ticks", e);
+  }
+}
+
 // Stable numeric id from a string (for plugin id field)
 export function hashId(s: string): number {
   let h = 0;
@@ -392,6 +466,19 @@ export async function initNative() {
     }
   } catch (e) {
     console.warn("[Native] Notification cleanup failed", e);
+  }
+
+  // Home-screen widget: keep the mirror fresh and apply ticks made while closed
+  try {
+    window.addEventListener("ff.tasks_saved", () => {
+      void pushTasksToWidget();
+    });
+    void App.addListener("resume", () => {
+      void syncWidgetTicks();
+    });
+    await syncWidgetTicks();
+  } catch (e) {
+    console.warn("[Native] Widget sync setup failed", e);
   }
 
   try {

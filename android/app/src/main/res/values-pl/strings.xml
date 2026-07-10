@@ -8,4 +8,10 @@
     <!-- Notification Channel Strings -->
     <string name="nudge_channel_name">Przypominajki</string>
     <string name="nudge_channel_description">Kanał dla Twoich spokojnych impulsów do działania</string>
+
+    <!-- Home-screen Widget Strings -->
+    <string name="widget_name">Zadania</string>
+    <string name="widget_description">Odhaczaj trzy najważniejsze zadania</string>
+    <string name="widget_empty">Wszystko zrobione ✨</string>
+    <string name="widget_tick">Oznacz zadanie jako wykonane</string>
 </resources>

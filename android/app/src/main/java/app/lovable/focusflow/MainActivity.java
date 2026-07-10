@@ -21,6 +21,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StatusBarPlugin.class);
         registerPlugin(SplashScreenPlugin.class);
         registerPlugin(CapacitorCalendarPlugin.class);
+        registerPlugin(WidgetBridgePlugin.class);
         super.onCreate(savedInstanceState);
     }
 

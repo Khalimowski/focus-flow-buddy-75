@@ -34,6 +34,10 @@ export function saveJSON<T>(key: string, value: T): void {
       return;
     }
     window.localStorage.setItem(key, JSON.stringify(value));
+    // Let interested modules react to task changes (e.g. home-screen widget mirror)
+    if (key === STORAGE_KEYS.tasks) {
+      window.dispatchEvent(new CustomEvent("ff.tasks_saved"));
+    }
   } catch (e) {
     console.error(`[Storage] Failed to save key ${key}:`, e);
   }

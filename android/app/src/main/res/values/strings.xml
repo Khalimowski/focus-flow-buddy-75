@@ -8,4 +8,10 @@
     <!-- Notification Channel Strings -->
     <string name="nudge_channel_name">Nudge Notifications</string>
     <string name="nudge_channel_description">Channel for your calm nudges and reminders</string>
+
+    <!-- Home-screen Widget Strings -->
+    <string name="widget_name">Tasks</string>
+    <string name="widget_description">Tick off your top three tasks</string>
+    <string name="widget_empty">All clear ✨</string>
+    <string name="widget_tick">Mark task as done</string>
 </resources>
