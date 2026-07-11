@@ -33,6 +33,14 @@ export const useI18nStore = create<I18nState>()(
     }),
     {
       name: 'focus-flow-settings',
+      // v1: Polish disabled for now — move previously-selected 'pl' back to
+      // 'en'. Drop this migration (and bump version) when Polish returns.
+      version: 1,
+      migrate: (persisted) => {
+        const state = persisted as Partial<I18nState>;
+        if (state?.language === 'pl') state.language = 'en';
+        return state as I18nState;
+      },
     }
   )
 );
@@ -119,6 +127,10 @@ export const translations = {
     ai_coach_default_plan: "Plan today's top 3 priorities",
     ai_coach_default_break: "10-minute movement break",
     ai_coach_default_review: "Evening review & wind down",
+    ai_coach_default_hydrate: "Drink a glass of water",
+    ai_coach_default_tidy: "5-minute tidy-up",
+    ai_coach_default_small_win: "Knock out one small nagging task",
+    ai_coach_more: "Suggest more",
     ai_coach_tasks_added: "New tasks added to your list ✨",
     settings_suggest_tasks: "Suggest Daily Tasks",
     move_to_todo: "Move to To-Do",
@@ -242,6 +254,10 @@ export const translations = {
     ai_coach_default_plan: "Zaplanuj 3 najważniejsze zadania dnia",
     ai_coach_default_break: "10 minut przerwy na ruch",
     ai_coach_default_review: "Wieczorne podsumowanie i wyciszenie",
+    ai_coach_default_hydrate: "Wypij szklankę wody",
+    ai_coach_default_tidy: "5 minut porządkowania",
+    ai_coach_default_small_win: "Zrób jedno małe zaległe zadanie",
+    ai_coach_more: "Zaproponuj więcej",
     ai_coach_tasks_added: "Nowe zadania dodane do Twojej listy ✨",
     settings_suggest_tasks: "Zaproponuj zadania na dziś",
     move_to_todo: "Przenieś do „Do zrobienia”",

@@ -283,6 +283,7 @@ export async function cancelNative(ids: number[]) {
 
 type WidgetBridgePlugin = {
   setTasks(options: { tasks: string }): Promise<void>;
+  setTheme(options: { theme: "light" | "dark" }): Promise<void>;
   getPendingDone(): Promise<{ ids: string[] }>;
 };
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
@@ -320,9 +321,16 @@ export async function pushTasksToWidget() {
   if (!isNative()) return;
   try {
     const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
+    // dueDate rides along so the widget can filter to the device's current
+    // day at render time (stays correct across midnight without the app)
     const open = sortForWidget(tasks.filter((t) => !t.done)).map((t) => ({
       id: t.id,
       title: t.title,
+      dueDate: t.dueDate,
+      // Pre-formatted like the in-app list so the widget just displays it
+      time: t.remindAt
+        ? new Date(t.remindAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : "",
     }));
     await WidgetBridge.setTasks({ tasks: JSON.stringify(open) });
   } catch (e) {
@@ -492,6 +500,12 @@ export async function initNative() {
 // Dynamically update status bar based on theme
 export async function updateStatusBar(theme: "light" | "dark") {
   if (!isNative()) return;
+  // Called on boot and on every theme toggle — keep the widget's mode in step
+  try {
+    await WidgetBridge.setTheme({ theme });
+  } catch (e) {
+    console.warn("[Widget] Failed to push theme", e);
+  }
   try {
     if (theme === "dark") {
       await StatusBar.setStyle({ style: Style.Dark });

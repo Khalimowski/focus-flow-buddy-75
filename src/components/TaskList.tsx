@@ -528,7 +528,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <div
-                        className={`text-sm font-medium ${item.done ? "text-muted-foreground line-through" : ""}`}
+                        className={`text-sm font-medium break-words min-w-0 ${item.done ? "text-muted-foreground line-through" : ""}`}
                       >
                         {item.title}
                       </div>

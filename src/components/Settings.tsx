@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Languages, Bell, Calendar, Database, History, Sparkles, GraduationCap } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -8,28 +8,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
-import { useHistoryStore } from "@/lib/history";
-import { notify, ensurePermission } from "@/lib/notifications";
+import { notify } from "@/lib/notifications";
 import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar } from "@/lib/native";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
@@ -37,13 +20,11 @@ import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 export function Settings() {
   const [open, setOpen] = useState(false);
   const {
-    language, setLanguage,
     theme, setTheme,
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync,
     setTutorialCompleted
   } = useI18nStore();
-  const { events, getDaysSinceLaunch } = useHistoryStore();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -230,6 +211,11 @@ export function Settings() {
             />
           </div>
 
+          {/* Language picker disabled for now (Polish paused) — restore this
+              block, the Languages icon + Select imports, and the
+              language/setLanguage store fields to re-enable. Also revert the
+              pl->en migration in i18n.ts and resConfigs in
+              android/app/build.gradle.
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Languages className="size-4" />
@@ -250,91 +236,18 @@ export function Settings() {
               </SelectContent>
             </Select>
           </div>
-
-          <div className="pt-6 border-t">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-              <Database className="size-3" /> {t('ai_insights')}
-            </h4>
-
-            <div className="rounded-2xl bg-secondary/30 p-4 space-y-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">{t('collected_data')}</span>
-                <span className="font-mono font-bold">{events.length} {t('data_points')}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">{t('learning_progress')}</span>
-                <span className="font-mono font-bold">{getDaysSinceLaunch()} / 3 {t('days')}</span>
-              </div>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full mt-2 h-8 text-[10px] uppercase font-bold tracking-tight">
-                    <History className="mr-1.5 size-3" /> {t('inspect_ai_memory')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-[90vw] sm:max-w-[500px] h-[80vh] flex flex-col p-0 overflow-hidden rounded-3xl">
-                  <DialogHeader className="p-6 pb-2">
-                    <DialogTitle>{t('ai_activity_log')}</DialogTitle>
-                    <DialogDescription>
-                      {t('ai_activity_log_desc')}
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <ScrollArea className="flex-1 p-6 pt-0">
-                    <div className="space-y-3">
-                      {events.length === 0 ? (
-                        <p className="text-center text-sm text-muted-foreground py-10">{t('no_events_yet')}</p>
-                      ) : (
-                        [...events].reverse().map((ev) => (
-                          <div key={ev.id} className="border-l-2 border-primary/30 pl-4 py-1">
-                            <div className="flex justify-between items-baseline">
-                              <span className="text-[10px] font-bold uppercase text-primary">
-                                {ev.type.replace('_', ' ')}
-                              </span>
-                              <span className="text-[9px] font-mono text-muted-foreground">
-                                {new Date(ev.timestamp).toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-xs text-foreground mt-0.5">
-                              {ev.metadata?.title || ev.metadata?.label || t('user_action')}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
-
-              <Button
-                size="sm"
-                className="w-full mt-1 h-8 text-[10px] uppercase font-bold tracking-tight"
-                onClick={() => {
-                  setOpen(false);
-                  // Let the sheet close animation finish before showing the coach
-                  setTimeout(() => window.dispatchEvent(new Event(AI_COACH_OPEN_EVENT)), 300);
-                }}
-              >
-                <Sparkles className="mr-1.5 size-3" /> {t('settings_suggest_tasks')}
-              </Button>
-            </div>
-          </div>
+          */}
 
           <div className="pt-4 border-t space-y-3">
             <Button
-              variant="outline"
               className="w-full"
-              onClick={async () => {
-                await ensurePermission();
-                notify({
-                  title: t('test_notification'),
-                  body: t('test_notification_body'),
-                  kind: "info"
-                });
+              onClick={() => {
+                setOpen(false);
+                // Let the sheet close animation finish before showing the coach
+                setTimeout(() => window.dispatchEvent(new Event(AI_COACH_OPEN_EVENT)), 300);
               }}
             >
-              <Bell className="mr-2 size-4" />
-              {t('test_notification')}
+              <Sparkles className="mr-2 size-4" /> {t('settings_suggest_tasks')}
             </Button>
             <Button
               variant="outline"

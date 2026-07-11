@@ -6,6 +6,7 @@ import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import com.getcapacitor.BridgeActivity;
 import com.capacitorjs.plugins.app.AppPlugin;
 import com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin;
@@ -23,6 +24,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CapacitorCalendarPlugin.class);
         registerPlugin(WidgetBridgePlugin.class);
         super.onCreate(savedInstanceState);
+
+        // Kill the Android 12+ overscroll stretch: it visually stretches the
+        // whole page (header included) when scrolling past the top or bottom.
+        // CSS overscroll-behavior doesn't reliably disable it in WebView.
+        bridge.getWebView().setOverScrollMode(View.OVER_SCROLL_NEVER);
     }
 
     @Override

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X, Wand2, Check, Clock, RotateCcw } from "lucide-react";
+import { Sparkles, X, Wand2, Check, Clock, RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/lib/history";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
@@ -33,18 +33,27 @@ type SuggestedTask = {
 // Event fired by Settings to open the coach on demand
 export const AI_COACH_OPEN_EVENT = "ff.ai_coach.open";
 
+// How many suggestions to show initially and per "suggest more" tap
+const SUGGESTION_BATCH = 3;
+
+// Day-plan order for display: earliest first, untimed last
+const byTime = (a: SuggestedTask, b: SuggestedTask) =>
+  (a.time ?? "99:99").localeCompare(b.time ?? "99:99");
+
 export function AICoach() {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState<SuggestionStep>("greeting");
+  const [pool, setPool] = useState<SuggestedTask[]>([]);
   const [suggestions, setSuggestions] = useState<SuggestedTask[]>([]);
   const { getDaysSinceLaunch, getDaysSinceLastAISuggestion, setAISuggestionDate, addEvent } = useHistoryStore();
   const { t } = useTranslation();
   const { calendarSync } = useI18nStore();
 
-  // Build task suggestions from the user's history: titles that recur
-  // (created/completed at least twice) and aren't already planned today,
-  // topped up with default suggestions.
-  const buildSuggestions = useCallback((): SuggestedTask[] => {
+  // Build the full ranked pool of suggestion candidates: titles that recur
+  // in history (created/completed at least twice) and aren't already planned
+  // today — strongest habits first — followed by default suggestions. The UI
+  // shows the pool in batches of SUGGESTION_BATCH via "suggest more".
+  const buildSuggestionPool = useCallback((): SuggestedTask[] => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
     const tasks = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
     const todayTitles = new Set(
@@ -87,8 +96,7 @@ export function AICoach() {
 
     const habits = [...counts.entries()]
       .filter(([key, entry]) => entry.count >= 2 && !todayTitles.has(key))
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 3);
+      .sort((a, b) => b[1].count - a[1].count);
 
     for (const [key, entry] of habits) {
       seen.add(key);
@@ -99,17 +107,34 @@ export function AICoach() {
       { title: t("ai_coach_default_plan"), time: "09:00" },
       { title: t("ai_coach_default_break"), time: "13:00" },
       { title: t("ai_coach_default_review"), time: "19:00" },
+      { title: t("ai_coach_default_hydrate"), time: "10:30" },
+      { title: t("ai_coach_default_tidy"), time: "16:00" },
+      { title: t("ai_coach_default_small_win"), time: "11:00" },
     ];
     for (const d of defaults) {
-      if (result.length >= 3) break;
       const key = d.title.trim().toLowerCase();
       if (todayTitles.has(key) || seen.has(key)) continue;
       result.push({ id: generateId(), title: d.title, time: d.time, source: "default", selected: true });
     }
 
-    // Present as a day plan: earliest first, untimed suggestions last
-    return result.sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"));
+    return result;
   }, [t]);
+
+  // Show the first batch of a freshly built pool
+  const startSuggestions = useCallback(() => {
+    const fullPool = buildSuggestionPool();
+    setPool(fullPool);
+    setSuggestions([...fullPool.slice(0, SUGGESTION_BATCH)].sort(byTime));
+  }, [buildSuggestionPool]);
+
+  // Append the next batch from the pool (new ones arrive pre-selected)
+  const showMoreSuggestions = () => {
+    setSuggestions((current) => {
+      const shownIds = new Set(current.map((s) => s.id));
+      const next = pool.filter((s) => !shownIds.has(s.id)).slice(0, SUGGESTION_BATCH);
+      return [...current, ...next].sort(byTime);
+    });
+  };
 
   // Automatic trigger: at least 3 days since launch and 3 days since the
   // last suggestion interaction, once per session.
@@ -135,13 +160,13 @@ export function AICoach() {
   // Manual trigger from Settings: skip the greeting and go straight to the preview
   useEffect(() => {
     const openFromSettings = () => {
-      setSuggestions(buildSuggestions());
+      startSuggestions();
       setStep("preview");
       setVisible(true);
     };
     window.addEventListener(AI_COACH_OPEN_EVENT, openFromSettings);
     return () => window.removeEventListener(AI_COACH_OPEN_EVENT, openFromSettings);
-  }, [buildSuggestions]);
+  }, [startSuggestions]);
 
   const handleRefuse = () => {
     setVisible(false);
@@ -216,7 +241,7 @@ export function AICoach() {
   };
 
   const showPreview = () => {
-    setSuggestions(buildSuggestions());
+    startSuggestions();
     setStep("preview");
   };
 
@@ -299,6 +324,15 @@ export function AICoach() {
                           </span>
                         </button>
                       ))}
+
+                      {suggestions.length < pool.length && (
+                        <button
+                          onClick={showMoreSuggestions}
+                          className="flex w-full items-center justify-center gap-1 rounded-lg p-1.5 text-[10px] font-bold uppercase tracking-tight text-primary transition hover:bg-primary/10"
+                        >
+                          <Plus className="size-3" strokeWidth={3} /> {t('ai_coach_more')}
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex gap-2">

@@ -145,6 +145,11 @@
     text-rendering: optimizeLegibility;
     /* Disable Android overscroll stretch (y) and swipe-to-navigate gestures (x) */
     overscroll-behavior: none;
+    /* Never let stray wide content (long unbroken titles, etc.) turn the
+       page into a horizontal scroller — swiping sideways would reveal a
+       blank area next to the app */
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {

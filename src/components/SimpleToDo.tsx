@@ -188,7 +188,7 @@ export function SimpleToDo() {
             >
               {schedulingId === item.id ? (
                 <div className="flex flex-col gap-3 w-full p-1">
-                  <div className="text-sm font-medium">{item.title}</div>
+                  <div className="text-sm font-medium break-words">{item.title}</div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex gap-1.5 shrink-0">
                       <Input
@@ -259,7 +259,7 @@ export function SimpleToDo() {
                     {item.done && <Check className="size-3.5" strokeWidth={3} />}
                   </button>
                   <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium ${item.done ? "text-muted-foreground line-through" : ""}`}>
+                    <div className={`text-sm font-medium break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
                       {item.title}
                     </div>
                   </div>
