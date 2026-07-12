@@ -40,6 +40,9 @@ function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
   const [mounted, setMounted] = useState(false);
+  // Bumped when cloud sync writes remote data into localStorage, so the
+  // active tab remounts and re-reads storage.
+  const [syncEpoch, setSyncEpoch] = useState(0);
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
   const { tutorialCompleted, theme } = useI18nStore();
@@ -59,6 +62,7 @@ function Home() {
       m.initNative();
       m.updateStatusBar(theme);
     });
+    void import("@/lib/sync").then((m) => m.initSync());
 
     // On Main Screen, back button should minimize instead of exit
     if (isNative()) {
@@ -85,6 +89,12 @@ function Home() {
       };
     }
   }, [theme]);
+
+  useEffect(() => {
+    const onRemoteUpdate = () => setSyncEpoch((e) => e + 1);
+    window.addEventListener("ff.remote-update", onRemoteUpdate);
+    return () => window.removeEventListener("ff.remote-update", onRemoteUpdate);
+  }, []);
 
   const askPerm = async () => {
     const p = await ensurePermission();
@@ -166,7 +176,7 @@ function Home() {
       </nav>
 
       <motion.section
-        key={tab}
+        key={`${tab}-${syncEpoch}`}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}

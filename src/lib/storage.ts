@@ -25,6 +25,14 @@ export function loadJSON<T>(key: string, fallback: T): T {
   }
 }
 
+// Modules (e.g. cloud sync) can subscribe to local saves without storage.ts
+// importing them — avoids a circular dependency.
+type SaveListener = (key: string) => void;
+const saveListeners: SaveListener[] = [];
+export function registerSaveListener(fn: SaveListener) {
+  saveListeners.push(fn);
+}
+
 export function saveJSON<T>(key: string, value: T): void {
   if (!isBrowser) return;
   try {
@@ -38,6 +46,7 @@ export function saveJSON<T>(key: string, value: T): void {
     if (key === STORAGE_KEYS.tasks) {
       window.dispatchEvent(new CustomEvent("ff.tasks_saved"));
     }
+    for (const fn of saveListeners) fn(key);
   } catch (e) {
     console.error(`[Storage] Failed to save key ${key}:`, e);
   }

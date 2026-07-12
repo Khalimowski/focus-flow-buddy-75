@@ -16,6 +16,7 @@ import { notify } from "@/lib/notifications";
 import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar } from "@/lib/native";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
+import { AccountSync } from "@/components/AccountSync";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -237,6 +238,10 @@ export function Settings() {
             </Select>
           </div>
           */}
+
+          <div className="pt-4 border-t">
+            <AccountSync />
+          </div>
 
           <div className="pt-4 border-t space-y-3">
             <Button

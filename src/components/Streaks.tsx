@@ -15,10 +15,13 @@ const yesterday = () => {
 export function useStreak() {
   const [s, setS] = useState<Streak>({ days: [], current: 0, best: 0 });
 
-  useEffect(
-    () => setS(loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 })),
-    [],
-  );
+  useEffect(() => {
+    const load = () => setS(loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 }));
+    load();
+    // Re-read after cloud sync applies remote data
+    window.addEventListener("ff.remote-update", load);
+    return () => window.removeEventListener("ff.remote-update", load);
+  }, []);
 
   const markToday = () => {
     setS((prev) => {
