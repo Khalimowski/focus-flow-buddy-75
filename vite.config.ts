@@ -6,10 +6,7 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { writeFileSync, mkdirSync, readdirSync, existsSync, copyFileSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { resolve, join } from "node:path";
 
 /**
  * A highly resilient plugin to satisfy TanStack Start's SPA prerenderer.
@@ -17,32 +14,36 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * to the actual server entry point (whether in dist/ or .output/).
  */
 function resilientServerEntry() {
-  const root = __dirname;
+  const root = process.cwd();
   const distDir = resolve(root, "dist");
   const distServerDir = resolve(distDir, "server");
   const distClientDir = resolve(distDir, "client");
   const outputServerDir = resolve(root, ".output/server");
 
-  const writeAlias = () => {
-    mkdirSync(distServerDir, { recursive: true });
+  const writeAlias = (stage: string) => {
+    console.log(`🚀 Focus Flow [${stage}]: Ensuring server entry exists...`);
+    try {
+      mkdirSync(distServerDir, { recursive: true });
 
-    // Determine where Nitro/Vite actually put the server bundle
-    let entryPath = "./index.mjs";
-    if (existsSync(join(outputServerDir, "index.mjs"))) {
-      // Relative path from dist/server/server.js to .output/server/index.mjs
-      entryPath = "../../.output/server/index.mjs";
-    } else if (existsSync(join(distServerDir, "index.mjs"))) {
-      entryPath = "./index.mjs";
-    } else {
-      try {
-        const assetsDir = join(distServerDir, "assets");
-        const files = readdirSync(assetsDir);
-        const serverFile = files.find(f => f.startsWith('server-') && f.endsWith('.js'));
-        if (serverFile) entryPath = `./assets/${serverFile}`;
-      } catch (e) {}
-    }
+      // Determine where Nitro/Vite actually put the server bundle
+      let entryPath = "./index.mjs";
+      if (existsSync(join(outputServerDir, "index.mjs"))) {
+        // Relative path from dist/server/server.js to .output/server/index.mjs
+        entryPath = "../../.output/server/index.mjs";
+      } else if (existsSync(join(distServerDir, "index.mjs"))) {
+        entryPath = "./index.mjs";
+      } else {
+        try {
+          const assetsDir = join(distServerDir, "assets");
+          const files = readdirSync(assetsDir);
+          const serverFile = files.find(f => f.startsWith('server-') && f.endsWith('.js'));
+          if (serverFile) entryPath = `./assets/${serverFile}`;
+        } catch (e) {}
+      }
 
-    const content = `
+      console.log(`🔗 Aliasing dist/server/server.js -> ${entryPath}`);
+
+      const content = `
 import * as handler from "${entryPath}";
 export * from "${entryPath}";
 
@@ -86,10 +87,13 @@ export default {
   },
 };
 `;
-    writeFileSync(resolve(distServerDir, "server.js"), content.trim());
+      writeFileSync(resolve(distServerDir, "server.js"), content.trim());
 
-    // Also ensure dist/server/package.json exists for ES module support
-    writeFileSync(resolve(distServerDir, "package.json"), JSON.stringify({ type: "module" }));
+      // Also ensure dist/server/package.json exists for ES module support
+      writeFileSync(resolve(distServerDir, "package.json"), JSON.stringify({ type: "module" }));
+    } catch (err) {
+      console.error(`❌ Failed to write alias: ${err}`);
+    }
   };
 
   const finalizePublicDir = () => {
@@ -98,6 +102,7 @@ export default {
     const index = resolve(distClientDir, "index.html");
     if (existsSync(shell) && !existsSync(index)) {
       copyFileSync(shell, index);
+      console.log(`✅ Copied _shell.html to index.html`);
     }
   };
 
@@ -107,19 +112,18 @@ export default {
 
     // 1. Create placeholder BEFORE any other plugin (like TanStack's) runs
     buildStart() {
-      mkdirSync(distServerDir, { recursive: true });
-      writeFileSync(resolve(distServerDir, "server.js"), "export default { fetch: () => {} };");
+      writeAlias("buildStart");
     },
 
     // 2. Update alias at various points during the build
-    renderStart: writeAlias,
-    writeBundle: writeAlias,
+    renderStart: () => writeAlias("renderStart"),
+    writeBundle: () => writeAlias("writeBundle"),
 
     // 3. Final organization
     closeBundle: {
       order: "post" as const,
       handler() {
-        writeAlias();
+        writeAlias("closeBundle");
         finalizePublicDir();
       }
     }
@@ -132,15 +136,15 @@ export default defineConfig({
     ssr: false,
     spa: {
       enabled: true,
-      prerender: { enabled: false } // We handle static generation via our scripts if needed
+      prerender: { enabled: false }
     },
   },
   // Ensure Nitro behaves as consistently as possible
   nitro: {
     output: {
-      dir: resolve(__dirname, "dist"),
-      serverDir: resolve(__dirname, "dist/server"),
-      publicDir: resolve(__dirname, "dist/client"),
+      dir: resolve(process.cwd(), "dist"),
+      serverDir: resolve(process.cwd(), "dist/server"),
+      publicDir: resolve(process.cwd(), "dist/client"),
     },
   },
   vite: {

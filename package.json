@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite dev",
     "prebuild": "node scripts/prebuild.js",
-    "build": "vite build && node scripts/postbuild.js",
-    "build:dev": "vite build --mode development && node -e \"import('fs').then(fs => fs.copyFileSync('dist/client/_shell.html', 'dist/client/index.html'))\"",
+    "postbuild": "node scripts/postbuild.js",
+    "build": "node scripts/prebuild.js && vite build && node scripts/postbuild.js",
+    "build:dev": "vite build --mode development && node scripts/postbuild.js",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
