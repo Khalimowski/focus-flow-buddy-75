@@ -73,6 +73,13 @@ export default defineConfig({
     // Enable SPA mode so it generates the static HTML file Capacitor needs
     spa: { enabled: true },
   },
+  // Cloudflare Pages sets CF_PAGES=1 in its build environment. Skip the nitro
+  // deploy plugin there: newer @lovable.dev/vite-tanstack-config versions
+  // enable it on every build, which retargets output to .output/ and breaks
+  // TanStack Start's prerender (it expects dist/server/server.js). We only
+  // need the static dist/client on Pages. Lovable's own build env is
+  // unaffected (CF_PAGES is absent there).
+  nitro: process.env.CF_PAGES ? false : undefined,
   vite: {
     plugins: [serverEntryAlias()],
     ssr: {
