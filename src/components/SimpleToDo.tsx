@@ -166,13 +166,13 @@ export function SimpleToDo() {
         </div>
       </div>
 
-      <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3">
+      <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
         <AnimatePresence initial={false} mode="popLayout">
           {items.length === 0 && (
             <motion.li
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2"
+              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2 2xl:col-span-3"
             >
               {t('tasks_empty')}
             </motion.li>
