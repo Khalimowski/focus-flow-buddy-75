@@ -44,11 +44,13 @@ export default {
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
-      console.error("[SSR wrapper caught]", error instanceof Error ? error.stack : error);
-      return new Response(renderErrorPage(), {
+      const msg = error instanceof Error ? `${error.stack || error.message}` : String(error);
+      console.error("[SSR wrapper caught]", msg);
+      return new Response(`SSR ERROR: ${msg}`, {
         status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
+        headers: { "content-type": "text/plain; charset=utf-8" },
       });
     }
   },
 };
+
