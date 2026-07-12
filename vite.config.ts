@@ -5,31 +5,39 @@
 //   error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
+import { resolve, join } from "node:path";
 
 // TanStack's preview-server-plugin (used during SPA prerender) imports the
 // bundled server entry as `dist/server/<entry>.js`, but the Nitro preset
-// emits `dist/server/index.mjs`. Write a tiny alias so prerender can load it.
+// emits `dist/server/index.mjs` or hashed files. On Cloudflare, Nitro
+// retargets output to .output/. Write a resilient alias so prerender can load it.
 function serverEntryAlias() {
-  return {
-    name: "focus-flow:server-entry-alias",
-    apply: "build" as const,
-    closeBundle: {
-      order: "post" as const,
-      handler() {
-        const outDir = resolve(process.cwd(), "dist/server");
-        const target = resolve(outDir, "index.mjs");
-        if (!existsSync(target)) return;
-        mkdirSync(outDir, { recursive: true });
-        // The Nitro Cloudflare adapter mutates `req.ip` on the incoming
-        // Request, but srvx's NodeRequest (used by the Vite preview server
-        // during SPA prerender) defines `.ip` as a getter — the assignment
-        // throws in Node. Wrap the request in a Proxy that lets the CF
-        // adapter attach its own properties.
-        writeFileSync(
-          resolve(outDir, "server.js"),
-          `import handler from "./index.mjs";
+  const writeAlias = () => {
+    const rootDir = process.cwd();
+    const distServerDir = resolve(rootDir, "dist/server");
+    const outputServerDir = resolve(rootDir, ".output/server");
+    mkdirSync(distServerDir, { recursive: true });
+
+    // Determine the best entry path relative to dist/server/server.js
+    let entryPath = "./index.mjs";
+
+    if (existsSync(join(outputServerDir, "index.mjs"))) {
+      entryPath = "../../.output/server/index.mjs";
+    } else if (existsSync(join(distServerDir, "index.mjs"))) {
+      entryPath = "./index.mjs";
+    } else {
+      try {
+        const assetsDir = join(distServerDir, "assets");
+        const files = readdirSync(assetsDir);
+        const serverFile = files.find(f => f.startsWith('server-') && f.endsWith('.js'));
+        if (serverFile) entryPath = `./assets/${serverFile}`;
+      } catch (e) {}
+    }
+
+    const content = `import * as handler from "${entryPath}";
+export * from "${entryPath}";
+
 const extras = new WeakMap();
 function wrapRequest(req) {
   extras.set(req, Object.create(null));
@@ -51,31 +59,52 @@ function wrapRequest(req) {
     },
   });
 }
+
+// Re-export common names to satisfy the SPA prerenderer
+export const t = handler.t || {};
+export const createServerEntry = handler.createServerEntry || (() => {});
+export const defaultStreamHandler = handler.defaultStreamHandler || {};
+export const createStartHandler = handler.createStartHandler || (() => {});
+
 export default {
   fetch(request, env, context) {
-    return handler.fetch(wrapRequest(request), env ?? {}, context ?? { waitUntil() {}, passThroughOnException() {} });
+    const target = handler.default || handler;
+    if (typeof target.fetch !== 'function') {
+       return new Response('Server entry not yet ready', { status: 503 });
+    }
+    return target.fetch(wrapRequest(request), env ?? {}, context ?? { waitUntil() {}, passThroughOnException() {} });
   },
 };
+`;
+    writeFileSync(resolve(distServerDir, "server.js"), content);
+  };
 
-`,
-        );
-
-      },
+  return {
+    name: "focus-flow:server-entry-alias",
+    apply: "build" as const,
+    // Update it during various stages to ensure it points to the right place
+    renderStart: writeAlias,
+    writeBundle: writeAlias,
+    closeBundle: {
+      order: "post" as const,
+      handler: writeAlias,
     },
   };
 }
 
 export default defineConfig({
   tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-    // Enable SPA mode so it generates the static HTML file Capacitor needs
+    ssr: false,
     spa: { enabled: true },
   },
-  // Skip the nitro deploy plugin to prevent it from retargeting output to .output/
-  // and breaking TanStack Start's prerender (which expects dist/server/server.js).
-  nitro: false,
+  // Try to force Nitro output to dist/ to keep it aligned with Capacitor and TanStack Start
+  nitro: {
+    output: {
+      dir: resolve(process.cwd(), "dist"),
+      serverDir: resolve(process.cwd(), "dist/server"),
+      publicDir: resolve(process.cwd(), "dist/client"),
+    },
+  },
   vite: {
     plugins: [serverEntryAlias()],
     ssr: {
