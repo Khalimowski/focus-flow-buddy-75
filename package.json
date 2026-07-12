@@ -83,7 +83,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^2.5.2",
+    "@lovable.dev/vite-tanstack-config": "2.7.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -99,5 +99,11 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
+  },
+  "overrides": {
+    "better-auth": "^1.6.11"
+  },
+  "resolutions": {
+    "better-auth": "^1.6.11"
   }
 }
