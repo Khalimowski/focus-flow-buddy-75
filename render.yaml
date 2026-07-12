@@ -1,0 +1,8 @@
+# Render.com blueprint: deploys the app as a free static site.
+# In Render: New -> Blueprint -> pick this repo, and it configures itself.
+services:
+  - type: web
+    runtime: static
+    name: focus-flow
+    buildCommand: npm run build
+    staticPublishPath: dist/client
