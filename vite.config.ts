@@ -53,9 +53,10 @@ function wrapRequest(req) {
 }
 export default {
   fetch(request, env, context) {
-    return handler.fetch(wrapRequest(request), env, context);
+    return handler.fetch(wrapRequest(request), env ?? {}, context ?? { waitUntil() {}, passThroughOnException() {} });
   },
 };
+
 `,
         );
 
