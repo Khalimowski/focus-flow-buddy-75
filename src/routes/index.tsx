@@ -104,7 +104,7 @@ function Home() {
   if (!mounted) return null;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-24">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-24">
       {!tutorialCompleted && <Onboarding />}
       <AICoach />
       <InAppToaster />
