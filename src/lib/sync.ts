@@ -74,10 +74,22 @@ export function getSyncUser(): SyncUser | null {
   return currentUser;
 }
 
+let syncInFlight = false;
+
 /** Pull remote changes, then push local-only keys. Safe to call repeatedly. */
 export async function fullSync(): Promise<void> {
   const client = getNeonClient();
-  if (!client || !currentUser) return;
+  if (!client || !currentUser || syncInFlight) return;
+  syncInFlight = true;
+  try {
+    await doFullSync(client);
+  } finally {
+    syncInFlight = false;
+  }
+}
+
+async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>): Promise<void> {
+  if (!currentUser) return;
   lastPullAt = Date.now();
 
   const { data, error } = await client
@@ -175,12 +187,25 @@ export async function initSync(): Promise<SyncUser | null> {
   registerSaveListener(onLocalSave);
 
   // Re-pull when the app comes back to the foreground (other device may
-  // have pushed changes), at most once per 30s.
+  // have pushed changes). Small throttle so rapid tab-switching doesn't spam.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && currentUser && Date.now() - lastPullAt > 30_000) {
+    if (document.visibilityState === "visible" && currentUser && Date.now() - lastPullAt > 5_000) {
       void fullSync();
     }
   });
+
+  // Poll while the app is open and visible, so two devices used side by side
+  // see each other's changes within ~15s without needing a refocus.
+  const PULL_INTERVAL_MS = 15_000;
+  setInterval(() => {
+    if (
+      document.visibilityState === "visible" &&
+      currentUser &&
+      Date.now() - lastPullAt >= PULL_INTERVAL_MS - 500
+    ) {
+      void fullSync();
+    }
+  }, PULL_INTERVAL_MS);
 
   currentUser = await fetchSessionUser();
   if (currentUser) await fullSync();
