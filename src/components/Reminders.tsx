@@ -187,6 +187,8 @@ export function Reminders() {
         </h3>
         <div className="flex flex-col gap-3 rounded-2xl border bg-card/50 p-4">
           <Input
+            name="nudge-label"
+            autoComplete="off"
             placeholder={t('nudge_placeholder')}
             value={label}
             onChange={(e) => setLabel(e.target.value)}

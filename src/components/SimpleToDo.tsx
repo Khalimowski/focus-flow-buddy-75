@@ -154,6 +154,8 @@ export function SimpleToDo() {
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
         <div className="flex items-center gap-3">
           <Input
+            name="todo-title"
+            autoComplete="off"
             placeholder={t('task_input_placeholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -229,6 +231,8 @@ export function SimpleToDo() {
               ) : editingId === item.id ? (
                 <div className="flex items-center gap-2 w-full">
                   <Input
+                    name="todo-edit-title"
+                    autoComplete="off"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveEdit()}

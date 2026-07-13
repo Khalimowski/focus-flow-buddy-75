@@ -401,6 +401,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm" data-tour="add-task">
         <div className="flex flex-col gap-3">
           <Input
+            name="task-title"
+            autoComplete="off"
             placeholder={t('task_input_placeholder')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -468,6 +470,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               {item.kind === 'task' && editingId === item.id ? (
                 <div className="flex flex-col gap-3 w-full p-1">
                   <Input
+                    name="task-edit-title"
+                    autoComplete="off"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveEdit()}
