@@ -4,6 +4,7 @@ import { CapacitorCalendar } from "@ebarooni/capacitor-calendar";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
+import { translations, useI18nStore } from "./i18n";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
 
@@ -365,6 +366,87 @@ export function hashId(s: string): number {
   return Math.abs(h) % 2_000_000_000;
 }
 
+// Make the device's scheduled notifications match current storage. Called
+// after cloud sync writes remote data (items created/completed on another
+// device) and at boot as a safety net. Skips calendar sync on purpose —
+// re-adding calendar events here would duplicate them on every pull.
+export async function reconcileNotifications() {
+  if (!isNative()) return;
+  try {
+    const lang = translations[useI18nStore.getState().language] || translations.en;
+    const now = Date.now();
+    const today = new Date().toISOString().slice(0, 10);
+
+    type TaskLike = { id: string; title: string; done: boolean; remindAt?: string | null };
+    type ReminderLike = {
+      id: string;
+      label: string;
+      times: string[];
+      enabled: boolean;
+      lastFired?: Record<string, string>;
+    };
+
+    const tasks = loadJSON<TaskLike[]>(STORAGE_KEYS.tasks, []);
+    const reminders = loadJSON<ReminderLike[]>(STORAGE_KEYS.reminders, []);
+
+    // One-shot task reminders that should be pending: open + in the future
+    const wantTask = new Map<number, TaskLike>();
+    for (const t of tasks) {
+      if (!t.done && t.remindAt && new Date(t.remindAt).getTime() > now) {
+        wantTask.set(hashId("task:" + t.id), t);
+      }
+    }
+
+    // Daily nudge slots that should exist at all (enabled reminders)…
+    const validNudgeIds = new Set<number>();
+    // …and the subset to (re)schedule now (skip slots already fired today —
+    // boot cleanup cancels those; the Reminders UI re-arms them next day)
+    const scheduleNudge = new Map<number, { r: ReminderLike; time: string }>();
+    for (const r of reminders) {
+      if (!r.enabled) continue;
+      r.times.forEach((time, idx) => {
+        const id = hashId(`rem:${r.id}:${idx}`);
+        validNudgeIds.add(id);
+        if (r.lastFired?.[time] !== today) scheduleNudge.set(id, { r, time });
+      });
+    }
+
+    const pending = await LocalNotifications.getPending();
+    const pendingIds = new Set<number>();
+    const stale: number[] = [];
+    for (const n of pending.notifications) {
+      pendingIds.add(n.id);
+      const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
+      // Only touch canonical ids — postponed reminders use throwaway ids and
+      // should be left to fire.
+      if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
+        if (!wantTask.has(n.id)) stale.push(n.id);
+      } else if (extra.type === "nudge") {
+        if (!validNudgeIds.has(n.id)) stale.push(n.id);
+      }
+    }
+    if (stale.length > 0) await cancelNative(stale);
+
+    let added = 0;
+    for (const [id, t] of wantTask) {
+      if (!pendingIds.has(id)) {
+        await scheduleNativeAt(id, t.title, lang.reminder_title, new Date(t.remindAt!), false, t.id);
+        added++;
+      }
+    }
+    for (const [id, { r, time }] of scheduleNudge) {
+      if (!pendingIds.has(id)) {
+        const [h, m] = time.split(":").map(Number);
+        await scheduleNativeDaily(id, r.label, lang.gentle_nudge_emoji, h, m, false, r.id);
+        added++;
+      }
+    }
+    console.log(`[Native] Reconciled notifications: +${added} scheduled, -${stale.length} cancelled`);
+  } catch (e) {
+    console.warn("[Native] reconcileNotifications failed", e);
+  }
+}
+
 // Call once at app boot
 export async function initNative() {
   if (!isNative()) return;
@@ -488,6 +570,10 @@ export async function initNative() {
   } catch (e) {
     console.warn("[Native] Widget sync setup failed", e);
   }
+
+  // Safety net: re-arm notifications from storage (covers items synced from
+  // other devices before this ran, and schedules lost to device reboots)
+  void reconcileNotifications();
 
   try {
     await StatusBar.setOverlaysWebView({ overlay: false });

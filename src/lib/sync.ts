@@ -118,6 +118,9 @@ export async function fullSync(): Promise<void> {
   if (changed) {
     console.log("[Sync] Applied remote changes");
     window.dispatchEvent(new CustomEvent(REMOTE_UPDATE_EVENT));
+    // Items created/completed on another device: align this device's
+    // scheduled notifications with the fresh data (no-op on web).
+    void import("./native").then((m) => m.reconcileNotifications());
   }
 }
 
@@ -194,8 +197,11 @@ export async function signIn(email: string, password: string): Promise<SyncUser>
   const user = await fetchSessionUser();
   if (!user) throw new Error("Sign-in failed");
   currentUser = user;
-  notifyAuthChanged();
+  // Pull remote data BEFORE announcing the sign-in: the app mounts on the
+  // auth-changed event, and mounting mid-pull lets components save their
+  // (still empty) state over the freshly signed-in user's cloud data.
   await fullSync();
+  notifyAuthChanged();
   return user;
 }
 
@@ -212,8 +218,8 @@ export async function signUp(email: string, password: string): Promise<SyncUser>
     return signIn(email, password);
   }
   currentUser = user;
-  notifyAuthChanged();
   await fullSync();
+  notifyAuthChanged();
   return user;
 }
 
