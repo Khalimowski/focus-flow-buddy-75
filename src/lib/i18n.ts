@@ -10,11 +10,14 @@ interface I18nState {
   calendarSync: boolean;
   nudgeCalendarSync: boolean;
   tutorialCompleted: boolean;
+  // User chose "continue as guest" on the auth gate — local-only, no sync.
+  guestMode: boolean;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
   setNudgeCalendarSync: (enabled: boolean) => void;
   setTutorialCompleted: (completed: boolean) => void;
+  setGuestMode: (guest: boolean) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -25,11 +28,13 @@ export const useI18nStore = create<I18nState>()(
       calendarSync: false,
       nudgeCalendarSync: false,
       tutorialCompleted: false,
+      guestMode: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
       setNudgeCalendarSync: (nudgeCalendarSync) => set({ nudgeCalendarSync }),
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
+      setGuestMode: (guestMode) => set({ guestMode }),
     }),
     {
       name: 'focus-flow-settings',
@@ -183,6 +188,26 @@ export const translations = {
     sync_now: "Sync Now",
     auth_signin_failed: "Couldn't sign in. Check your email and password.",
     auth_signup_failed: "Couldn't create the account. Try a different email or a longer password (min. 8 characters).",
+    auth_gate_subtitle: "Sign in to keep your tasks synced on every device.",
+    auth_no_account: "No account? Create one",
+    auth_have_account: "Already have an account? Sign in",
+    forgot_password: "Forgot password?",
+    reset_password: "Reset Password",
+    send_reset_code: "Email Me a Reset Code",
+    reset_code: "6-digit code from the email",
+    reset_code_sent: "We emailed you a 6-digit code. Enter it below with your new password.",
+    reset_email_failed: "Couldn't send the reset email. Check the address and try again.",
+    reset_failed: "Couldn't reset the password. Check the code and try again.",
+    new_password: "New password",
+    current_password: "Current password",
+    change_password: "Change Password",
+    password_changed: "Password updated.",
+    password_change_failed: "Couldn't change the password. Check your current password (new one needs min. 8 characters).",
+    back_to_signin: "Back to sign in",
+    continue_guest: "Continue as guest",
+    guest_note: "Without an account, your tasks stay on this device only and won't sync with the web or mobile app.",
+    guest_signin_prompt: "You're using Focus Flow as a guest. Sign in to sync your tasks across devices.",
+    sign_in_or_create: "Sign In / Create Account",
   },
   pl: {
     app_name: "Focus Flow",
@@ -321,6 +346,26 @@ export const translations = {
     sync_now: "Synchronizuj teraz",
     auth_signin_failed: "Nie udało się zalogować. Sprawdź e-mail i hasło.",
     auth_signup_failed: "Nie udało się utworzyć konta. Spróbuj innego e-maila lub dłuższego hasła (min. 8 znaków).",
+    auth_gate_subtitle: "Zaloguj się, aby synchronizować zadania na wszystkich urządzeniach.",
+    auth_no_account: "Nie masz konta? Utwórz je",
+    auth_have_account: "Masz już konto? Zaloguj się",
+    forgot_password: "Nie pamiętasz hasła?",
+    reset_password: "Zresetuj hasło",
+    send_reset_code: "Wyślij kod na e-mail",
+    reset_code: "6-cyfrowy kod z e-maila",
+    reset_code_sent: "Wysłaliśmy Ci 6-cyfrowy kod. Wpisz go poniżej wraz z nowym hasłem.",
+    reset_email_failed: "Nie udało się wysłać e-maila. Sprawdź adres i spróbuj ponownie.",
+    reset_failed: "Nie udało się zresetować hasła. Sprawdź kod i spróbuj ponownie.",
+    new_password: "Nowe hasło",
+    current_password: "Obecne hasło",
+    change_password: "Zmień hasło",
+    password_changed: "Hasło zostało zmienione.",
+    password_change_failed: "Nie udało się zmienić hasła. Sprawdź obecne hasło (nowe musi mieć min. 8 znaków).",
+    back_to_signin: "Wróć do logowania",
+    continue_guest: "Kontynuuj jako gość",
+    guest_note: "Bez konta Twoje zadania pozostaną tylko na tym urządzeniu i nie będą synchronizowane z wersją webową ani mobilną.",
+    guest_signin_prompt: "Korzystasz z Focus Flow jako gość. Zaloguj się, aby synchronizować zadania między urządzeniami.",
+    sign_in_or_create: "Zaloguj się / Utwórz konto",
   }
 };
 

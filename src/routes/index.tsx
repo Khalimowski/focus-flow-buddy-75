@@ -12,6 +12,7 @@ import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
 import { Onboarding } from "@/components/Onboarding";
+import { AuthGate } from "@/components/AuthGate";
 import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { isNative, updateStatusBar } from "@/lib/native";
@@ -43,9 +44,11 @@ function Home() {
   // Bumped when cloud sync writes remote data into localStorage, so the
   // active tab remounts and re-reads storage.
   const [syncEpoch, setSyncEpoch] = useState(0);
+  // null = session check still in flight; afterwards true/false.
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
-  const { tutorialCompleted, theme } = useI18nStore();
+  const { tutorialCompleted, theme, guestMode } = useI18nStore();
 
   useEffect(() => {
     // Sync theme on mount to prevent flashing
@@ -62,7 +65,10 @@ function Home() {
       m.initNative();
       m.updateStatusBar(theme);
     });
-    void import("@/lib/sync").then((m) => m.initSync());
+    void import("@/lib/sync").then(async (m) => {
+      const user = await m.initSync();
+      setSignedIn(!!user);
+    });
 
     // On Main Screen, back button should minimize instead of exit
     if (isNative()) {
@@ -92,8 +98,15 @@ function Home() {
 
   useEffect(() => {
     const onRemoteUpdate = () => setSyncEpoch((e) => e + 1);
+    const onAuthChanged = () => {
+      void import("@/lib/sync").then((m) => setSignedIn(!!m.getSyncUser()));
+    };
     window.addEventListener("ff.remote-update", onRemoteUpdate);
-    return () => window.removeEventListener("ff.remote-update", onRemoteUpdate);
+    window.addEventListener("ff.auth-changed", onAuthChanged);
+    return () => {
+      window.removeEventListener("ff.remote-update", onRemoteUpdate);
+      window.removeEventListener("ff.auth-changed", onAuthChanged);
+    };
   }, []);
 
   const askPerm = async () => {
@@ -102,6 +115,11 @@ function Home() {
   };
 
   if (!mounted) return null;
+
+  // Auth-first: until the session check finishes, render nothing; then show
+  // the login page unless signed in or explicitly continuing as guest.
+  if (signedIn === null) return null;
+  if (!signedIn && !guestMode) return <AuthGate />;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-24 xl:max-w-6xl 2xl:max-w-[1600px]">

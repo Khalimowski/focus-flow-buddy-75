@@ -1,38 +1,36 @@
 import { useEffect, useState } from "react";
-import { CloudUpload, LogOut, RefreshCw, UserRound } from "lucide-react";
+import { CloudUpload, KeyRound, LogIn, LogOut, RefreshCw, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTranslation } from "@/lib/i18n";
-import { fullSync, getSyncUser, signIn, signOut, signUp, type SyncUser } from "@/lib/sync";
+import { useI18nStore, useTranslation } from "@/lib/i18n";
+import {
+  AUTH_CHANGED_EVENT,
+  changePassword,
+  fullSync,
+  getSyncUser,
+  signOut,
+  type SyncUser,
+} from "@/lib/sync";
 
 export function AccountSync() {
   const { t } = useTranslation();
+  const { setGuestMode } = useI18nStore();
   const [user, setUser] = useState<SyncUser | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState<"in" | "up" | "sync" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"sync" | "password" | null>(null);
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     setUser(getSyncUser());
+    const onAuthChanged = () => setUser(getSyncUser());
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
   }, []);
-
-  const submit = async (mode: "in" | "up") => {
-    if (!email.trim() || !password) return;
-    setBusy(mode);
-    setError(null);
-    try {
-      const u = mode === "in" ? await signIn(email.trim(), password) : await signUp(email.trim(), password);
-      setUser(u);
-      setPassword("");
-    } catch (e) {
-      console.error("[AccountSync] Auth failed:", e);
-      setError(mode === "in" ? t("auth_signin_failed") : t("auth_signup_failed"));
-    } finally {
-      setBusy(null);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -43,6 +41,28 @@ export function AccountSync() {
     setBusy("sync");
     try {
       await fullSync();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPw || newPw.length < 8) {
+      setPwError(t("password_change_failed"));
+      return;
+    }
+    setBusy("password");
+    setPwError(null);
+    setPwSuccess(false);
+    try {
+      await changePassword(currentPw, newPw);
+      setPwSuccess(true);
+      setCurrentPw("");
+      setNewPw("");
+      setShowPasswordForm(false);
+    } catch (e) {
+      console.error("[AccountSync] Change password failed:", e);
+      setPwError(t("password_change_failed"));
     } finally {
       setBusy(null);
     }
@@ -62,8 +82,11 @@ export function AccountSync() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <UserRound className="size-3.5" />
-            <span className="truncate">{t("signed_in_as")} <span className="font-medium text-foreground">{user.email}</span></span>
+            <span className="truncate">
+              {t("signed_in_as")} <span className="font-medium text-foreground">{user.email}</span>
+            </span>
           </div>
+
           <div className="flex gap-2">
             <Button size="sm" variant="secondary" className="flex-1" onClick={handleSyncNow} disabled={busy !== null}>
               <RefreshCw className={`mr-1.5 size-3.5 ${busy === "sync" ? "animate-spin" : ""}`} />
@@ -74,43 +97,65 @@ export function AccountSync() {
               {t("sign_out")}
             </Button>
           </div>
+
+          {showPasswordForm ? (
+            <div className="space-y-2 rounded-xl border bg-card/40 p-3">
+              <Input
+                type="password"
+                autoComplete="current-password"
+                placeholder={t("current_password")}
+                value={currentPw}
+                onChange={(e) => setCurrentPw(e.target.value)}
+                disabled={busy !== null}
+              />
+              <Input
+                type="password"
+                autoComplete="new-password"
+                placeholder={t("new_password")}
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                disabled={busy !== null}
+              />
+              {pwError && <p className="text-xs text-destructive">{pwError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => void handleChangePassword()}
+                  disabled={busy !== null || !currentPw || newPw.length < 8}
+                >
+                  {busy === "password" ? "…" : t("save")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => { setShowPasswordForm(false); setPwError(null); }}
+                  disabled={busy !== null}
+                >
+                  {t("cancel")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="w-full justify-start text-muted-foreground"
+              onClick={() => { setShowPasswordForm(true); setPwSuccess(false); }}
+              disabled={busy !== null}
+            >
+              <KeyRound className="mr-1.5 size-3.5" /> {t("change_password")}
+            </Button>
+          )}
+          {pwSuccess && <p className="text-xs text-mint">{t("password_changed")}</p>}
         </div>
       ) : (
         <div className="space-y-2">
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder={t("email")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Input
-            type="password"
-            autoComplete="current-password"
-            placeholder={t("password")}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={() => void submit("in")}
-              disabled={busy !== null || !email.trim() || !password}
-            >
-              {busy === "in" ? "…" : t("sign_in")}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1"
-              onClick={() => void submit("up")}
-              disabled={busy !== null || !email.trim() || !password}
-            >
-              {busy === "up" ? "…" : t("sign_up")}
-            </Button>
-          </div>
+          <p className="text-xs text-muted-foreground">{t("guest_signin_prompt")}</p>
+          <Button size="sm" className="w-full" onClick={() => setGuestMode(false)}>
+            <LogIn className="mr-1.5 size-3.5" /> {t("sign_in_or_create")}
+          </Button>
         </div>
       )}
     </div>

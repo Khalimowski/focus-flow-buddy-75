@@ -25,6 +25,14 @@ const META_KEY = "ff.sync.meta.v1";
 // remounts the affected views so components re-read storage.
 export const REMOTE_UPDATE_EVENT = "ff.remote-update";
 
+// Fired whenever the signed-in user changes (sign in/up/out), so the auth
+// gate and settings can re-evaluate.
+export const AUTH_CHANGED_EVENT = "ff.auth-changed";
+
+function notifyAuthChanged() {
+  window.dispatchEvent(new CustomEvent(AUTH_CHANGED_EVENT));
+}
+
 export type SyncUser = { id: string; email: string };
 
 type UserDataRow = { key: string; value: unknown; updated_at: string };
@@ -156,9 +164,9 @@ function onLocalSave(key: string) {
   }, 800);
 }
 
-/** Call once at app startup (browser only). */
-export async function initSync(): Promise<void> {
-  if (initialized || typeof window === "undefined") return;
+/** Call once at app startup (browser only). Resolves with the session user, if any. */
+export async function initSync(): Promise<SyncUser | null> {
+  if (initialized || typeof window === "undefined") return currentUser;
   initialized = true;
 
   registerSaveListener(onLocalSave);
@@ -173,6 +181,7 @@ export async function initSync(): Promise<void> {
 
   currentUser = await fetchSessionUser();
   if (currentUser) await fullSync();
+  return currentUser;
 }
 
 export async function signIn(email: string, password: string): Promise<SyncUser> {
@@ -185,6 +194,7 @@ export async function signIn(email: string, password: string): Promise<SyncUser>
   const user = await fetchSessionUser();
   if (!user) throw new Error("Sign-in failed");
   currentUser = user;
+  notifyAuthChanged();
   await fullSync();
   return user;
 }
@@ -202,8 +212,48 @@ export async function signUp(email: string, password: string): Promise<SyncUser>
     return signIn(email, password);
   }
   currentUser = user;
+  notifyAuthChanged();
   await fullSync();
   return user;
+}
+
+/** Email a 6-digit password-reset code to the given address. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    forgetPassword: { emailOtp: (d: { email: string }) => Promise<{ error?: { message?: string } | null }> };
+  };
+  const res = await auth.forgetPassword.emailOtp({ email });
+  if (res?.error) throw new Error(res.error.message || "Could not send reset email");
+}
+
+/** Complete a password reset with the emailed code. */
+export async function resetPassword(email: string, otp: string, password: string): Promise<void> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    emailOtp: {
+      resetPassword: (d: { email: string; otp: string; password: string }) => Promise<{ error?: { message?: string } | null }>;
+    };
+  };
+  const res = await auth.emailOtp.resetPassword({ email, otp, password });
+  if (res?.error) throw new Error(res.error.message || "Password reset failed");
+}
+
+/** Change the signed-in user's password. */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    changePassword: (d: {
+      currentPassword: string;
+      newPassword: string;
+      revokeOtherSessions?: boolean;
+    }) => Promise<{ error?: { message?: string } | null }>;
+  };
+  const res = await auth.changePassword({ currentPassword, newPassword });
+  if (res?.error) throw new Error(res.error.message || "Password change failed");
 }
 
 export async function signOut(): Promise<void> {
@@ -219,4 +269,5 @@ export async function signOut(): Promise<void> {
   // Local data stays on the device; forget sync bookkeeping so a different
   // account doesn't inherit it.
   window.localStorage.removeItem(META_KEY);
+  notifyAuthChanged();
 }
