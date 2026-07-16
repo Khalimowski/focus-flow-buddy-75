@@ -287,6 +287,49 @@ export async function changePassword(currentPassword: string, newPassword: strin
   if (res?.error) throw new Error(res.error.message || "Password change failed");
 }
 
+/**
+ * Permanently delete a user's cloud data and account (self-service, used by
+ * the public /delete-account page required by Google Play). Signs in with the
+ * given credentials, removes every user_data row (while the session can still
+ * pass RLS), then deletes the auth user itself. Returns whether the auth
+ * account could be deleted — the hosted auth config may not expose
+ * deleteUser, in which case the data is gone but the login remains and the
+ * page shows an email fallback.
+ */
+export async function deleteAccount(email: string, password: string): Promise<{ accountDeleted: boolean }> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+
+  const res = (await client.auth.signIn.email({ email, password })) as {
+    error?: { message?: string } | null;
+  };
+  if (res?.error) throw new Error(res.error.message || "Sign-in failed");
+
+  const del = await client.from("user_data").delete().neq("key", "");
+  if (del.error) throw new Error(del.error.message || "Data deletion failed");
+
+  let accountDeleted = false;
+  try {
+    const auth = client.auth as unknown as {
+      deleteUser: (d: { password: string }) => Promise<{ error?: { message?: string } | null }>;
+    };
+    const delUser = await auth.deleteUser({ password });
+    accountDeleted = !delUser?.error;
+    if (delUser?.error) console.warn("[Sync] deleteUser refused:", delUser.error.message);
+  } catch (e) {
+    console.warn("[Sync] deleteUser not available:", e);
+  }
+
+  try {
+    await client.auth.signOut(); // session may already be revoked by deleteUser
+  } catch { /* ignore */ }
+  currentUser = null;
+  dirty.clear();
+  window.localStorage.removeItem(META_KEY);
+  notifyAuthChanged();
+  return { accountDeleted };
+}
+
 export async function signOut(): Promise<void> {
   const client = getNeonClient();
   if (!client) return;
