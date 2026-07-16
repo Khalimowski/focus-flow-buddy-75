@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "app.lovable.focusflow",
+  appId: "com.khalimowski.focusflow",
   appName: "Focus Flow",
   webDir: "dist/client",
   bundledWebRuntime: false,

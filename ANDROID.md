@@ -52,7 +52,9 @@ linking to `url`. To ship a release:
 
 ## Notes
 
-- App id: `app.lovable.focusflow` (change in `capacitor.config.ts` before first build).
+- App id: `com.khalimowski.focusflow` (Play Store package name; set in
+  `capacitor.config.ts` and as `applicationId` in `android/app/build.gradle` —
+  the Java `namespace` stays `app.lovable.focusflow` on purpose).
 - Daily reminders use `repeats: true` so they keep firing without the app open.
 - Task reminders are scheduled as one-shot alarms at the chosen time.
 - On Android 13+, the app requests `POST_NOTIFICATIONS` on first launch — tap **Allow**.

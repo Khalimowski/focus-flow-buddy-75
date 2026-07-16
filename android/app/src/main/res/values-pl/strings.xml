@@ -2,8 +2,8 @@
 <resources>
     <string name="app_name">Focus Flow</string>
     <string name="title_activity_main">Focus Flow</string>
-    <string name="package_name">app.lovable.focusflow</string>
-    <string name="custom_url_scheme">app.lovable.focusflow</string>
+    <string name="package_name">com.khalimowski.focusflow</string>
+    <string name="custom_url_scheme">com.khalimowski.focusflow</string>
 
     <!-- Notification Channel Strings -->
     <string name="nudge_channel_name">Przypominajki</string>

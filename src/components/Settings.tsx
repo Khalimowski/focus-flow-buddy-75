@@ -307,7 +307,7 @@ export function Settings() {
         </div>
 
         <div className="absolute bottom-8 left-6 right-6 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.0.0
+          {t('version')} 1.1
         </div>
       </SheetContent>
     </Sheet>

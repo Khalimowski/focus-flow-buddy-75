@@ -5,14 +5,17 @@ plugins {
 }
 
 android {
+    // namespace (Java package) intentionally differs from applicationId —
+    // Play requires com.khalimowski.focusflow, but renaming the Java
+    // packages isn't necessary and would churn every native file.
     namespace = "app.lovable.focusflow"
     compileSdk = libs.versions.compileSdk.get().toInteger()
     defaultConfig {
-        applicationId "app.lovable.focusflow"
+        applicationId "com.khalimowski.focusflow"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
         // Polish paused — ship English resources only (drops values-pl at
         // build time). Remove this line to re-enable.
         resConfigs "en"
