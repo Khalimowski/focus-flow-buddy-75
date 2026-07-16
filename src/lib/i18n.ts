@@ -3,6 +3,9 @@ import { persist } from 'zustand/middleware';
 
 export type Language = 'en' | 'pl';
 export type Theme = 'light' | 'dark';
+// Notification vibration style — each maps to its own Android notification
+// channel (channels are immutable, so switching = using a different channel).
+export type VibrationType = 'long' | 'short' | 'double' | 'off';
 
 interface I18nState {
   language: Language;
@@ -12,12 +15,14 @@ interface I18nState {
   tutorialCompleted: boolean;
   // User chose "continue as guest" on the auth gate — local-only, no sync.
   guestMode: boolean;
+  vibrationType: VibrationType;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
   setNudgeCalendarSync: (enabled: boolean) => void;
   setTutorialCompleted: (completed: boolean) => void;
   setGuestMode: (guest: boolean) => void;
+  setVibrationType: (type: VibrationType) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -29,12 +34,14 @@ export const useI18nStore = create<I18nState>()(
       nudgeCalendarSync: false,
       tutorialCompleted: false,
       guestMode: false,
+      vibrationType: 'long',
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
       setNudgeCalendarSync: (nudgeCalendarSync) => set({ nudgeCalendarSync }),
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
       setGuestMode: (guestMode) => set({ guestMode }),
+      setVibrationType: (vibrationType) => set({ vibrationType }),
     }),
     {
       name: 'focus-flow-settings',
@@ -208,6 +215,11 @@ export const translations = {
     guest_note: "Without an account, your tasks stay on this device only and won't sync with the web or mobile app.",
     guest_signin_prompt: "You're using Focus Flow as a guest. Sign in to sync your tasks across devices.",
     sign_in_or_create: "Sign In / Create Account",
+    vibration: "Notification Vibration",
+    vibration_long: "Long (default)",
+    vibration_short: "Short",
+    vibration_double: "Double pulse",
+    vibration_off: "Off",
   },
   pl: {
     app_name: "Focus Flow",
@@ -366,6 +378,11 @@ export const translations = {
     guest_note: "Bez konta Twoje zadania pozostaną tylko na tym urządzeniu i nie będą synchronizowane z wersją webową ani mobilną.",
     guest_signin_prompt: "Korzystasz z Focus Flow jako gość. Zaloguj się, aby synchronizować zadania między urządzeniami.",
     sign_in_or_create: "Zaloguj się / Utwórz konto",
+    vibration: "Wibracje powiadomień",
+    vibration_long: "Długie (domyślne)",
+    vibration_short: "Krótkie",
+    vibration_double: "Podwójne",
+    vibration_off: "Wyłączone",
   }
 };
 

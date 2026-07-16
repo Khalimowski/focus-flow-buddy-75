@@ -8,6 +8,9 @@
     <!-- Notification Channel Strings -->
     <string name="nudge_channel_name">Nudge Notifications</string>
     <string name="nudge_channel_description">Channel for your calm nudges and reminders</string>
+    <string name="channel_vib_short">Nudge Notifications (short vibration)</string>
+    <string name="channel_vib_double">Nudge Notifications (double vibration)</string>
+    <string name="channel_vib_off">Nudge Notifications (no vibration)</string>
 
     <!-- Home-screen Widget Strings -->
     <string name="widget_name">Tasks</string>

@@ -4,7 +4,7 @@ import { CapacitorCalendar } from "@ebarooni/capacitor-calendar";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
-import { translations, useI18nStore } from "./i18n";
+import { translations, useI18nStore, type VibrationType } from "./i18n";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
 
@@ -80,21 +80,65 @@ export async function ensureCalendarPermission(): Promise<boolean> {
   }
 }
 
+// One channel per vibration style — Android channels are immutable after
+// creation, so the vibration setting works by scheduling on a different
+// channel id. Patterns live in MainActivity.java (createNotificationChannel);
+// keep both places in step when adding a style.
+const VIBRATION_CHANNELS: Record<VibrationType, string> = {
+  long: "boink_channel_v8",
+  short: "boink_channel_v8_short",
+  double: "boink_channel_v8_double",
+  off: "boink_channel_v8_novib",
+};
+
+function currentChannelId(): string {
+  const type = useI18nStore.getState().vibrationType;
+  return VIBRATION_CHANNELS[type] ?? VIBRATION_CHANNELS.long;
+}
+
 async function ensureChannel() {
   if (!isNative() || channelEnsured) return;
   try {
-    await LocalNotifications.createChannel({
-      id: "boink_channel_v8",
-      name: "Nudge Notifications",
-      description: "Channel for your calm nudges and reminders",
-      importance: 5,
-      visibility: 1,
-      sound: "boink",
-      vibration: true,
-    });
+    // Safety net only — MainActivity creates these first (onResume runs
+    // before the WebView JS) with the real vibration patterns, which
+    // Capacitor's createChannel can't express.
+    for (const [type, id] of Object.entries(VIBRATION_CHANNELS) as [VibrationType, string][]) {
+      await LocalNotifications.createChannel({
+        id,
+        name: "Nudge Notifications",
+        description: "Channel for your calm nudges and reminders",
+        importance: 5,
+        visibility: 1,
+        sound: "boink",
+        vibration: type !== "off",
+      });
+    }
     channelEnsured = true;
   } catch (e) {
     console.error("[Notif] Channel creation failed", e);
+  }
+}
+
+// Re-issue pending notifications so they pick up the channel matching the
+// current vibration setting. Cancels canonical task/nudge ids only —
+// postponed notifications use throwaway ids and are left to fire as-is.
+export async function applyVibrationSetting() {
+  if (!isNative()) return;
+  try {
+    const pending = await LocalNotifications.getPending();
+    const canonical: number[] = [];
+    for (const n of pending.notifications) {
+      const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
+      if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
+        canonical.push(n.id);
+      } else if (extra.type === "nudge") {
+        canonical.push(n.id);
+      }
+    }
+    if (canonical.length > 0) await cancelNative(canonical);
+    await reconcileNotifications();
+  } catch (e) {
+    console.warn("[Native] applyVibrationSetting failed", e);
   }
 }
 
@@ -112,7 +156,7 @@ export async function nativeNotify(title: string, body?: string) {
           title,
           body: body ?? "",
           schedule: { at: new Date(Date.now() + 1000), allowWhileIdle: true },
-          channelId: "boink_channel_v8",
+          channelId: currentChannelId(),
           smallIcon: "ic_stat_icon",
           sound: "boink",
           actionTypeId: "TASK_ACTIONS",
@@ -139,7 +183,7 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
           title,
           body,
           schedule: { at, allowWhileIdle: true },
-          channelId: "boink_channel_v8",
+          channelId: currentChannelId(),
           smallIcon: "ic_stat_icon",
           sound: "boink",
           actionTypeId: "TASK_ACTIONS",
@@ -172,7 +216,7 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
           title,
           body,
           schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
-          channelId: "boink_channel_v8",
+          channelId: currentChannelId(),
           smallIcon: "ic_stat_icon",
           sound: "boink",
           actionTypeId: "NUDGE_ACTIONS",

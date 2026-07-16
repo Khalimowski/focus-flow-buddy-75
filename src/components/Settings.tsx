@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -11,9 +18,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { useI18nStore, useTranslation, type VibrationType } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
-import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar } from "@/lib/native";
+import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar, applyVibrationSetting } from "@/lib/native";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 import { AccountSync } from "@/components/AccountSync";
@@ -24,6 +31,7 @@ export function Settings() {
     theme, setTheme,
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync,
+    vibrationType, setVibrationType,
     setTutorialCompleted
   } = useI18nStore();
   const { t } = useTranslation();
@@ -71,6 +79,12 @@ export function Settings() {
 
   const toggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  const handleVibrationChange = (type: VibrationType) => {
+    setVibrationType(type);
+    // Move already-scheduled notifications onto the matching channel (no-op on web)
+    void applyVibrationSetting();
   };
 
   const handleCalendarSyncChange = async (enabled: boolean) => {
@@ -210,6 +224,29 @@ export function Settings() {
               checked={nudgeCalendarSync}
               onCheckedChange={handleNudgeCalendarSyncChange}
             />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Vibrate className="size-4" />
+              <Label className="text-sm font-medium">
+                {t('vibration')}
+              </Label>
+            </div>
+            <Select
+              value={vibrationType}
+              onValueChange={(val) => handleVibrationChange(val as VibrationType)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="long">{t('vibration_long')}</SelectItem>
+                <SelectItem value="short">{t('vibration_short')}</SelectItem>
+                <SelectItem value="double">{t('vibration_double')}</SelectItem>
+                <SelectItem value="off">{t('vibration_off')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Language picker disabled for now (Polish paused) — restore this

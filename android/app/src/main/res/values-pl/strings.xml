@@ -8,6 +8,9 @@
     <!-- Notification Channel Strings -->
     <string name="nudge_channel_name">Przypominajki</string>
     <string name="nudge_channel_description">Kanał dla Twoich spokojnych impulsów do działania</string>
+    <string name="channel_vib_short">Przypominajki (krótkie wibracje)</string>
+    <string name="channel_vib_double">Przypominajki (podwójne wibracje)</string>
+    <string name="channel_vib_off">Przypominajki (bez wibracji)</string>
 
     <!-- Home-screen Widget Strings -->
     <string name="widget_name">Zadania</string>

@@ -40,27 +40,41 @@ public class MainActivity extends BridgeActivity {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            String channelId = "boink_channel_v8";
-            CharSequence name = getString(R.string.nudge_channel_name);
-            String description = getString(R.string.nudge_channel_description);
-            int importance = NotificationManager.IMPORTANCE_HIGH;
-
             NotificationManager notificationManager = getSystemService(NotificationManager.class);
             if (notificationManager == null) return;
 
-            NotificationChannel channel = new NotificationChannel(channelId, name, importance);
-            channel.setDescription(description);
-            channel.enableVibration(true);
-            channel.setVibrationPattern(new long[]{0, 2000});
-
-            Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/raw/boink");
-            AudioAttributes audioAttributes = new AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                    .build();
-            channel.setSound(soundUri, audioAttributes);
-
-            notificationManager.createNotificationChannel(channel);
+            // One channel per vibration style — channels are immutable after
+            // creation, so the in-app vibration setting switches between these
+            // ids at scheduling time (see VIBRATION_CHANNELS in src/lib/native.ts).
+            createChannel(notificationManager, "boink_channel_v8",
+                    getString(R.string.nudge_channel_name), new long[]{0, 2000});
+            createChannel(notificationManager, "boink_channel_v8_short",
+                    getString(R.string.channel_vib_short), new long[]{0, 300});
+            createChannel(notificationManager, "boink_channel_v8_double",
+                    getString(R.string.channel_vib_double), new long[]{0, 250, 150, 250});
+            createChannel(notificationManager, "boink_channel_v8_novib",
+                    getString(R.string.channel_vib_off), null);
         }
+    }
+
+    private void createChannel(NotificationManager notificationManager, String channelId,
+                               CharSequence name, long[] vibrationPattern) {
+        NotificationChannel channel = new NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH);
+        channel.setDescription(getString(R.string.nudge_channel_description));
+        if (vibrationPattern != null) {
+            channel.enableVibration(true);
+            channel.setVibrationPattern(vibrationPattern);
+        } else {
+            channel.enableVibration(false);
+        }
+
+        Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/raw/boink");
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .build();
+        channel.setSound(soundUri, audioAttributes);
+
+        notificationManager.createNotificationChannel(channel);
     }
 }
