@@ -56,8 +56,7 @@ function DeleteAccountPage() {
   };
 
   const canSubmit = confirmed && email.trim().length > 3 && password.length > 0;
-  const mailto =
-    "mailto:khalim163@gmail.com?subject=Delete%20my%20Focus%20Flow%20account";
+  const mailto = "mailto:khalim163@gmail.com?subject=Delete%20my%20Focus%20Flow%20account";
 
   return (
     <div className="min-h-screen bg-background px-4 py-10 text-foreground">
@@ -72,16 +71,16 @@ function DeleteAccountPage() {
 
         <div className="space-y-4 text-sm leading-relaxed">
           <p>
-            Deleting your account permanently removes your login (e-mail address and password)
-            and all data synced to our servers: tasks, to-do items, nudges and streak history.
-            This happens immediately and cannot be undone. Data stored only on your phone is
-            removed by uninstalling the app.
+            Deleting your account permanently removes your login (e-mail address and password) and
+            all data synced to our servers: tasks, to-do items, nudges and streak history. This
+            happens immediately and cannot be undone. Data stored only on your phone is removed by
+            uninstalling the app.
           </p>
           <p className="text-muted-foreground">
             Usunięcie konta trwale kasuje Twój login (adres e-mail i hasło) oraz wszystkie dane
             zsynchronizowane z naszymi serwerami: zadania, listę do zrobienia, przypominajki i
-            historię serii. Operacja jest natychmiastowa i nieodwracalna. Dane zapisane wyłącznie
-            w telefonie usuniesz, odinstalowując aplikację.
+            historię serii. Operacja jest natychmiastowa i nieodwracalna. Dane zapisane wyłącznie w
+            telefonie usuniesz, odinstalowując aplikację.
           </p>
         </div>
 
@@ -110,9 +109,12 @@ function DeleteAccountPage() {
                 onCheckedChange={(v) => setConfirmed(v === true)}
                 disabled={status === "busy"}
               />
-              <Label htmlFor="confirm-delete" className="text-xs font-normal leading-snug text-muted-foreground">
-                I understand this permanently deletes my account and data. / Rozumiem, że moje
-                konto i dane zostaną trwale usunięte.
+              <Label
+                htmlFor="confirm-delete"
+                className="text-xs font-normal leading-snug text-muted-foreground"
+              >
+                I understand this permanently deletes my account and data. / Rozumiem, że moje konto
+                i dane zostaną trwale usunięte.
               </Label>
             </div>
 
@@ -133,7 +135,9 @@ function DeleteAccountPage() {
         {status === "done" && (
           <div className="mt-8 rounded-2xl border bg-card/50 p-5 text-sm leading-relaxed backdrop-blur">
             <p className="font-medium">Your account and synced data have been deleted.</p>
-            <p className="mt-1 text-muted-foreground">Twoje konto i zsynchronizowane dane zostały usunięte.</p>
+            <p className="mt-1 text-muted-foreground">
+              Twoje konto i zsynchronizowane dane zostały usunięte.
+            </p>
           </div>
         )}
 
@@ -160,8 +164,8 @@ function DeleteAccountPage() {
             and we&apos;ll process it within 30 days.
           </p>
           <p className="mt-1">
-            Nie możesz się zalogować lub wolisz e-mail? Wyślij prośbę o usunięcie konta z adresu,
-            na który je założono, na{" "}
+            Nie możesz się zalogować lub wolisz e-mail? Wyślij prośbę o usunięcie konta z adresu, na
+            który je założono, na{" "}
             <a className="underline underline-offset-2" href={mailto}>
               khalim163@gmail.com
             </a>{" "}
