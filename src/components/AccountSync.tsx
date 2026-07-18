@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CloudUpload, KeyRound, LogIn, LogOut, RefreshCw, UserRound } from "lucide-react";
+import { CloudUpload, KeyRound, LogIn, LogOut, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,23 +7,13 @@ import { useI18nStore, useTranslation } from "@/lib/i18n";
 import {
   AUTH_CHANGED_EVENT,
   changePassword,
-  fullSync,
   getSyncUser,
   signOut,
   type SyncUser,
 } from "@/lib/sync";
 
-export function AccountSync() {
-  const { t } = useTranslation();
-  const { setGuestMode } = useI18nStore();
+function useSyncUser() {
   const [user, setUser] = useState<SyncUser | null>(null);
-  const [busy, setBusy] = useState<"sync" | "password" | null>(null);
-
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     setUser(getSyncUser());
@@ -32,18 +22,40 @@ export function AccountSync() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
   }, []);
 
+  return [user, setUser] as const;
+}
+
+export function SignedInAs() {
+  const { t } = useTranslation();
+  const [user] = useSyncUser();
+
+  if (!user) return null;
+
+  return (
+    <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+      <UserRound className="size-3.5" />
+      <span className="truncate">
+        {t("signed_in_as")} <span className="font-medium text-foreground">{user.email}</span>
+      </span>
+    </div>
+  );
+}
+
+export function AccountSync() {
+  const { t } = useTranslation();
+  const { setGuestMode } = useI18nStore();
+  const [user, setUser] = useSyncUser();
+  const [busy, setBusy] = useState<"password" | null>(null);
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
-  };
-
-  const handleSyncNow = async () => {
-    setBusy("sync");
-    try {
-      await fullSync();
-    } finally {
-      setBusy(null);
-    }
   };
 
   const handleChangePassword = async () => {
@@ -80,23 +92,10 @@ export function AccountSync() {
 
       {user ? (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <UserRound className="size-3.5" />
-            <span className="truncate">
-              {t("signed_in_as")} <span className="font-medium text-foreground">{user.email}</span>
-            </span>
-          </div>
-
-          <div className="flex gap-2">
-            <Button size="sm" variant="secondary" className="flex-1" onClick={handleSyncNow} disabled={busy !== null}>
-              <RefreshCw className={`mr-1.5 size-3.5 ${busy === "sync" ? "animate-spin" : ""}`} />
-              {t("sync_now")}
-            </Button>
-            <Button size="sm" variant="outline" className="flex-1" onClick={handleSignOut} disabled={busy !== null}>
-              <LogOut className="mr-1.5 size-3.5" />
-              {t("sign_out")}
-            </Button>
-          </div>
+          <Button size="sm" variant="outline" className="w-full" onClick={handleSignOut} disabled={busy !== null}>
+            <LogOut className="mr-1.5 size-3.5" />
+            {t("sign_out")}
+          </Button>
 
           {showPasswordForm ? (
             <div className="space-y-2 rounded-xl border bg-card/40 p-3">

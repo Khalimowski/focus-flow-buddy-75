@@ -31,7 +31,7 @@ import {
 } from "@/lib/google";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
-import { AccountSync } from "@/components/AccountSync";
+import { AccountSync, SignedInAs } from "@/components/AccountSync";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -236,6 +236,8 @@ export function Settings() {
             {t('settings_desc')}
           </SheetDescription>
         </SheetHeader>
+
+        <SignedInAs />
 
         <div className="mt-8 space-y-6">
           <div className="flex items-center justify-between">
