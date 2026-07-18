@@ -59,6 +59,34 @@ export async function initAds() {
       margin: 0,
     });
     console.log("[Ads] Banner requested");
+
+    // While the soft keyboard is open, Android lifts the bottom-anchored
+    // banner above it — right on top of whatever field is being edited. Hide
+    // the banner for the duration and bring it back when the keyboard closes.
+    // No keyboard plugin is installed, so detect it from the webview resize:
+    // adjustResize shrinks the visual viewport by roughly the keyboard height.
+    const viewport = window.visualViewport;
+    if (viewport) {
+      const KEYBOARD_MIN_PX = 150; // real keyboards are taller; ignores small chrome changes
+      let baseline = viewport.height;
+      let hiddenForKeyboard = false;
+      viewport.addEventListener("resize", () => {
+        if (viewport.height > baseline) baseline = viewport.height;
+        const keyboardOpen = baseline - viewport.height > KEYBOARD_MIN_PX;
+        if (keyboardOpen && !hiddenForKeyboard) {
+          hiddenForKeyboard = true;
+          AdMob.hideBanner().catch(() => {});
+        } else if (!keyboardOpen && hiddenForKeyboard) {
+          hiddenForKeyboard = false;
+          AdMob.resumeBanner().catch(() => {});
+        }
+      });
+      // Rotation changes the viewport height without a keyboard; re-learn the
+      // baseline so landscape isn't mistaken for an open keyboard.
+      window.screen.orientation?.addEventListener("change", () => {
+        baseline = 0;
+      });
+    }
   } catch (e) {
     console.warn("[Ads] init failed", e);
   }
