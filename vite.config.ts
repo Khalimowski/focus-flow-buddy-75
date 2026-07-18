@@ -149,6 +149,9 @@ export default defineConfig({
   },
   vite: {
     plugins: [resilientServerEntry()],
+    // The SPA-shell prerender boots a Vite preview server; without an explicit
+    // host Node binds "::" and the build dies in IPv6-less sandboxes/CI.
+    preview: { host: "127.0.0.1" },
     ssr: {
       external: [
         "@capacitor/core",
