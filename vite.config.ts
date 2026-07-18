@@ -149,6 +149,13 @@ export default defineConfig({
   },
   vite: {
     plugins: [resilientServerEntry()],
+    // Bundle build stamp, shown in Settings — makes stale Android assets
+    // (sync-android.bat packaging an old dist/client) easy to spot on-device.
+    define: {
+      __BUILD_TIME__: JSON.stringify(
+        new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC",
+      ),
+    },
     // The SPA-shell prerender boots a Vite preview server; without an explicit
     // host Node binds "::" and the build dies in IPv6-less sandboxes/CI.
     preview: { host: "127.0.0.1" },
