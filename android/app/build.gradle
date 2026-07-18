@@ -14,8 +14,8 @@ android {
         applicationId "com.khalimowski.focusflow"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         // Polish paused — ship English resources only (drops values-pl at
         // build time). Remove this line to re-enable.
         resConfigs "en"
