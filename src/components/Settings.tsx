@@ -431,7 +431,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.1
+          {t('version')} 1.2
         </div>
       </SheetContent>
     </Sheet>
