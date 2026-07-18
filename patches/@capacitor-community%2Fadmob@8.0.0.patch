@@ -1,3 +1,6 @@
+diff --git a/node_modules/@capacitor-community/admob/.bun-tag-831c2091d9ec55a4 b/.bun-tag-831c2091d9ec55a4
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/android/build.gradle b/android/build.gradle
 index 1056a186ea9ba2073e7b637e1b6c39a60cc5482d..13d21f7caef8840076a03f8b17df59ca0eb17e12 100644
 --- a/android/build.gradle
@@ -11,3 +14,31 @@ index 1056a186ea9ba2073e7b637e1b6c39a60cc5482d..13d21f7caef8840076a03f8b17df59ca
          }
      }
      lintOptions {
+diff --git a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+index c6291395a02ca08db7dc3edd047ba57788aabab7..9f3d2d9ffe500b8877b69316b8cc4e725f3e3da9 100644
+--- a/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
++++ b/android/src/main/java/com/getcapacitor/community/admob/banner/BannerExecutor.java
+@@ -103,18 +103,15 @@ public class BannerExecutor extends Executor {
+                     break;
+             }
+ 
+-            // set Safe Area only for Android 15+
+-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
++            // set Safe Area only for Android 15+ (patched: bottom banners sit
++            // flush at the very bottom of the screen instead of being raised
++            // above the navigation-bar inset; only top banners keep the inset)
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM && "TOP_CENTER".equals(adOptions.position)) {
+                 View rootView = activitySupplier.get().getWindow().getDecorView();
+                 rootView.setOnApplyWindowInsetsListener((v, insets) -> {
+-                    int bottomInset = insets.getSystemWindowInsetBottom();
+                     int topInset = insets.getSystemWindowInsetTop();
+ 
+-                    if ("TOP_CENTER".equals(adOptions.position)) {
+-                        mAdViewLayoutParams.setMargins(0, topInset, 0, 0);
+-                    } else {
+-                        mAdViewLayoutParams.setMargins(0, 0, 0, bottomInset);
+-                    }
++                    mAdViewLayoutParams.setMargins(0, topInset, 0, 0);
+ 
+                     mAdViewLayout.setLayoutParams(mAdViewLayoutParams);
+                     return insets;
