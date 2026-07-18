@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -21,6 +21,14 @@ import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, type VibrationType } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
 import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar, applyVibrationSetting } from "@/lib/native";
+import {
+  isGoogleConfigured,
+  getGoogleConnection,
+  connectGoogle,
+  disconnectGoogle,
+  ensureGoogleToken,
+  syncAllTasksToGoogleCalendar,
+} from "@/lib/google";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 import { AccountSync } from "@/components/AccountSync";
@@ -32,9 +40,13 @@ export function Settings() {
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync,
     vibrationType, setVibrationType,
+    googleGmail, setGoogleGmail,
+    googleCalendarSync, setGoogleCalendarSync,
     setTutorialCompleted
   } = useI18nStore();
   const { t } = useTranslation();
+  const [googleEmail, setGoogleEmail] = useState<string | null>(() => getGoogleConnection()?.email ?? null);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   useEffect(() => {
     // Sync with HTML class for tailwind dark mode
@@ -163,6 +175,52 @@ export function Settings() {
     }
   };
 
+  const handleGoogleConnect = async () => {
+    setGoogleBusy(true);
+    try {
+      const conn = await connectGoogle();
+      setGoogleEmail(conn.email);
+    } catch (err) {
+      console.error("[Settings] Google connect failed", err);
+      notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
+  const handleGoogleDisconnect = async () => {
+    setGoogleBusy(true);
+    try {
+      await disconnectGoogle();
+    } finally {
+      setGoogleEmail(null);
+      setGoogleGmail(false);
+      setGoogleCalendarSync(false);
+      setGoogleBusy(false);
+    }
+  };
+
+  const handleGoogleCalendarSyncChange = async (enabled: boolean) => {
+    // Optimistically update so the toggle moves immediately
+    setGoogleCalendarSync(enabled);
+    if (!enabled) return;
+
+    try {
+      await ensureGoogleToken();
+      const tasks = loadJSON(STORAGE_KEYS.tasks, []);
+      syncAllTasksToGoogleCalendar(tasks).catch(e => console.error("[Settings] Google Calendar sync failed", e));
+      notify({
+        title: t('google_calendar_sync_enabled'),
+        body: t('google_calendar_sync_enabled_body'),
+        kind: "info"
+      });
+    } catch (err) {
+      console.error("[Settings] Google Calendar sync enable failed", err);
+      setGoogleCalendarSync(false); // revert
+      notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -275,6 +333,70 @@ export function Settings() {
             </Select>
           </div>
           */}
+
+          {isGoogleConfigured() && (
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold">{t('google_integrations')}</span>
+                {googleEmail && (
+                  <span className="text-[11px] text-muted-foreground">
+                    {t('google_connected_as')} {googleEmail}
+                  </span>
+                )}
+              </div>
+
+              {!googleEmail ? (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  disabled={googleBusy}
+                  onClick={handleGoogleConnect}
+                >
+                  <Mail className="mr-2 size-4" /> {t('google_connect')}
+                </Button>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Mail className="size-4" />
+                      <Label htmlFor="google-gmail" className="text-sm font-medium">
+                        {t('google_gmail_toggle')}
+                      </Label>
+                    </div>
+                    <Switch
+                      id="google-gmail"
+                      checked={googleGmail}
+                      onCheckedChange={setGoogleGmail}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CalendarCheck className="size-4" />
+                      <Label htmlFor="google-calendar-sync" className="text-sm font-medium">
+                        {t('google_calendar_toggle')}
+                      </Label>
+                    </div>
+                    <Switch
+                      id="google-calendar-sync"
+                      checked={googleCalendarSync}
+                      onCheckedChange={handleGoogleCalendarSyncChange}
+                    />
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground"
+                    disabled={googleBusy}
+                    onClick={handleGoogleDisconnect}
+                  >
+                    <Unlink className="mr-2 size-3.5" /> {t('google_disconnect')}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="pt-4 border-t">
             <AccountSync />

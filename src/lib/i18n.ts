@@ -16,6 +16,9 @@ interface I18nState {
   // User chose "continue as guest" on the auth gate — local-only, no sync.
   guestMode: boolean;
   vibrationType: VibrationType;
+  // Google integrations (need a connected Google account, see lib/google.ts)
+  googleGmail: boolean;
+  googleCalendarSync: boolean;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
@@ -23,6 +26,8 @@ interface I18nState {
   setTutorialCompleted: (completed: boolean) => void;
   setGuestMode: (guest: boolean) => void;
   setVibrationType: (type: VibrationType) => void;
+  setGoogleGmail: (enabled: boolean) => void;
+  setGoogleCalendarSync: (enabled: boolean) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -35,6 +40,8 @@ export const useI18nStore = create<I18nState>()(
       tutorialCompleted: false,
       guestMode: false,
       vibrationType: 'long',
+      googleGmail: false,
+      googleCalendarSync: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
@@ -42,6 +49,8 @@ export const useI18nStore = create<I18nState>()(
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
       setGuestMode: (guestMode) => set({ guestMode }),
       setVibrationType: (vibrationType) => set({ vibrationType }),
+      setGoogleGmail: (googleGmail) => set({ googleGmail }),
+      setGoogleCalendarSync: (googleCalendarSync) => set({ googleCalendarSync }),
     }),
     {
       name: 'focus-flow-settings',
@@ -220,6 +229,22 @@ export const translations = {
     vibration_short: "Short",
     vibration_double: "Double pulse",
     vibration_off: "Off",
+    google_integrations: "Google Integrations",
+    google_connect: "Connect Google Account",
+    google_disconnect: "Disconnect Google",
+    google_connected_as: "Connected as",
+    google_connect_failed: "Couldn't connect to Google. Please try again.",
+    google_not_configured: "Google integration isn't set up for this build yet.",
+    google_gmail_toggle: "Gmail: import emails as tasks",
+    google_calendar_toggle: "Sync tasks to Google Calendar",
+    google_calendar_sync_enabled: "Google Calendar Sync Enabled",
+    google_calendar_sync_enabled_body: "Tasks with reminders will now appear in your Google Calendar.",
+    gmail_import: "Import from Gmail",
+    gmail_import_desc: "Tap an email to turn it into a task.",
+    gmail_empty: "No recent emails found.",
+    gmail_load_failed: "Couldn't load emails. Try reconnecting Google in Settings.",
+    gmail_task_added: "Task added from email ✓",
+    loading: "Loading…",
   },
   pl: {
     app_name: "Focus Flow",
@@ -383,6 +408,22 @@ export const translations = {
     vibration_short: "Krótkie",
     vibration_double: "Podwójne",
     vibration_off: "Wyłączone",
+    google_integrations: "Integracje Google",
+    google_connect: "Połącz konto Google",
+    google_disconnect: "Odłącz konto Google",
+    google_connected_as: "Połączono jako",
+    google_connect_failed: "Nie udało się połączyć z Google. Spróbuj ponownie.",
+    google_not_configured: "Integracja Google nie jest jeszcze skonfigurowana w tej wersji.",
+    google_gmail_toggle: "Gmail: importuj e-maile jako zadania",
+    google_calendar_toggle: "Synchronizuj zadania z Kalendarzem Google",
+    google_calendar_sync_enabled: "Synchronizacja z Kalendarzem Google włączona",
+    google_calendar_sync_enabled_body: "Zadania z przypomnieniami pojawią się teraz w Twoim Kalendarzu Google.",
+    gmail_import: "Importuj z Gmaila",
+    gmail_import_desc: "Dotknij e-maila, aby zamienić go w zadanie.",
+    gmail_empty: "Brak ostatnich e-maili.",
+    gmail_load_failed: "Nie udało się wczytać e-maili. Połącz ponownie konto Google w Ustawieniach.",
+    gmail_task_added: "Dodano zadanie z e-maila ✓",
+    loading: "Wczytywanie…",
   }
 };
 

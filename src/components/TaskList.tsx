@@ -7,6 +7,8 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
+import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
+import { GmailImport } from "@/components/GmailImport";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -68,8 +70,16 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const { t, language } = useTranslation();
   const dateLocale = language === 'pl' ? pl : undefined;
   const shortDateFormat = language === 'pl' ? 'd MMM' : 'MMM d';
-  const { calendarSync } = useI18nStore();
+  const { calendarSync, googleGmail } = useI18nStore();
   const { addEvent } = useHistoryStore();
+  // Gmail button visibility tracks the connection state set in Settings
+  const [googleConnected, setGoogleConnected] = useState(false);
+  useEffect(() => {
+    const update = () => setGoogleConnected(!!getGoogleConnection());
+    update();
+    window.addEventListener("ff.google-changed", update);
+    return () => window.removeEventListener("ff.google-changed", update);
+  }, []);
 
   useEffect(() => {
     const load = () => {
@@ -180,11 +190,26 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync, id)
           .catch(e => console.error("Sync: schedule failed", e));
       }
+      void pushTaskToGoogleCalendar(newTask);
 
       addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt, date: dueDate });
     } catch (e) {
       console.error("Task add failed", e);
     }
+  };
+
+  // Gmail import: subject becomes the task title on the selected day (no time)
+  const importFromEmail = (subject: string) => {
+    const newTask: Task = {
+      id: generateId(),
+      title: subject.trim() || "(no subject)",
+      done: false,
+      remindAt: null,
+      dueDate: format(selectedDate, 'yyyy-MM-dd'),
+      createdAt: Date.now()
+    };
+    setTasks(prev => sortTasks([newTask, ...prev]));
+    addEvent('task_created', { title: newTask.title, hasReminder: false, date: newTask.dueDate });
   };
 
   const startEdit = (task: Task) => {
@@ -268,6 +293,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         };
         void runNativeSync();
       }
+      if (remindAt) {
+        void pushTaskToGoogleCalendar({ id: idToSync, title: titleToSync, remindAt });
+      } else {
+        void removeTaskFromGoogleCalendar(idToSync);
+      }
     } catch (e) {
       console.error("Save edit failed", e);
       notify({ title: t('save_error'), body: t('save_error_body'), kind: "info" });
@@ -288,6 +318,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             void cancelNative([hashId("task:" + id)]);
             void deleteFromCalendar(item.title);
           }
+          void removeTaskFromGoogleCalendar(id);
         }
         return { ...item, done: becoming };
       });
@@ -310,6 +341,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       cancelNative([hashId("task:" + id)]).catch(e => console.error("Sync: cancel failed", e));
       deleteFromCalendar(task.title).catch(e => console.error("Sync: delete failed", e));
     }
+    void removeTaskFromGoogleCalendar(id);
 
     notify({ title: t('moved_to_todo'), body: task.title, kind: "info" });
   };
@@ -343,6 +375,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         cancelNative([hashId("task:" + id)]).catch(e => console.error("Sync: cancel failed", e));
         deleteFromCalendar(taskToDelete.title).catch(e => console.error("Sync: delete failed", e));
       }
+      void removeTaskFromGoogleCalendar(id);
 
       addEvent('task_deleted', { title: taskToDelete.title });
     } catch (e) {
@@ -435,6 +468,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   />
                 </PopoverContent>
               </Popover>
+              {isGoogleConfigured() && googleGmail && googleConnected && (
+                <GmailImport onImport={importFromEmail} />
+              )}
             </div>
             <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft">
               <Plus className="size-4" />
