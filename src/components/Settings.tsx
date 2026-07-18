@@ -229,7 +229,7 @@ export function Settings() {
           <span className="sr-only">{t('settings')}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[300px] sm:w-[400px] pt-safe-top">
+      <SheetContent side="right" className="w-[300px] sm:w-[400px] pt-safe-top overflow-y-auto pb-safe-ad">
         <SheetHeader>
           <SheetTitle>{t('settings')}</SheetTitle>
           <SheetDescription>
@@ -430,7 +430,7 @@ export function Settings() {
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-6 right-6 text-center text-[10px] text-muted-foreground">
+        <div className="mt-8 text-center text-[10px] text-muted-foreground">
           {t('version')} 1.1
         </div>
       </SheetContent>

@@ -48,6 +48,10 @@
 :root {
   --radius: 0.875rem;
 
+  /* Height of the native AdMob banner overlaying the webview bottom.
+     Updated at runtime by src/lib/ads.ts; stays 0 on web. */
+  --ad-banner-height: 0px;
+
   /* Calm dark palette */
   --background: oklch(0.18 0.013 260);
   --foreground: oklch(0.96 0.005 250);
@@ -179,6 +183,11 @@
   }
   .pt-safe-top-sm {
     padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  }
+  /* Bottom padding that clears the native ad banner (and gesture bar) so the
+     end of a fixed overlay's content stays reachable above the ad. */
+  .pb-safe-ad {
+    padding-bottom: calc(1.5rem + var(--ad-banner-height, 0px) + env(safe-area-inset-bottom, 0px));
   }
   .font-mono {
     font-family: var(--font-mono);

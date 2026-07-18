@@ -33,9 +33,15 @@ export async function initAds() {
     }
 
     // The banner overlays the webview; pad the page bottom so content
-    // (and the app's own bottom spacing) stays reachable above it.
+    // (and the app's own bottom spacing) stays reachable above it. Body
+    // padding doesn't reach position:fixed overlays (Settings sheet, dialogs),
+    // so also publish the height as a CSS var for them to consume.
     await AdMob.addListener(BannerAdPluginEvents.SizeChanged, (size) => {
       document.body.style.paddingBottom = size.height > 0 ? `${size.height}px` : "";
+      document.documentElement.style.setProperty(
+        "--ad-banner-height",
+        `${Math.max(size.height, 0)}px`,
+      );
     });
     await AdMob.addListener(BannerAdPluginEvents.FailedToLoad, (err) => {
       console.warn("[Ads] Banner failed to load", err);
