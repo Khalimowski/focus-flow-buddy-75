@@ -10,10 +10,14 @@ import { isNative } from "./native";
 // (usually needs the Play Store listing linked + app-ads.txt).
 const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
 
+// Master switch: flip to true to bring the banner back (everything below —
+// consent flow, layout padding, banner request — stays wired up and dormant).
+const ADS_ENABLED = false;
+
 let started = false;
 
 export async function initAds() {
-  if (!isNative() || started) return;
+  if (!ADS_ENABLED || !isNative() || started) return;
   started = true;
   try {
     const { AdMob, BannerAdPosition, BannerAdSize, BannerAdPluginEvents, AdmobConsentStatus } =
