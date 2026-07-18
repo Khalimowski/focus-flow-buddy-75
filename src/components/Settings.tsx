@@ -229,7 +229,7 @@ export function Settings() {
           <span className="sr-only">{t('settings')}</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-[300px] sm:w-[400px] pt-safe-top overflow-y-auto pb-safe-ad">
+      <SheetContent side="right" className="w-full max-w-full border-l-0 sm:w-[400px] sm:max-w-[400px] sm:border-l pt-safe-top overflow-y-auto pb-safe-ad">
         <SheetHeader>
           <SheetTitle>{t('settings')}</SheetTitle>
           <SheetDescription>
