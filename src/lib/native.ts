@@ -619,6 +619,9 @@ export async function initNative() {
   // other devices before this ran, and schedules lost to device reboots)
   void reconcileNotifications();
 
+  // AdMob banner — dynamic import keeps the ads SDK out of the web bundle path
+  void import("./ads").then((m) => m.initAds());
+
   try {
     await StatusBar.setOverlaysWebView({ overlay: false });
     await StatusBar.setBackgroundColor({ color: "#0F1115" });
