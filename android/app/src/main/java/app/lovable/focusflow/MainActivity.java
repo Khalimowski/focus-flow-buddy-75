@@ -2,19 +2,26 @@ package app.lovable.focusflow;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginHandle;
 import com.capacitorjs.plugins.app.AppPlugin;
 import com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin;
 import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
 import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
 import dev.barooni.capacitor.calendar.CapacitorCalendarPlugin;
+import ee.forgr.capacitor.social.login.GoogleProvider;
+import ee.forgr.capacitor.social.login.ModifiedMainActivityForSocialLoginPlugin;
+import ee.forgr.capacitor.social.login.SocialLoginPlugin;
 
-public class MainActivity extends BridgeActivity {
+public class MainActivity extends BridgeActivity implements ModifiedMainActivityForSocialLoginPlugin {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppPlugin.class);
@@ -36,6 +43,32 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         createNotificationChannel();
     }
+
+    // Google sign-in with Gmail/Calendar scopes: the social-login plugin runs
+    // Google's AuthorizationClient consent UI and its result comes back here,
+    // not to the plugin — forward it, or scoped logins hang/reject.
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode >= GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MIN
+                && requestCode < GoogleProvider.REQUEST_AUTHORIZE_GOOGLE_MAX) {
+            PluginHandle pluginHandle = getBridge().getPlugin("SocialLogin");
+            if (pluginHandle == null) {
+                Log.i("MainActivity", "SocialLogin plugin handle is null");
+                return;
+            }
+            Plugin plugin = pluginHandle.getInstance();
+            if (!(plugin instanceof SocialLoginPlugin)) {
+                Log.i("MainActivity", "SocialLogin plugin instance is not SocialLoginPlugin");
+                return;
+            }
+            ((SocialLoginPlugin) plugin).handleGoogleLoginIntent(requestCode, data);
+        }
+    }
+
+    // Marker required by the social-login plugin (never called).
+    @Override
+    public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}
 
 
     private void createNotificationChannel() {
