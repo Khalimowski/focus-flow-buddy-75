@@ -249,10 +249,24 @@ export async function signUp(email: string, password: string): Promise<SyncUser>
 }
 
 /**
+ * Thrown when the native Google picker succeeded but Neon Auth could not turn
+ * the ID token into a session (its managed service currently ignores the
+ * idToken field on /sign-in/social and answers with its hosted redirect flow,
+ * which cannot complete from inside Capacitor). Carries the picked account's
+ * email so the caller can fall back to email-code sign-in.
+ */
+export class GoogleTokenSignInUnsupportedError extends Error {
+  constructor(public email: string | null) {
+    super("Neon Auth did not accept the Google ID token");
+  }
+}
+
+/**
  * Google sign-in. Native: Credential Manager picker → ID token exchanged with
- * Neon Auth (no redirect, works inside Capacitor's https://localhost). Web:
- * standard OAuth redirect through Neon Auth — returns null because the page
- * navigates away; initSync picks up the session when the callback lands.
+ * Neon Auth (no redirect, works inside Capacitor's https://localhost); throws
+ * GoogleTokenSignInUnsupportedError if Neon answers with a redirect instead.
+ * Web: standard OAuth redirect through Neon Auth — returns null because the
+ * page navigates away; initSync picks up the session when the callback lands.
  * Requires the Google provider to be enabled for the project in Neon Auth.
  */
 export async function signInWithGoogle(): Promise<SyncUser | null> {
@@ -263,6 +277,7 @@ export async function signInWithGoogle(): Promise<SyncUser | null> {
       social: (d: {
         provider: "google";
         callbackURL?: string;
+        disableRedirect?: boolean;
         idToken?: { token: string; accessToken?: string };
       }) => Promise<{ data?: { url?: string } | null; error?: { message?: string } | null }>;
     };
@@ -271,14 +286,18 @@ export async function signInWithGoogle(): Promise<SyncUser | null> {
   const { isNative } = await import("./native");
   if (isNative()) {
     const { googleAuthLogin } = await import("./google");
-    const { idToken, accessToken } = await googleAuthLogin();
+    const { idToken, accessToken, email } = await googleAuthLogin();
+    // disableRedirect keeps the SDK from popping the hosted OAuth flow in an
+    // external browser when the server ignores the idToken (see error above).
     const res = await auth.signIn.social({
       provider: "google",
+      disableRedirect: true,
       idToken: { token: idToken, accessToken },
     });
     if (res?.error) throw new Error(res.error.message || "Google sign-in failed");
+    if (res?.data?.url) throw new GoogleTokenSignInUnsupportedError(email);
     const user = await fetchSessionUser();
-    if (!user) throw new Error("Google sign-in failed");
+    if (!user) throw new GoogleTokenSignInUnsupportedError(email);
     currentUser = user;
     // Same ordering constraint as signIn: pull BEFORE announcing, or mounting
     // components can save empty state over the user's cloud data.
@@ -295,6 +314,39 @@ export async function signInWithGoogle(): Promise<SyncUser | null> {
   // The auth client normally redirects on its own; this is the fallback.
   if (res?.data?.url) window.location.assign(res.data.url);
   return null;
+}
+
+/** Email a 6-digit sign-in code to the given address (passwordless login). */
+export async function requestSignInOtp(email: string): Promise<void> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    emailOtp: {
+      sendVerificationOtp: (d: { email: string; type: "sign-in" }) => Promise<{ error?: { message?: string } | null }>;
+    };
+  };
+  const res = await auth.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
+  if (res?.error) throw new Error(res.error.message || "Could not send sign-in code");
+}
+
+/** Complete a passwordless sign-in with the emailed code. */
+export async function signInWithEmailOtp(email: string, otp: string): Promise<SyncUser> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    signIn: {
+      emailOtp: (d: { email: string; otp: string }) => Promise<{ error?: { message?: string } | null }>;
+    };
+  };
+  const res = await auth.signIn.emailOtp({ email, otp });
+  if (res?.error) throw new Error(res.error.message || "Sign-in failed");
+  const user = await fetchSessionUser();
+  if (!user) throw new Error("Sign-in failed");
+  currentUser = user;
+  // Same ordering constraint as signIn: pull BEFORE announcing.
+  await fullSync();
+  notifyAuthChanged();
+  return user;
 }
 
 /** Email a 6-digit password-reset code to the given address. */

@@ -4,9 +4,18 @@ import { Brain, KeyRound, LogIn, Mail, UserPlus, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
-import { requestPasswordReset, resetPassword, signIn, signInWithGoogle, signUp } from "@/lib/sync";
+import {
+  GoogleTokenSignInUnsupportedError,
+  requestPasswordReset,
+  requestSignInOtp,
+  resetPassword,
+  signIn,
+  signInWithEmailOtp,
+  signInWithGoogle,
+  signUp,
+} from "@/lib/sync";
 
-type Mode = "signin" | "signup" | "forgot" | "reset";
+type Mode = "signin" | "signup" | "forgot" | "reset" | "code" | "codeverify";
 
 // Google's official multicolor "G" (buttons must not recolor it per brand rules)
 const GoogleG = () => (
@@ -79,15 +88,60 @@ export function AuthGate() {
       setGuestMode(false);
     }, t("reset_failed"));
 
-  const submitGoogle = () =>
-    run(async () => {
+  const submitGoogle = async () => {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
       // Web returns null and navigates away to Google; native resolves with
       // the signed-in user once the account picker completes.
       const user = await signInWithGoogle();
       if (user) setGuestMode(false);
-    }, t("google_signin_failed"));
+    } catch (e) {
+      if (e instanceof GoogleTokenSignInUnsupportedError) {
+        // Neon Auth can't finish native Google sign-in yet; fall back to a
+        // sign-in code emailed to the account the user just picked.
+        try {
+          if (e.email) {
+            setEmail(e.email);
+            await requestSignInOtp(e.email);
+            setOtp("");
+            setMode("codeverify");
+            setInfo(t("google_code_fallback"));
+          } else {
+            setMode("code");
+            setInfo(t("google_code_fallback_no_email"));
+          }
+        } catch (e2) {
+          console.error("[AuthGate]", e2);
+          setError(t("signin_code_failed"));
+        }
+      } else {
+        console.error("[AuthGate]", e);
+        setError(t("google_signin_failed"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const canSubmit = email.trim().length > 3 && (mode === "forgot" || password.length > 0);
+  const submitCodeRequest = () =>
+    run(async () => {
+      await requestSignInOtp(email.trim());
+      setOtp("");
+      setMode("codeverify");
+      setInfo(t("signin_code_sent"));
+    }, t("signin_code_failed"));
+
+  const submitCodeVerify = () =>
+    run(async () => {
+      await signInWithEmailOtp(email.trim(), otp.trim());
+      setGuestMode(false);
+    }, t("code_signin_failed"));
+
+  const canSubmit =
+    email.trim().length > 3 &&
+    (mode === "forgot" || mode === "code" || mode === "codeverify" || password.length > 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-background px-4 py-8">
@@ -113,10 +167,10 @@ export function AuthGate() {
             placeholder={t("email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            disabled={busy || mode === "reset"}
+            disabled={busy || mode === "reset" || mode === "codeverify"}
           />
 
-          {mode === "reset" && (
+          {(mode === "reset" || mode === "codeverify") && (
             <Input
               inputMode="numeric"
               autoComplete="one-time-code"
@@ -127,7 +181,7 @@ export function AuthGate() {
             />
           )}
 
-          {mode !== "forgot" && (
+          {mode !== "forgot" && mode !== "code" && mode !== "codeverify" && (
             <Input
               type="password"
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
@@ -154,6 +208,14 @@ export function AuthGate() {
               </div>
               <Button variant="outline" className="w-full" onClick={() => void submitGoogle()} disabled={busy}>
                 <GoogleG /> {busy ? "…" : t("continue_with_google")}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => { setMode("code"); setError(null); setInfo(null); }}
+                disabled={busy}
+              >
+                <Mail className="mr-2 size-4" /> {t("signin_with_code")}
               </Button>
               <div className="flex items-center justify-between text-xs">
                 <button
@@ -200,6 +262,47 @@ export function AuthGate() {
               >
                 <KeyRound className="mr-2 size-4" /> {busy ? "…" : t("reset_password")}
               </Button>
+              <button
+                className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                disabled={busy}
+              >
+                {t("back_to_signin")}
+              </button>
+            </>
+          )}
+
+          {mode === "code" && (
+            <>
+              <Button className="w-full" onClick={() => void submitCodeRequest()} disabled={busy || !canSubmit}>
+                <Mail className="mr-2 size-4" /> {busy ? "…" : t("send_signin_code")}
+              </Button>
+              <button
+                className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                disabled={busy}
+              >
+                {t("back_to_signin")}
+              </button>
+            </>
+          )}
+
+          {mode === "codeverify" && (
+            <>
+              <Button
+                className="w-full"
+                onClick={() => void submitCodeVerify()}
+                disabled={busy || !canSubmit || otp.trim().length === 0}
+              >
+                <KeyRound className="mr-2 size-4" /> {busy ? "…" : t("sign_in")}
+              </Button>
+              <button
+                className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => { setMode("code"); setError(null); setInfo(null); }}
+                disabled={busy}
+              >
+                {t("resend_signin_code")}
+              </button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
                 onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
