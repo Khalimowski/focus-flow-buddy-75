@@ -21,6 +21,14 @@ sync-android.bat     # rebuild web bundle + copy into android/ (then build APK i
 
 Bun is the primary package manager (`bun.lock`); npm works for scripts.
 
+## Version bump rule (user request — always follow)
+
+Every session that changes app code MUST, before finishing, bump `versionCode`
+(+1, mandatory — Play rejects a reused number) and `versionName` in
+`android/app/build.gradle`, and keep the version shown in the Settings footer
+(`src/components/Settings.tsx`) in step with `versionName`. This keeps the next
+Play upload from being rejected over a stale version code.
+
 ## Git rules (Lovable-connected repo)
 
 - **Never rewrite pushed history** (no force-push/rebase/amend of pushed commits) — it corrupts the Lovable side.
