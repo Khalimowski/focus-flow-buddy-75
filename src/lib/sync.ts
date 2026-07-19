@@ -248,6 +248,55 @@ export async function signUp(email: string, password: string): Promise<SyncUser>
   return user;
 }
 
+/**
+ * Google sign-in. Native: Credential Manager picker → ID token exchanged with
+ * Neon Auth (no redirect, works inside Capacitor's https://localhost). Web:
+ * standard OAuth redirect through Neon Auth — returns null because the page
+ * navigates away; initSync picks up the session when the callback lands.
+ * Requires the Google provider to be enabled for the project in Neon Auth.
+ */
+export async function signInWithGoogle(): Promise<SyncUser | null> {
+  const client = getNeonClient();
+  if (!client) throw new Error("Not available during SSR");
+  const auth = client.auth as unknown as {
+    signIn: {
+      social: (d: {
+        provider: "google";
+        callbackURL?: string;
+        idToken?: { token: string; accessToken?: string };
+      }) => Promise<{ data?: { url?: string } | null; error?: { message?: string } | null }>;
+    };
+  };
+
+  const { isNative } = await import("./native");
+  if (isNative()) {
+    const { googleAuthLogin } = await import("./google");
+    const { idToken, accessToken } = await googleAuthLogin();
+    const res = await auth.signIn.social({
+      provider: "google",
+      idToken: { token: idToken, accessToken },
+    });
+    if (res?.error) throw new Error(res.error.message || "Google sign-in failed");
+    const user = await fetchSessionUser();
+    if (!user) throw new Error("Google sign-in failed");
+    currentUser = user;
+    // Same ordering constraint as signIn: pull BEFORE announcing, or mounting
+    // components can save empty state over the user's cloud data.
+    await fullSync();
+    notifyAuthChanged();
+    return user;
+  }
+
+  const res = await auth.signIn.social({
+    provider: "google",
+    callbackURL: window.location.origin,
+  });
+  if (res?.error) throw new Error(res.error.message || "Google sign-in failed");
+  // The auth client normally redirects on its own; this is the fallback.
+  if (res?.data?.url) window.location.assign(res.data.url);
+  return null;
+}
+
 /** Email a 6-digit password-reset code to the given address. */
 export async function requestPasswordReset(email: string): Promise<void> {
   const client = getNeonClient();

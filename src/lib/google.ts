@@ -80,6 +80,21 @@ export async function connectGoogle(): Promise<GoogleConnection> {
   return conn;
 }
 
+// Basic-profile login used for *account sign-in* (no Gmail/Calendar scopes).
+// Returns the Google ID token, which sync.ts exchanges with Neon Auth for a
+// session — no browser redirect, so it also works inside Capacitor.
+export async function googleAuthLogin(): Promise<{ idToken: string; accessToken?: string }> {
+  if (!isGoogleConfigured()) throw new Error("Google client id not configured");
+  await ensureInit();
+  const res = await SocialLogin.login({ provider: "google", options: {} });
+  const result = res.result as {
+    idToken?: string | null;
+    accessToken?: { token: string } | null;
+  };
+  if (!result.idToken) throw new Error("Google login returned no ID token");
+  return { idToken: result.idToken, accessToken: result.accessToken?.token };
+}
+
 export async function disconnectGoogle() {
   try {
     await ensureInit();
