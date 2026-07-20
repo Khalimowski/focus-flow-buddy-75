@@ -28,6 +28,7 @@ import {
   disconnectGoogle,
   ensureGoogleToken,
   syncAllTasksToGoogleCalendar,
+  syncAllNudgesToGoogleCalendar,
 } from "@/lib/google";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
@@ -42,6 +43,7 @@ export function Settings() {
     vibrationType, setVibrationType,
     googleGmail, setGoogleGmail,
     googleCalendarSync, setGoogleCalendarSync,
+    googleNudgeSync, setGoogleNudgeSync,
     setTutorialCompleted
   } = useI18nStore();
   const { t } = useTranslation();
@@ -196,6 +198,7 @@ export function Settings() {
       setGoogleEmail(null);
       setGoogleGmail(false);
       setGoogleCalendarSync(false);
+      setGoogleNudgeSync(false);
       setGoogleBusy(false);
     }
   };
@@ -217,6 +220,27 @@ export function Settings() {
     } catch (err) {
       console.error("[Settings] Google Calendar sync enable failed", err);
       setGoogleCalendarSync(false); // revert
+      notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
+    }
+  };
+
+  const handleGoogleNudgeSyncChange = async (enabled: boolean) => {
+    // Optimistically update so the toggle moves immediately
+    setGoogleNudgeSync(enabled);
+    if (!enabled) return;
+
+    try {
+      await ensureGoogleToken();
+      const reminders = loadJSON(STORAGE_KEYS.reminders, []);
+      syncAllNudgesToGoogleCalendar(reminders).catch(e => console.error("[Settings] Google nudge sync failed", e));
+      notify({
+        title: t('google_nudge_sync_enabled'),
+        body: t('google_nudge_sync_enabled_body'),
+        kind: "info"
+      });
+    } catch (err) {
+      console.error("[Settings] Google nudge sync enable failed", err);
+      setGoogleNudgeSync(false); // revert
       notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
     }
   };
@@ -386,6 +410,20 @@ export function Settings() {
                     />
                   </div>
 
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CalendarCheck className="size-4 opacity-70" />
+                      <Label htmlFor="google-nudge-sync" className="text-sm font-medium">
+                        {t('google_nudge_toggle')}
+                      </Label>
+                    </div>
+                    <Switch
+                      id="google-nudge-sync"
+                      checked={googleNudgeSync}
+                      onCheckedChange={handleGoogleNudgeSyncChange}
+                    />
+                  </div>
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -431,7 +469,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.4.6 · {__BUILD_TIME__}
+          {t('version')} 1.4.7 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>

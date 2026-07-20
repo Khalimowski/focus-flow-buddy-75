@@ -8,6 +8,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
+import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 
@@ -79,6 +80,7 @@ export function Reminders() {
   }, []);
 
   const scheduleAll = (r: Reminder) => {
+    void pushNudgeToGoogleCalendar(r);
     if (!isNative()) return;
     r.times.forEach((t_val, idx) => {
       const [h, m] = t_val.split(":").map(Number);
@@ -86,6 +88,7 @@ export function Reminders() {
     });
   };
   const cancelAll = (r: Reminder) => {
+    void removeNudgeFromGoogleCalendar(r.id);
     if (!isNative()) return;
     void cancelNative(r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`)));
     void deleteFromCalendar(r.label);

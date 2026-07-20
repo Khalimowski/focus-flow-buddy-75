@@ -19,6 +19,7 @@ interface I18nState {
   // Google integrations (need a connected Google account, see lib/google.ts)
   googleGmail: boolean;
   googleCalendarSync: boolean;
+  googleNudgeSync: boolean;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
@@ -28,6 +29,7 @@ interface I18nState {
   setVibrationType: (type: VibrationType) => void;
   setGoogleGmail: (enabled: boolean) => void;
   setGoogleCalendarSync: (enabled: boolean) => void;
+  setGoogleNudgeSync: (enabled: boolean) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -42,6 +44,7 @@ export const useI18nStore = create<I18nState>()(
       vibrationType: 'long',
       googleGmail: false,
       googleCalendarSync: false,
+      googleNudgeSync: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
@@ -51,6 +54,7 @@ export const useI18nStore = create<I18nState>()(
       setVibrationType: (vibrationType) => set({ vibrationType }),
       setGoogleGmail: (googleGmail) => set({ googleGmail }),
       setGoogleCalendarSync: (googleCalendarSync) => set({ googleCalendarSync }),
+      setGoogleNudgeSync: (googleNudgeSync) => set({ googleNudgeSync }),
     }),
     {
       name: 'focus-flow-settings',
@@ -284,6 +288,9 @@ export const translations = {
     google_calendar_toggle: "Sync tasks to Google Calendar",
     google_calendar_sync_enabled: "Google Calendar Sync Enabled",
     google_calendar_sync_enabled_body: "Tasks with reminders will now appear in your Google Calendar.",
+    google_nudge_toggle: "Sync nudges to Google Calendar",
+    google_nudge_sync_enabled: "Google Nudge Sync Enabled",
+    google_nudge_sync_enabled_body: "Your daily nudges will now appear in your Google Calendar.",
     gmail_import: "Import from Gmail",
     gmail_import_desc: "Tap an email to turn it into a task.",
     gmail_empty: "No recent emails found.",
@@ -508,6 +515,9 @@ export const translations = {
     google_calendar_toggle: "Synchronizuj zadania z Kalendarzem Google",
     google_calendar_sync_enabled: "Synchronizacja z Kalendarzem Google włączona",
     google_calendar_sync_enabled_body: "Zadania z przypomnieniami pojawią się teraz w Twoim Kalendarzu Google.",
+    google_nudge_toggle: "Synchronizuj przypominajki z Kalendarzem Google",
+    google_nudge_sync_enabled: "Synchronizacja przypominajek z Google włączona",
+    google_nudge_sync_enabled_body: "Twoje codzienne przypominajki pojawią się teraz w Twoim Kalendarzu Google.",
     gmail_import: "Importuj z Gmaila",
     gmail_import_desc: "Dotknij e-maila, aby zamienić go w zadanie.",
     gmail_empty: "Brak ostatnich e-maili.",

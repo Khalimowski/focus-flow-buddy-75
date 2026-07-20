@@ -26,6 +26,8 @@ export const GOOGLE_SCOPES = {
 const CONN_KEY = "ff.google.v1";
 // taskId -> Google Calendar event id, so edits/completions clean up after themselves
 const CALMAP_KEY = "ff.google.calmap.v1";
+// reminderId -> event ids (one recurring event per nudge time)
+const NUDGEMAP_KEY = "ff.google.nudgemap.v1";
 
 type GoogleConnection = {
   email: string | null;
@@ -113,6 +115,7 @@ export async function disconnectGoogle() {
   }
   window.localStorage.removeItem(CONN_KEY);
   window.localStorage.removeItem(CALMAP_KEY);
+  window.localStorage.removeItem(NUDGEMAP_KEY);
   window.dispatchEvent(new CustomEvent("ff.google-changed"));
 }
 
@@ -284,6 +287,96 @@ export async function syncAllTasksToGoogleCalendar(tasks: CalTask[]) {
   for (const task of tasks) {
     if (!task.done && task.remindAt) {
       await pushTaskToGoogleCalendar(task);
+    }
+  }
+}
+
+// --- Nudges -> Google Calendar ---
+// A nudge repeats daily at fixed times, so each time becomes one recurring
+// event (RRULE:FREQ=DAILY). Recurrence requires an explicit timeZone.
+
+type CalNudge = { id: string; label: string; times: string[]; enabled: boolean };
+
+function loadNudgeMap(): Record<string, string[]> {
+  return loadJSON<Record<string, string[]>>(NUDGEMAP_KEY, {});
+}
+
+function nudgeSyncEnabled(): boolean {
+  return useI18nStore.getState().googleNudgeSync;
+}
+
+async function deleteNudgeEvents(token: string, reminderId: string) {
+  const map = loadNudgeMap();
+  const eventIds = map[reminderId];
+  if (!eventIds?.length) return;
+  for (const eventId of eventIds) {
+    await deleteEvent(token, eventId);
+  }
+  delete map[reminderId];
+  saveJSON(NUDGEMAP_KEY, map);
+}
+
+export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
+  if (!nudgeSyncEnabled() || !nudge.enabled || nudge.times.length === 0) return;
+  const token = getValidToken();
+  if (!token) return;
+  try {
+    await deleteNudgeEvents(token, nudge.id);
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const eventIds: string[] = [];
+    for (const time of nudge.times) {
+      const [h, m] = time.split(":").map(Number);
+      const start = new Date();
+      start.setHours(h, m, 0, 0);
+      const end = new Date(start.getTime() + 15 * 60 * 1000);
+      const res = await gFetch(
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            summary: nudge.label,
+            start: { dateTime: start.toISOString(), timeZone },
+            end: { dateTime: end.toISOString(), timeZone },
+            recurrence: ["RRULE:FREQ=DAILY"],
+          }),
+        },
+      );
+      if (!res.ok) {
+        console.warn(`[Google] Nudge event insert failed: ${res.status}`);
+        continue;
+      }
+      const event = (await res.json()) as { id: string };
+      eventIds.push(event.id);
+    }
+    if (eventIds.length > 0) {
+      const map = loadNudgeMap();
+      map[nudge.id] = eventIds;
+      saveJSON(NUDGEMAP_KEY, map);
+      console.log(`[Google] ${eventIds.length} calendar event(s) created for nudge ${nudge.id}`);
+    }
+  } catch (e) {
+    console.warn("[Google] pushNudgeToGoogleCalendar failed", e);
+  }
+}
+
+export async function removeNudgeFromGoogleCalendar(reminderId: string) {
+  const map = loadNudgeMap();
+  if (!map[reminderId]?.length) return;
+  const token = getValidToken();
+  if (!token) return;
+  try {
+    await deleteNudgeEvents(token, reminderId);
+  } catch (e) {
+    console.warn("[Google] removeNudgeFromGoogleCalendar failed", e);
+  }
+}
+
+// Called when the Settings toggle turns on — pushes every enabled nudge.
+export async function syncAllNudgesToGoogleCalendar(nudges: CalNudge[]) {
+  for (const nudge of nudges) {
+    if (nudge.enabled) {
+      await pushNudgeToGoogleCalendar(nudge);
     }
   }
 }
