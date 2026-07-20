@@ -412,12 +412,15 @@ export function hashId(s: string): number {
 
 // Make the device's scheduled notifications match current storage. Called
 // after cloud sync writes remote data (items created/completed on another
-// device) and at boot as a safety net. Skips calendar sync on purpose —
-// re-adding calendar events here would duplicate them on every pull.
+// device) and at boot as a safety net. Calendar sync only runs for
+// notifications that are newly scheduled here (not already pending), with a
+// delete-by-title first — that's what keeps repeated pulls from duplicating
+// calendar events.
 export async function reconcileNotifications() {
   if (!isNative()) return;
   try {
-    const lang = translations[useI18nStore.getState().language] || translations.en;
+    const settings = useI18nStore.getState();
+    const lang = translations[settings.language] || translations.en;
     const now = Date.now();
     const today = new Date().toISOString().slice(0, 10);
 
@@ -458,30 +461,59 @@ export async function reconcileNotifications() {
     const pending = await LocalNotifications.getPending();
     const pendingIds = new Set<number>();
     const stale: number[] = [];
+    // Labels of reminders that were deleted/disabled remotely — their calendar
+    // events should go the same way cancelAll() removes them locally.
+    const staleNudgeLabels = new Set<string>();
     for (const n of pending.notifications) {
       pendingIds.add(n.id);
-      const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
+      const extra = (n.extra ?? {}) as { type?: string; taskId?: string; nudgeId?: string; title?: string };
       // Only touch canonical ids — postponed reminders use throwaway ids and
       // should be left to fire.
       if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
         if (!wantTask.has(n.id)) stale.push(n.id);
       } else if (extra.type === "nudge") {
-        if (!validNudgeIds.has(n.id)) stale.push(n.id);
+        if (!validNudgeIds.has(n.id)) {
+          stale.push(n.id);
+          // Only wipe calendar events when the whole reminder is gone or
+          // disabled — a reminder that merely lost one time slot keeps the
+          // events of its remaining slots (delete is by title, not per slot).
+          const owner = reminders.find((r) => r.id === extra.nudgeId);
+          if (settings.nudgeCalendarSync && (!owner || !owner.enabled) && extra.title) {
+            staleNudgeLabels.add(extra.title);
+          }
+        }
       }
     }
     if (stale.length > 0) await cancelNative(stale);
+    for (const label of staleNudgeLabels) await deleteFromCalendar(label);
 
     let added = 0;
     for (const [id, t] of wantTask) {
       if (!pendingIds.has(id)) {
-        await scheduleNativeAt(id, t.title, lang.reminder_title, new Date(t.remindAt!), false, t.id);
+        // Same idiom as TaskList's add path: delete-by-title first (dedupe),
+        // then schedule with the calendar flag.
+        if (settings.calendarSync) await deleteFromCalendar(t.title);
+        await scheduleNativeAt(id, t.title, lang.reminder_title, new Date(t.remindAt!), settings.calendarSync, t.id);
         added++;
       }
     }
+    // Reminders whose calendar events were already cleaned (or intentionally
+    // kept) in this pass — delete-by-title must run at most once per reminder,
+    // or the second slot's cleanup would erase the first slot's fresh event.
+    const cleanedNudges = new Set<string>();
     for (const [id, { r, time }] of scheduleNudge) {
       if (!pendingIds.has(id)) {
         const [h, m] = time.split(":").map(Number);
-        await scheduleNativeDaily(id, r.label, lang.gentle_nudge_emoji, h, m, false, r.id);
+        if (settings.nudgeCalendarSync && !cleanedNudges.has(r.id)) {
+          cleanedNudges.add(r.id);
+          // Delete-first only when the reminder is wholly new to this device;
+          // if sibling slots are still pending, their events must survive.
+          const siblingIds = r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`));
+          if (!siblingIds.some((sid) => pendingIds.has(sid))) {
+            await deleteFromCalendar(r.label);
+          }
+        }
+        await scheduleNativeDaily(id, r.label, lang.gentle_nudge_emoji, h, m, settings.nudgeCalendarSync, r.id);
         added++;
       }
     }
