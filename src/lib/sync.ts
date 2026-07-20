@@ -17,6 +17,7 @@ const SYNC_KEYS: string[] = [
   STORAGE_KEYS.reminders,
   STORAGE_KEYS.streak,
   STORAGE_KEYS.todo,
+  STORAGE_KEYS.profile,
 ];
 
 const META_KEY = "ff.sync.meta.v1";

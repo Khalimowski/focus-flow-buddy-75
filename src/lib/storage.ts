@@ -60,6 +60,7 @@ export const STORAGE_KEYS = {
   inAppNotifs: "ff.notifs.v1",
   history: "ff.history.v1",
   todo: "ff.todo.v1",
+  profile: "ff.profile.v1",
   version: "ff.storage.version",
 } as const;
 

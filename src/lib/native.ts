@@ -587,7 +587,7 @@ export async function initNative() {
 
     reminders.forEach(r => {
       r.times.forEach((time: string, idx: number) => {
-        if (r.lastFired[time] === dateStr) {
+        if (r.lastFired?.[time] === dateStr) {
           firedNudgeIds.push(hashId(`rem:${r.id}:${idx}`));
         }
       });

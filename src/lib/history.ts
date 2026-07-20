@@ -10,7 +10,8 @@ export type UserAction =
   | 'nudge_created'
   | 'nudge_deleted'
   | 'ai_suggestion_accepted'
-  | 'ai_suggestion_refused';
+  | 'ai_suggestion_refused'
+  | 'profile_updated';
 
 export interface HistoryEvent {
   id: string;
