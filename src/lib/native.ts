@@ -1,7 +1,7 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { StatusBar, Style } from "@capacitor/status-bar";
+import { StatusBar } from "@capacitor/status-bar";
 import { CapacitorCalendar } from "@ebarooni/capacitor-calendar";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
@@ -655,7 +655,8 @@ export async function initNative() {
   void import("./ads").then((m) => m.initAds());
 
   try {
-    await StatusBar.setOverlaysWebView({ overlay: false });
+    // Pre-Android-15 devices only (the plugin no-ops on 15+, where the app is
+    // edge-to-edge and bar areas show the app's own background instead).
     await StatusBar.setBackgroundColor({ color: "#0F1115" });
   } catch (e) {
     console.warn("[Native] StatusBar setup failed", e);
@@ -672,11 +673,15 @@ export async function updateStatusBar(theme: "light" | "dark") {
     console.warn("[Widget] Failed to push theme", e);
   }
   try {
+    // SystemBars (Capacitor core) styles status + gesture bar icons via the
+    // non-deprecated WindowInsetsController path and is what applies on
+    // Android 15+ edge-to-edge. setBackgroundColor only has an effect on
+    // pre-15 devices, where the bars still have solid backgrounds.
     if (theme === "dark") {
-      await StatusBar.setStyle({ style: Style.Dark });
+      await SystemBars.setStyle({ style: SystemBarsStyle.Dark });
       await StatusBar.setBackgroundColor({ color: "#0F1115" });
     } else {
-      await StatusBar.setStyle({ style: Style.Light });
+      await SystemBars.setStyle({ style: SystemBarsStyle.Light });
       await StatusBar.setBackgroundColor({ color: "#F9FAFB" });
     }
     console.log(`[Native] Status bar updated for ${theme} mode`);

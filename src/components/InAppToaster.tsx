@@ -17,7 +17,7 @@ export function InAppToaster() {
   }, []);
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex flex-col items-center gap-2 px-4">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(1rem+env(safe-area-inset-top,0px))] z-50 flex flex-col items-center gap-2 px-4">
       <AnimatePresence>
         {items.slice(0, 3).map((n) => (
           <motion.div
