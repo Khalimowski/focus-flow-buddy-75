@@ -16,6 +16,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { isNative, updateStatusBar } from "@/lib/native";
+import { isOAuthPopupCallback } from "@/lib/google";
 
 
 export const Route = createFileRoute("/")({
@@ -49,8 +50,15 @@ function Home() {
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
   const { tutorialCompleted, theme, guestMode } = useI18nStore();
+  // True when this window is the Google OAuth popup landing back on the app
+  // URL: don't boot the app here — finish the token handshake and close.
+  const [oauthPopup] = useState(() => isOAuthPopupCallback());
 
   useEffect(() => {
+    if (oauthPopup) {
+      void import("@/lib/google").then((g) => g.completeOAuthPopup());
+      return;
+    }
     // Sync theme on mount to prevent flashing
     const root = window.document.documentElement;
     if (theme === "dark") {
@@ -116,6 +124,14 @@ function Home() {
     const p = await ensurePermission();
     setPerm(p);
   };
+
+  if (oauthPopup) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-6 text-center text-sm text-muted-foreground">
+        {t('oauth_popup_finishing')}
+      </div>
+    );
+  }
 
   if (!mounted) return null;
 

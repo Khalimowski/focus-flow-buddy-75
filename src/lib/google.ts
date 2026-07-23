@@ -108,6 +108,39 @@ export async function googleAuthLogin(): Promise<{
   };
 }
 
+// --- OAuth popup callback (web only) ---
+// The web OAuth flow opens a popup whose redirect_uri is the app's own URL,
+// so after consent the popup loads Focus Flow again. The plugin finishes the
+// handshake (parse tokens from the URL, postMessage them to the opener,
+// window.close()) inside the SocialLoginWeb constructor — which only runs
+// once something touches the plugin. Without that, the popup just sits there
+// showing a second copy of the app.
+
+const OAUTH_PENDING_KEY = "social_login_oauth_pending"; // plugin's own key
+// window.open names the popup "Google Sign In" (see plugin's POPUP_WINDOW_NAMES)
+const OAUTH_POPUP_NAME = "Google Sign In";
+
+// True when this window is the OAuth redirect landing inside the popup.
+export function isOAuthPopupCallback(): boolean {
+  if (typeof window === "undefined") return false;
+  const pending = !!window.localStorage.getItem(OAUTH_PENDING_KEY);
+  const isPopup = !!window.opener || window.name === OAUTH_POPUP_NAME;
+  const hasOAuthParams = /[#?&](access_token|id_token|code|error)=/.test(
+    window.location.hash + window.location.search,
+  );
+  return pending && isPopup && hasOAuthParams;
+}
+
+// Kicks the plugin's web implementation into existence; its constructor then
+// delivers the tokens to the opener window and closes this popup.
+export async function completeOAuthPopup() {
+  try {
+    await ensureInit();
+  } catch (e) {
+    console.warn("[Google] OAuth popup completion failed", e);
+  }
+}
+
 export async function disconnectGoogle() {
   try {
     await ensureInit();
