@@ -12,10 +12,12 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep line numbers so Play Console can deobfuscate crash stack traces
+# (the mapping file is bundled into the .aab automatically).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Capacitor plugin classes (incl. our WidgetBridgePlugin) are kept by the
+# consumer rules shipped in @capacitor/android; manifest-declared components
+# (MainActivity, TaskWidgetProvider) are kept by AAPT rules. No extra keeps
+# needed — add rules here only if a plugin breaks in a release build.

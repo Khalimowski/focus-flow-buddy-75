@@ -14,8 +14,8 @@ android {
         applicationId "com.khalimowski.focusflow"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
-        versionName "1.4.9"
+        versionCode 17
+        versionName "1.4.10"
         // Polish paused — ship English resources only (drops values-pl at
         // build time). Remove this line to re-enable.
         resConfigs "en"
@@ -44,7 +44,8 @@ android {
             if (System.getenv("ANDROID_KEYSTORE_PATH") != null) {
                 signingConfig signingConfigs.release
             }
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
