@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -9,6 +9,7 @@ import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
+import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -61,6 +62,18 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
   const [newTaskDate, setNewTaskDate] = useState<Date>(startOfDay(new Date()));
+
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>(() => {
+    try {
+      return localStorage.getItem("ff.tasks_view") === "timeline" ? "timeline" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const switchView = (mode: 'list' | 'timeline') => {
+    setViewMode(mode);
+    try { localStorage.setItem("ff.tasks_view", mode); } catch { /* private mode */ }
+  };
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -304,6 +317,46 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
   };
 
+  // Timeline drag-drop: move a task to a new time of day (minutes from midnight), or clear its time
+  const setTaskTime = (id: string, minutes: number | null) => {
+    const task = tasks.find(item => item.id === id);
+    if (!task) return;
+
+    let remindAt: string | null = null;
+    if (minutes !== null) {
+      const d = parseISO(task.dueDate);
+      d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+      remindAt = d.toISOString();
+    }
+    if (remindAt === task.remindAt) return;
+
+    setTasks(prev => sortTasks(prev.map(item =>
+      item.id === id ? { ...item, remindAt, notified: false } : item
+    )));
+
+    if (isNative()) {
+      const runNativeSync = async () => {
+        try {
+          await cancelNative([hashId("task:" + id)]);
+          await deleteFromCalendar(task.title);
+          if (remindAt) {
+            await scheduleNativeAt(hashId("task:" + id), task.title, t('reminder_title'), new Date(remindAt), calendarSync, id);
+          }
+        } catch (nativeErr) {
+          console.warn("[Native] Task sync failed during timeline move:", nativeErr);
+        }
+      };
+      void runNativeSync();
+    }
+    if (remindAt) {
+      void pushTaskToGoogleCalendar({ id, title: task.title, remindAt });
+    } else {
+      void removeTaskFromGoogleCalendar(id);
+    }
+
+    addEvent('task_edited', { id, newTitle: task.title });
+  };
+
   const toggle = (id: string) => {
     setTasks(prev => {
       const updated = prev.map((item) => {
@@ -479,6 +532,51 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         </div>
       </div>
 
+      <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center rounded-full bg-card/40 p-0.5">
+          <button
+            onClick={() => switchView('list')}
+            aria-label={t('view_list')}
+            aria-pressed={viewMode === 'list'}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all ${
+              viewMode === 'list' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="size-3" /> {t('view_list')}
+          </button>
+          <button
+            onClick={() => switchView('timeline')}
+            aria-label={t('view_timeline')}
+            aria-pressed={viewMode === 'timeline'}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all ${
+              viewMode === 'timeline' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarClock className="size-3" /> {t('view_timeline')}
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'timeline' ? (
+        displayItems.length === 0 ? (
+          <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10">
+            {t('tasks_empty')}
+          </div>
+        ) : (
+          <TaskTimeline
+            items={displayItems}
+            isToday={isSameDay(selectedDate, new Date())}
+            onToggleTask={toggle}
+            onToggleNudge={toggleNudge}
+            onSetTaskTime={setTaskTime}
+            onEditTask={(task: TimelineTask) => {
+              switchView('list');
+              startEdit(task);
+            }}
+            onDeleteTask={remove}
+          />
+        )
+      ) : (
       <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
         <AnimatePresence initial={false} mode="popLayout">
           {displayItems.length === 0 && (
@@ -633,6 +731,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           ))}
         </AnimatePresence>
       </ul>
+      )}
     </div>
   );
 }
