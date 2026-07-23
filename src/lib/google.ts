@@ -1,5 +1,5 @@
 import { SocialLogin } from "@capgo/capacitor-social-login";
-import { loadJSON, saveJSON } from "./storage";
+import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { useI18nStore } from "./i18n";
 
 // Google integrations (Gmail import + Google Calendar push), client-only.
@@ -79,6 +79,8 @@ export async function connectGoogle(): Promise<GoogleConnection> {
   };
   saveJSON(CONN_KEY, conn);
   window.dispatchEvent(new CustomEvent("ff.google-changed"));
+  // Fresh token: catch up on deletions that failed while the old one was stale
+  void reconcileGoogleCalendar();
   return conn;
 }
 
@@ -216,7 +218,8 @@ function calendarSyncEnabled(): boolean {
   return useI18nStore.getState().googleCalendarSync;
 }
 
-async function deleteEvent(token: string, eventId: string) {
+// True when the event is confirmed gone (deleted now, or already absent).
+async function deleteEvent(token: string, eventId: string): Promise<boolean> {
   const res = await gFetch(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
     token,
@@ -225,7 +228,9 @@ async function deleteEvent(token: string, eventId: string) {
   // 404/410 = already gone; that's fine
   if (!res.ok && res.status !== 404 && res.status !== 410) {
     console.warn(`[Google] Event delete failed: ${res.status}`);
+    return false;
   }
+  return true;
 }
 
 export async function pushTaskToGoogleCalendar(task: CalTask) {
@@ -270,14 +275,52 @@ export async function removeTaskFromGoogleCalendar(taskId: string) {
   const map = loadCalMap();
   const eventId = map[taskId];
   if (!eventId) return;
+  // No fresh token (or the delete fails): keep the mapping so
+  // reconcileGoogleCalendar retries once a token is available again.
   const token = getValidToken();
   if (!token) return;
   try {
-    await deleteEvent(token, eventId);
-    delete map[taskId];
-    saveJSON(CALMAP_KEY, map);
+    if (await deleteEvent(token, eventId)) {
+      const fresh = loadCalMap();
+      delete fresh[taskId];
+      saveJSON(CALMAP_KEY, fresh);
+    }
   } catch (e) {
     console.warn("[Google] removeTaskFromGoogleCalendar failed", e);
+  }
+}
+
+// Deletes calendar events that no longer have a live owner: the task was
+// deleted (here or on another device), completed, or lost its reminder time;
+// the nudge was deleted or disabled. This is the retry path for deletes that
+// silently failed earlier (stale token, offline, app killed mid-request) —
+// runs at boot, after sync pulls, and after a fresh Google connect.
+export async function reconcileGoogleCalendar() {
+  const token = getValidToken();
+  if (!token) return;
+  try {
+    const calMap = loadCalMap();
+    const tasks = loadJSON<CalTask[]>(STORAGE_KEYS.tasks, []);
+    const liveTasks = new Set(tasks.filter((t) => !t.done && t.remindAt).map((t) => t.id));
+    for (const [taskId, eventId] of Object.entries(calMap)) {
+      if (liveTasks.has(taskId)) continue;
+      if (await deleteEvent(token, eventId)) {
+        const fresh = loadCalMap();
+        delete fresh[taskId];
+        saveJSON(CALMAP_KEY, fresh);
+        console.log(`[Google] Reconcile: removed stale event for task ${taskId}`);
+      }
+    }
+
+    const nudgeMap = loadNudgeMap();
+    const reminders = loadJSON<CalNudge[]>(STORAGE_KEYS.reminders, []);
+    const liveNudges = new Set(reminders.filter((r) => r.enabled).map((r) => r.id));
+    for (const reminderId of Object.keys(nudgeMap)) {
+      if (liveNudges.has(reminderId)) continue;
+      await deleteNudgeEvents(token, reminderId);
+    }
+  } catch (e) {
+    console.warn("[Google] reconcileGoogleCalendar failed", e);
   }
 }
 
@@ -309,11 +352,15 @@ async function deleteNudgeEvents(token: string, reminderId: string) {
   const map = loadNudgeMap();
   const eventIds = map[reminderId];
   if (!eventIds?.length) return;
+  // Keep ids whose delete didn't go through, so a later reconcile retries them
+  const failed: string[] = [];
   for (const eventId of eventIds) {
-    await deleteEvent(token, eventId);
+    if (!(await deleteEvent(token, eventId))) failed.push(eventId);
   }
-  delete map[reminderId];
-  saveJSON(NUDGEMAP_KEY, map);
+  const fresh = loadNudgeMap();
+  if (failed.length > 0) fresh[reminderId] = failed;
+  else delete fresh[reminderId];
+  saveJSON(NUDGEMAP_KEY, fresh);
 }
 
 export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
@@ -351,7 +398,9 @@ export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
     }
     if (eventIds.length > 0) {
       const map = loadNudgeMap();
-      map[nudge.id] = eventIds;
+      // Merge instead of overwrite: entries that survived deleteNudgeEvents
+      // are stale events still awaiting deletion, don't lose track of them
+      map[nudge.id] = [...(map[nudge.id] ?? []), ...eventIds];
       saveJSON(NUDGEMAP_KEY, map);
       console.log(`[Google] ${eventIds.length} calendar event(s) created for nudge ${nudge.id}`);
     }

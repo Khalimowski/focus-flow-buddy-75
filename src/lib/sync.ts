@@ -134,6 +134,9 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
     // Items created/completed on another device: align this device's
     // scheduled notifications with the fresh data (no-op on web).
     void import("./native").then((m) => m.reconcileNotifications());
+    // Same for Google Calendar: drop events for tasks/nudges that were
+    // deleted or completed on another device (no-op without a fresh token).
+    void import("./google").then((m) => m.reconcileGoogleCalendar());
   }
 }
 

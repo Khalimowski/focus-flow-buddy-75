@@ -68,6 +68,9 @@ function Home() {
     void import("@/lib/sync").then(async (m) => {
       const user = await m.initSync();
       setSignedIn(!!user);
+      // After the initial pull settles: clean up Google Calendar events whose
+      // tasks were deleted/completed while no fresh token was around
+      void import("@/lib/google").then((g) => g.reconcileGoogleCalendar());
     });
 
     // On Main Screen, back button should minimize instead of exit
