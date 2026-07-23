@@ -469,7 +469,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.4.9 · {__BUILD_TIME__}
+          {t('version')} 1.4.10 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>
