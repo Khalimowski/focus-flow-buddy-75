@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,6 +37,7 @@ import { AccountSync, SignedInAs } from "@/components/AccountSync";
 export function Settings() {
   const [open, setOpen] = useState(false);
   const {
+    language, setLanguage,
     theme, setTheme,
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync,
@@ -333,11 +334,6 @@ export function Settings() {
             </Select>
           </div>
 
-          {/* Language picker disabled for now (Polish paused) — restore this
-              block, the Languages icon + Select imports, and the
-              language/setLanguage store fields to re-enable. Also revert the
-              pl->en migration in i18n.ts and resConfigs in
-              android/app/build.gradle.
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Languages className="size-4" />
@@ -358,7 +354,6 @@ export function Settings() {
               </SelectContent>
             </Select>
           </div>
-          */}
 
           {isGoogleConfigured() && (
             <div className="pt-4 border-t space-y-4">
@@ -469,7 +464,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.4.14 · {__BUILD_TIME__}
+          {t('version')} 1.4.15 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>
