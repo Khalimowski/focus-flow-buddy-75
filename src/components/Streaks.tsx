@@ -56,7 +56,7 @@ export function StreakStrip({ streak }: { streak: Streak }) {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-mono text-4xl font-semibold">{streak.current}</span>
-            <span className="text-sm text-muted-foreground">{t('days')}</span>
+            <span className="text-sm text-muted-foreground">{t(streak.current === 1 ? 'day' : 'days')}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm">
