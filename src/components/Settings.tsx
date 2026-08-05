@@ -33,6 +33,7 @@ import {
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 import { AccountSync, SignedInAs } from "@/components/AccountSync";
+import { PremiumSection } from "@/components/Premium";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -439,6 +440,10 @@ export function Settings() {
           )}
 
           <div className="pt-4 border-t">
+            <PremiumSection />
+          </div>
+
+          <div className="pt-4 border-t">
             <AccountSync />
           </div>
 
@@ -469,7 +474,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.4.13 · {__BUILD_TIME__}
+          {t('version')} 1.5.0 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>

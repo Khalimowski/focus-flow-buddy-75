@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
 import { Onboarding } from "@/components/Onboarding";
 import { AuthGate } from "@/components/AuthGate";
+import { PremiumGate } from "@/components/PremiumGate";
+import { WEB_GATE_ENABLED, usePremium } from "@/lib/premium";
 import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { isNative, updateStatusBar } from "@/lib/native";
@@ -50,6 +52,7 @@ function Home() {
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
   const { tutorialCompleted, theme, guestMode } = useI18nStore();
+  const premium = usePremium();
   // True when this window is the Google OAuth popup landing back on the app
   // URL: don't boot the app here — finish the token handshake and close.
   const [oauthPopup] = useState(() => isOAuthPopupCallback());
@@ -79,6 +82,11 @@ function Home() {
       // After the initial pull settles: clean up Google Calendar events whose
       // tasks were deleted/completed while no fresh token was around
       void import("@/lib/google").then((g) => g.reconcileGoogleCalendar());
+      // Pick up purchases Play knows about but this install doesn't (new
+      // device, reinstall, or a pending payment that settled), then finish any
+      // verification/welcome-email left over from an offline purchase.
+      void import("@/lib/billing").then((b) => b.reconcilePurchases());
+      void import("@/lib/premium").then((p) => p.syncEntitlementWithService());
     });
 
     // On Main Screen, back button should minimize instead of exit
@@ -139,6 +147,10 @@ function Home() {
   // the login page unless signed in or explicitly continuing as guest.
   if (signedIn === null) return null;
   if (!signedIn && !guestMode) return <AuthGate />;
+
+  // Browser access is the premium feature. Android is never gated — that's the
+  // free, ad-supported tier, and where the purchase is made.
+  if (WEB_GATE_ENABLED && !isNative() && !premium) return <PremiumGate />;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-24 xl:max-w-6xl 2xl:max-w-[1600px]">

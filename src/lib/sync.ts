@@ -18,6 +18,10 @@ const SYNC_KEYS: string[] = [
   STORAGE_KEYS.streak,
   STORAGE_KEYS.todo,
   STORAGE_KEYS.profile,
+  // Carries the premium entitlement, which is how a purchase made on the phone
+  // reaches the browser build. premium.ts only ever writes grants and explicit
+  // revocations, so last-writer-wins can't clear it by accident.
+  STORAGE_KEYS.premium,
 ];
 
 const META_KEY = "ff.sync.meta.v1";

@@ -14,8 +14,8 @@ android {
         applicationId "com.khalimowski.focusflow"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 20
-        versionName "1.4.13"
+        versionCode 21
+        versionName "1.5.0"
         // Polish paused — ship English resources only (drops values-pl at
         // build time). Remove this line to re-enable.
         resConfigs "en"
@@ -69,6 +69,8 @@ dependencies {
     implementation libs.androidx.coordinatorlayout
     implementation libs.androidx.core.splashscreen
     implementation project(':capacitor-android')
+    // Play Billing — premium unlock (ad-free + browser access), see BillingPlugin.java
+    implementation libs.billing
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core

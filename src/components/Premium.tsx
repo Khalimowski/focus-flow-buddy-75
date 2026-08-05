@@ -1,0 +1,202 @@
+import { useEffect, useState } from "react";
+import { Sparkles, Check, Copy, Mail, Globe, RotateCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n";
+import { notify } from "@/lib/notifications";
+import {
+  WEB_APP_URL,
+  isUnlockServiceConfigured,
+  redeemWithUnlockService,
+  usePremium,
+} from "@/lib/premium";
+import {
+  getPremiumProduct,
+  isBillingSupported,
+  purchasePremium,
+  restorePremium,
+  type PremiumProduct,
+} from "@/lib/billing";
+
+/** Perk list, shared by the settings section and the web lock screen. */
+export function PremiumPerks() {
+  const { t } = useTranslation();
+  const perks = [t("premium_perk_web"), t("premium_perk_ads"), t("premium_perk_sync")];
+  return (
+    <ul className="space-y-2">
+      {perks.map((perk) => (
+        <li key={perk} className="flex items-start gap-2 text-sm text-muted-foreground">
+          <Check className="mt-0.5 size-4 shrink-0 text-mint" />
+          <span>{perk}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The browser link plus copy / email-it-to-me actions. Shown once premium is on. */
+export function PremiumWebLink() {
+  const { t } = useTranslation();
+  const [emailing, setEmailing] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(WEB_APP_URL);
+      notify({ title: t("premium_link_copied"), kind: "info" });
+    } catch {
+      // Clipboard is blocked in some webviews — the link is visible anyway.
+      notify({ title: WEB_APP_URL, kind: "info" });
+    }
+  };
+
+  const sendEmail = async () => {
+    if (!isUnlockServiceConfigured()) {
+      notify({ title: t("premium"), body: t("premium_email_unavailable"), kind: "info" });
+      return;
+    }
+    setEmailing(true);
+    try {
+      const { emailSent } = await redeemWithUnlockService({ force: true });
+      notify({
+        title: t("premium"),
+        body: emailSent ? t("premium_email_sent") : t("premium_email_failed"),
+        kind: "info",
+      });
+    } finally {
+      setEmailing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Globe className="size-3.5 shrink-0" />
+        <span className="font-medium text-foreground">{t("premium_web_link")}</span>
+      </div>
+      <a
+        href={WEB_APP_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="block break-all rounded-lg border bg-card/40 px-3 py-2 text-[11px] text-primary underline-offset-2 hover:underline"
+      >
+        {WEB_APP_URL}
+      </a>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" className="flex-1" onClick={copyLink}>
+          <Copy className="mr-1.5 size-3.5" /> {t("premium_copy_link")}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-1"
+          disabled={emailing}
+          onClick={sendEmail}
+        >
+          <Mail className="mr-1.5 size-3.5" /> {t("premium_email_link")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Premium block in the Settings sheet: buy, restore, or show the active state. */
+export function PremiumSection() {
+  const { t } = useTranslation();
+  const entitlement = usePremium();
+  const [product, setProduct] = useState<PremiumProduct | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Price comes from Play, so it's only available in the Android build and only
+  // once the product is live in Play Console.
+  useEffect(() => {
+    if (!isBillingSupported() || entitlement) return;
+    let cancelled = false;
+    void getPremiumProduct().then((p) => {
+      if (!cancelled) setProduct(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [entitlement]);
+
+  const handleBuy = async () => {
+    setBusy(true);
+    try {
+      const outcome = await purchasePremium();
+      if (outcome.status === "pending") {
+        notify({ title: t("premium"), body: t("premium_purchase_pending"), kind: "info" });
+      } else if (outcome.status === "granted") {
+        notify({ title: t("premium_active"), body: t("premium_tagline"), kind: "info" });
+      }
+      // "cancelled" is the user's own choice — no message needed.
+    } catch (e) {
+      console.error("[Premium] Purchase failed", e);
+      notify({ title: t("sync_error"), body: t("premium_purchase_failed"), kind: "info" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    setBusy(true);
+    try {
+      const restored = await restorePremium();
+      notify({
+        title: t("premium"),
+        body: restored ? t("premium_restored") : t("premium_restore_none"),
+        kind: "info",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (entitlement) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-mint" />
+          <span className="text-sm font-semibold">{t("premium_active")}</span>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {t("premium_active_since")} {new Date(entitlement.purchasedAt).toLocaleDateString()}
+          {isUnlockServiceConfigured() && (
+            <> · {entitlement.verified ? t("premium_verified") : t("premium_unverified")}</>
+          )}
+        </p>
+        <PremiumWebLink />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Sparkles className="size-4 text-primary" />
+        <span className="text-sm font-semibold">{t("premium_title")}</span>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("premium_tagline")}</p>
+      <PremiumPerks />
+
+      {isBillingSupported() ? (
+        <>
+          <Button className="w-full" disabled={busy} onClick={handleBuy}>
+            <Sparkles className="mr-2 size-4" />
+            {product ? t("premium_buy_price").replace("{price}", product.price) : t("premium_buy")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-muted-foreground"
+            disabled={busy}
+            onClick={handleRestore}
+          >
+            <RotateCw className="mr-1.5 size-3.5" /> {t("premium_restore")}
+          </Button>
+        </>
+      ) : (
+        // Browser build: Play checkout can't run here, so point at the phone.
+        <p className="text-[11px] text-muted-foreground">{t("premium_only_on_android")}</p>
+      )}
+    </div>
+  );
+}

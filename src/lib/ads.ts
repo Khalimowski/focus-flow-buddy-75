@@ -1,4 +1,6 @@
 import { isNative } from "./native";
+import { PREMIUM_CHANGED_EVENT, isPremium } from "./premium";
+import { REMOTE_UPDATE_EVENT } from "./sync";
 
 // AdMob banner (Android only — no-ops on web, where AdMob can't serve).
 //
@@ -15,9 +17,49 @@ const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
 const ADS_ENABLED = true;
 
 let started = false;
+let watching = false;
+
+/**
+ * Drop the banner and the layout padding it reserved. Called when premium turns
+ * on mid-session — either the user just bought it, or a purchase made on
+ * another device arrived through sync.
+ */
+async function removeBanner() {
+  if (!started) return;
+  try {
+    const { AdMob } = await import("@capacitor-community/admob");
+    await AdMob.removeBanner();
+  } catch (e) {
+    console.warn("[Ads] Banner removal failed", e);
+  }
+  started = false;
+  document.body.style.paddingBottom = "";
+  document.documentElement.style.setProperty("--ad-banner-height", "0px");
+  console.log("[Ads] Banner removed (premium)");
+}
+
+/** Premium removes ads; anything that can flip the entitlement re-checks here. */
+function watchEntitlement() {
+  const check = () => {
+    if (isPremium()) void removeBanner();
+  };
+  window.addEventListener(PREMIUM_CHANGED_EVENT, check);
+  window.addEventListener(REMOTE_UPDATE_EVENT, check);
+}
 
 export async function initAds() {
-  if (!ADS_ENABLED || !isNative() || started) return;
+  if (!ADS_ENABLED || !isNative()) return;
+  // Purchases can land after boot (restore, or a sync pull from another
+  // device), so watch even when we're skipping the banner right now.
+  if (!watching) {
+    watching = true;
+    watchEntitlement();
+  }
+  if (isPremium()) {
+    console.log("[Ads] Skipped — premium entitlement active");
+    return;
+  }
+  if (started) return;
   started = true;
   try {
     const { AdMob, BannerAdPosition, BannerAdSize, BannerAdPluginEvents, AdmobConsentStatus } =
@@ -71,6 +113,8 @@ export async function initAds() {
       AdMob.hideBanner().catch(() => {});
     });
     await Keyboard.addListener("keyboardWillHide", () => {
+      // Don't resurrect a banner that premium removed while the keyboard was up.
+      if (!started) return;
       AdMob.resumeBanner().catch(() => {});
     });
   } catch (e) {

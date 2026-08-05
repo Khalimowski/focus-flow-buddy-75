@@ -61,6 +61,7 @@ export const STORAGE_KEYS = {
   history: "ff.history.v1",
   todo: "ff.todo.v1",
   profile: "ff.profile.v1",
+  premium: "ff.premium.v1",
   version: "ff.storage.version",
 } as const;
 
