@@ -25,6 +25,26 @@ last-writer-wins localStorage mirror as tasks and nudges. Both devices must be
 signed in to the **same account**; a guest install has nowhere to sync to, which
 is why PremiumGate tells guests to sign in first.
 
+### Why a stale local entitlement is never pushed
+
+localStorage outlives a sign-out — `signOut()` deliberately leaves task data on
+the device. That made the entitlement leak between accounts: user A is premium,
+signs out, user B signs in, and `doFullSync`'s "local data the server has never
+seen" branch pushed A's leftover `ff.premium.v1` into **B's** cloud row as a
+genuine purchase. It then propagated to every device B signed in on.
+
+Three things now prevent it:
+
+1. `signOut()` deletes `ff.premium.v1` — the entitlement belongs to the account,
+   not the device.
+2. The "first device" push branch skips premium entirely. An entitlement may
+   only be created by a Play purchase (which pushes through the save listener)
+   or by an admin writing the row; never inferred from local state.
+3. On a pull where the server has no premium row, the web build deletes any
+   local one. On the web the server is its only possible source, so that is
+   conclusive. Android is exempt — an offline purchase legitimately exists
+   locally before it can be pushed, and Play is the authority there.
+
 ### Why the entitlement is never written as `false`
 
 Sync is last-writer-wins per key. If a fresh browser wrote
