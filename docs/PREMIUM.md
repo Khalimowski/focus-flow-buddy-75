@@ -80,6 +80,32 @@ See that directory's README for setup. It is a **separate** Worker — the app's
 own Vite/Nitro pipeline is fragile and must keep emitting a static SPA for
 Capacitor, so nothing was added to it.
 
+## Who has premium?
+
+There is no file and no admin screen. The entitlement is database state: one row
+per user in `public.user_data` with `key = 'ff.premium.v1'`, holding the JSON
+that `src/lib/premium.ts` defines. The key name lives in `src/lib/storage.ts`;
+`src/lib/sync.ts` lists it in `SYNC_KEYS`, which is what makes it travel between
+devices. Those files define the *shape* — the data itself is only in Neon.
+
+```bash
+node scripts/list-premium.mjs          # accounts with a premium record
+node scripts/list-premium.mjs --all    # every account, premium or not
+```
+
+Or straight SQL:
+
+```sql
+select u.email, ud.value, ud.updated_at
+from public.user_data ud
+left join neon_auth.users_sync u on u.id = ud.user_id   -- table name varies
+where ud.key = 'ff.premium.v1'
+order by ud.updated_at desc;
+```
+
+A row is not automatically a customer: `active: true` is a grant, `active:
+false` is a revocation tombstone. Check the flag, not the row's existence.
+
 ## Granting premium manually
 
 For comps, testers, refunds handled out of band, or your own account:
