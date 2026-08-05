@@ -40,7 +40,7 @@ function notifyAuthChanged() {
 
 export type SyncUser = { id: string; email: string };
 
-type UserDataRow = { key: string; value: unknown; updated_at: string };
+type UserDataRow = { user_id?: string; key: string; value: unknown; updated_at: string };
 
 let currentUser: SyncUser | null = null;
 let initialized = false;
@@ -97,9 +97,15 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   if (!currentUser) return;
   lastPullAt = Date.now();
 
+  // user_id is filtered explicitly and selected back deliberately. RLS already
+  // scopes this to the signed-in user, but relying on it alone means a policy
+  // that ever fails open silently hands every account everyone else's data —
+  // including the premium entitlement, which would look like "everyone is
+  // suddenly premium". Belt and braces on both sides of the wire.
   const { data, error } = await client
     .from("user_data")
-    .select("key,value,updated_at")
+    .select("user_id,key,value,updated_at")
+    .eq("user_id", currentUser.id)
     .in("key", SYNC_KEYS);
   if (error) {
     console.error("[Sync] Pull failed:", error);
@@ -112,6 +118,14 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   let changed = false;
 
   for (const row of rows) {
+    // Never write another account's row into this device's storage.
+    if (row.user_id !== undefined && row.user_id !== currentUser.id) {
+      console.error(
+        "[Sync] Discarded a row belonging to another user — check the RLS policy on user_data",
+        { key: row.key },
+      );
+      continue;
+    }
     serverKeys.add(row.key);
     // Skip keys with unpushed local edits — our push below wins (LWW).
     if (meta[row.key] === row.updated_at || dirty.has(row.key)) continue;
