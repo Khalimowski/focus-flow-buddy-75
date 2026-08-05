@@ -42,42 +42,21 @@ if (!env.DATABASE_URL) {
 
 const sql = neon(env.DATABASE_URL);
 
-// Neon Auth's table layout has changed across versions (users_sync, user, …),
-// so find it rather than hard-coding a name that may not exist here.
-const candidates = await sql.query(
-  `select table_name from information_schema.columns
-   where table_schema = 'neon_auth' and column_name = 'email'
-   order by table_name`
+// Neon Auth keeps accounts in neon_auth."user" — "user" is a reserved word in
+// SQL, so it needs the quotes every time it's referenced.
+const rows = await sql.query(
+  `select id, email from neon_auth."user" where lower(email) = lower($1) limit 1`,
+  [email]
 );
-
-if (candidates.length === 0) {
-  console.error("No table with an 'email' column found in the neon_auth schema.");
-  process.exit(1);
-}
-
-let user = null;
-let foundIn = null;
-for (const { table_name } of candidates) {
-  const rows = await sql.query(
-    `select id, email from neon_auth."${table_name.replace(/"/g, '""')}"
-     where lower(email) = lower($1) limit 1`,
-    [email]
-  );
-  if (rows.length > 0) {
-    user = rows[0];
-    foundIn = table_name;
-    break;
-  }
-}
+const user = rows[0];
 
 if (!user) {
   console.error(`No Neon Auth user found for ${email}.`);
-  console.error(`Looked in: ${candidates.map((c) => c.table_name).join(", ")}`);
-  console.error("The person must have signed up (in the app) before they can be granted premium.");
+  console.error("They must have signed up in the app before they can be granted premium.");
   process.exit(1);
 }
 
-console.log(`User: ${user.email}  id=${user.id}  (neon_auth.${foundIn})`);
+console.log(`User: ${user.email}  id=${user.id}`);
 
 // Matches the Entitlement / RevokedRecord shapes in src/lib/premium.ts.
 // verified+emailSent are pre-set on a manual grant so the client never asks the

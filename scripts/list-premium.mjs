@@ -31,31 +31,9 @@ if (!env.DATABASE_URL) {
 
 const sql = neon(env.DATABASE_URL);
 
-// Neon Auth's user table has been renamed across versions — find it.
-const candidates = await sql.query(
-  `select table_name from information_schema.columns
-   where table_schema = 'neon_auth' and column_name = 'email'
-   order by table_name`
-);
-
-let userTable = null;
-for (const { table_name } of candidates) {
-  const probe = await sql.query(
-    `select 1 from neon_auth."${table_name.replace(/"/g, '""')}" limit 1`
-  );
-  if (probe.length > 0) {
-    userTable = table_name;
-    break;
-  }
-}
-
-if (!userTable) {
-  console.error("Could not find a populated Neon Auth user table in the neon_auth schema.");
-  console.error(`Candidates: ${candidates.map((c) => c.table_name).join(", ") || "(none)"}`);
-  process.exit(1);
-}
-
-const users = `neon_auth."${userTable.replace(/"/g, '""')}"`;
+// Neon Auth keeps accounts in neon_auth."user" — "user" is a reserved word in
+// SQL, so it needs the quotes every time it's referenced.
+const users = `neon_auth."user"`;
 
 // A row can be a grant (active:true) or a revocation tombstone (active:false),
 // so report the flag rather than assuming any row means premium.

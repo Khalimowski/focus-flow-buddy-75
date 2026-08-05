@@ -113,15 +113,47 @@ node scripts/list-premium.mjs          # accounts with a premium record
 node scripts/list-premium.mjs --all    # every account, premium or not
 ```
 
-Or straight SQL:
+Or straight SQL. Accounts live in `neon_auth."user"` — `user` is a reserved
+word, so the quotes are mandatory:
 
 ```sql
 select u.email, ud.value, ud.updated_at
 from public.user_data ud
-left join neon_auth.users_sync u on u.id = ud.user_id   -- table name varies
+left join neon_auth."user" u on u.id = ud.user_id
 where ud.key = 'ff.premium.v1'
 order by ud.updated_at desc;
 ```
+
+### A browsable view
+
+There is no `premium` column on the user table, and there shouldn't be —
+`neon_auth` is managed by Neon Auth, and anything added there risks being
+overwritten by its own sync. For a table you can just open in the Neon console,
+create a view instead. It reads the same rows, so there's no second source of
+truth to drift:
+
+```sql
+create or replace view public.premium_users
+with (security_invoker = true) as
+select u.email,
+       u.id                             as user_id,
+       coalesce((ud.value->>'active')::boolean, false) as premium,
+       ud.value->>'source'              as source,
+       (ud.value->>'verified')::boolean as verified,
+       ud.value->>'purchasedAt'         as purchased_at,
+       ud.updated_at
+from neon_auth."user" u
+left join public.user_data ud
+       on ud.user_id = u.id and ud.key = 'ff.premium.v1';
+```
+
+```sql
+select * from public.premium_users where premium;
+```
+
+Deliberately not granted to the `authenticated` role, so the Data API can't
+serve it — it's for admin use over `DATABASE_URL` only. `security_invoker` keeps
+RLS applying to whoever queries it, rather than the view's owner.
 
 A row is not automatically a customer: `active: true` is a grant, `active:
 false` is a revocation tombstone. Check the flag, not the row's existence.
