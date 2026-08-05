@@ -80,6 +80,42 @@ See that directory's README for setup. It is a **separate** Worker — the app's
 own Vite/Nitro pipeline is fragile and must keep emitting a static SPA for
 Capacitor, so nothing was added to it.
 
+## Granting premium manually
+
+For comps, testers, refunds handled out of band, or your own account:
+
+```bash
+node scripts/grant-premium.mjs someone@example.com
+node scripts/grant-premium.mjs someone@example.com --revoke
+```
+
+It writes the same `ff.premium.v1` row a purchase would, straight into
+`public.user_data` using `DATABASE_URL` from `.env.local` — so it reaches every
+device that account signs in on, not just one browser. The person must have
+signed up already; the script looks their id up in `neon_auth` and refuses if
+there's no match.
+
+Manual grants are stored with `source: "manual"` and `verified/emailSent`
+pre-set, so the client never asks the unlock service to verify a Play purchase
+token that doesn't exist. `reconcilePurchases()` on Android won't clear them
+either — an empty Play `restore()` is never a revocation.
+
+To unlock just one browser for a quick test, this in the devtools console does
+it without touching the database:
+
+```js
+localStorage.setItem('ff.premium.v1', JSON.stringify({
+  active: true, source: 'manual', productId: 'focus_flow_premium',
+  orderId: null, purchasedAt: new Date().toISOString(),
+  verified: true, emailSent: true,
+}));
+location.reload();
+```
+
+Note that this is not purely local: if that browser is signed in, sync sees a
+key the server has never heard of and pushes it, so the grant propagates to the
+account anyway. Use a guest session if you want it to stay on one machine.
+
 ## Environment variables
 
 | Variable | Default | Meaning |
