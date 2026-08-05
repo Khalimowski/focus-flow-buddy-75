@@ -77,7 +77,7 @@ Play verification and the post-purchase email need a server, so they live in a
 Unset = purchases trusted client-side, no email. Full notes: `docs/PREMIUM.md`.
 
 ### i18n
-`t()` keys are typed against the `en` dictionary in `src/lib/i18n.ts`; **every key must exist in both `en` and `pl`** or tsc fails. The Polish language picker is currently disabled (see comment in Settings.tsx) but the dict is maintained.
+`t()` keys are typed against the `en` dictionary in `src/lib/i18n.ts`; **every key must exist in both `en` and `pl`** or tsc fails. The Polish language picker is live in Settings, and `values-pl` ships in the APK (no `resConfigs` filter), so native strings need a Polish entry too.
 
 ### Build pipeline (fragile — read before touching)
 `vite.config.ts` uses `@lovable.dev/vite-tanstack-config`, which bundles tanstackStart/react/tailwind/nitro — do not add those plugins manually. Known trap: newer config versions enable the **nitro deploy plugin** on every build, which retargets output to `.output/` and breaks TanStack's SPA prerender (expects `dist/server/server.js`). Current defenses: `nitro: false` when `CF_PAGES`/`WORKERS_CI` env vars are set (Cloudflare builders), explicit `nitro.output` dirs pinned to `dist/`, a `resilientServerEntry` shim plugin, and `scripts/prebuild.js`/`postbuild.js` (placeholder server entry; `_shell.html` → `index.html` copy that Capacitor and static hosting require). Verify both `npm run build` and `WORKERS_CI=1 npm run build` still produce `dist/client/index.html` after changing any of this.

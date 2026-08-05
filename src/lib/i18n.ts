@@ -58,14 +58,11 @@ export const useI18nStore = create<I18nState>()(
     }),
     {
       name: 'focus-flow-settings',
-      // v1: Polish disabled for now — move previously-selected 'pl' back to
-      // 'en'. Drop this migration (and bump version) when Polish returns.
+      // Polish is selectable again, so the v1 pl->en migration is gone. The
+      // version stays at 1 on purpose: persisted state is already stamped v1,
+      // and bumping it without a migrate function is what risks discarding
+      // everyone's settings.
       version: 1,
-      migrate: (persisted) => {
-        const state = persisted as Partial<I18nState>;
-        if (state?.language === 'pl') state.language = 'en';
-        return state as I18nState;
-      },
     }
   )
 );
