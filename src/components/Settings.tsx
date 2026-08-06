@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages, LayoutGrid } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -20,7 +20,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, type VibrationType } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
-import { isNative, ensureCalendarPermission, updateStatusBar, syncAllToCalendar, applyVibrationSetting } from "@/lib/native";
+import {
+  isNative,
+  ensureCalendarPermission,
+  updateStatusBar,
+  syncAllToCalendar,
+  applyVibrationSetting,
+  getWidgetPinState,
+  requestWidgetPin,
+  type WidgetPinState,
+} from "@/lib/native";
 import {
   isGoogleConfigured,
   getGoogleConnection,
@@ -51,6 +60,21 @@ export function Settings() {
   const { t } = useTranslation();
   const [googleEmail, setGoogleEmail] = useState<string | null>(() => getGoogleConnection()?.email ?? null);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [widgetPin, setWidgetPin] = useState<WidgetPinState>({ supported: false, added: false });
+  const [widgetHint, setWidgetHint] = useState(false);
+
+  // Re-read on every open: the widget may have been added or removed from the
+  // home screen since last time.
+  useEffect(() => {
+    if (!open) return;
+    setWidgetHint(false);
+    void getWidgetPinState().then(setWidgetPin);
+  }, [open]);
+
+  const handleAddWidget = async () => {
+    const opened = await requestWidgetPin();
+    setWidgetHint(!opened);
+  };
 
   useEffect(() => {
     // Sync with HTML class for tailwind dark mode
@@ -356,6 +380,26 @@ export function Settings() {
             </Select>
           </div>
 
+          {(widgetPin.supported || widgetPin.added) && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <LayoutGrid className="size-4" />
+                <Label className="text-sm font-medium">{t('widget_section')}</Label>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={widgetPin.added}
+                onClick={() => void handleAddWidget()}
+              >
+                {widgetPin.added ? t('widget_added') : t('widget_add')}
+              </Button>
+              {widgetHint && (
+                <p className="text-[11px] text-muted-foreground">{t('widget_manual_hint')}</p>
+              )}
+            </div>
+          )}
+
           {isGoogleConfigured() && (
             <div className="pt-4 border-t space-y-4">
               <div className="flex flex-col gap-0.5">
@@ -469,7 +513,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.5.2 · {__BUILD_TIME__}
+          {t('version')} 1.5.3 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>

@@ -330,6 +330,8 @@ type WidgetBridgePlugin = {
   setTasks(options: { tasks: string }): Promise<void>;
   setTheme(options: { theme: "light" | "dark" }): Promise<void>;
   getPendingDone(): Promise<{ ids: string[] }>;
+  getPinState(): Promise<{ supported: boolean; added: boolean }>;
+  requestPin(): Promise<{ requested: boolean }>;
 };
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
 
@@ -400,6 +402,35 @@ export async function syncWidgetTicks() {
     window.dispatchEvent(new CustomEvent("ff.data_updated"));
   } catch (e) {
     console.warn("[Widget] Failed to sync ticks", e);
+  }
+}
+
+export type WidgetPinState = { supported: boolean; added: boolean };
+
+// Whether we can offer to pin the widget, and whether it's already on a home
+// screen. Web (and APKs built before the plugin gained these methods) report
+// unsupported, which keeps the prompt hidden.
+export async function getWidgetPinState(): Promise<WidgetPinState> {
+  if (!isNative()) return { supported: false, added: false };
+  try {
+    const state = await WidgetBridge.getPinState();
+    return { supported: !!state?.supported, added: !!state?.added };
+  } catch (e) {
+    console.warn("[Widget] Pin state unavailable", e);
+    return { supported: false, added: false };
+  }
+}
+
+// Opens the launcher's "add widget" dialog. False means the launcher refused —
+// the user has to long-press the home screen instead.
+export async function requestWidgetPin(): Promise<boolean> {
+  if (!isNative()) return false;
+  try {
+    const { requested } = await WidgetBridge.requestPin();
+    return !!requested;
+  } catch (e) {
+    console.warn("[Widget] Pin request failed", e);
+    return false;
   }
 }
 

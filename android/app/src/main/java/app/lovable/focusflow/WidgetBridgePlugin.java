@@ -1,7 +1,10 @@
 package app.lovable.focusflow;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -38,6 +41,47 @@ public class WidgetBridgePlugin extends Plugin {
         prefs().edit().putString(TaskWidgetProvider.KEY_THEME, theme).apply();
         TaskWidgetProvider.updateAll(getContext());
         call.resolve();
+    }
+
+    /**
+     * { supported, added } — whether this launcher can show the "add widget"
+     * dialog, and whether the user already has the widget on a home screen.
+     * Drives the in-app prompt in WidgetPrompt.tsx.
+     */
+    @PluginMethod
+    public void getPinState(PluginCall call) {
+        AppWidgetManager manager = AppWidgetManager.getInstance(getContext());
+        ComponentName provider = new ComponentName(getContext(), TaskWidgetProvider.class);
+        boolean added = manager.getAppWidgetIds(provider).length > 0;
+        // requestPinAppWidget is API 26+, and even then launchers may refuse it.
+        boolean supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && manager.isRequestPinAppWidgetSupported();
+        JSObject ret = new JSObject();
+        ret.put("supported", supported);
+        ret.put("added", added);
+        call.resolve(ret);
+    }
+
+    /**
+     * Asks the launcher to open its "add widget" dialog. Resolves
+     * { requested: false } when the launcher declines — the caller then tells
+     * the user to add it by hand. Whether the user confirms is not reported
+     * back; the app re-reads getPinState on resume instead.
+     */
+    @PluginMethod
+    public void requestPin(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            ret.put("requested", false);
+            call.resolve(ret);
+            return;
+        }
+        AppWidgetManager manager = AppWidgetManager.getInstance(getContext());
+        ComponentName provider = new ComponentName(getContext(), TaskWidgetProvider.class);
+        boolean requested = manager.isRequestPinAppWidgetSupported()
+                && manager.requestPinAppWidget(provider, null, null);
+        ret.put("requested", requested);
+        call.resolve(ret);
     }
 
     /** Returns and clears { ids: string[] } of tasks ticked from the widget. */

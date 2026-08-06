@@ -17,6 +17,7 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { WEB_GATE_ENABLED, usePremium } from "@/lib/premium";
 import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
+import { WidgetPrompt } from "@/components/WidgetPrompt";
 import { isNative, updateStatusBar } from "@/lib/native";
 import { isOAuthPopupCallback } from "@/lib/google";
 
@@ -188,6 +189,7 @@ function Home() {
       </header>
 
       <UpdateBanner />
+      <WidgetPrompt />
       <div data-tour="streak">
         <StreakStrip streak={streak} />
       </div>
