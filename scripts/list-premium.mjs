@@ -35,6 +35,11 @@ const sql = neon(env.DATABASE_URL);
 // SQL, so it needs the quotes every time it's referenced.
 const users = `neon_auth."user"`;
 
+// neon_auth."user".id is a uuid but user_data.user_id is text (the app writes
+// the id it gets from the session as a string), so the join needs an explicit
+// cast — Postgres has no uuid = text operator.
+const joinOn = `ud.user_id = u.id::text`;
+
 // A row can be a grant (active:true) or a revocation tombstone (active:false),
 // so report the flag rather than assuming any row means premium.
 const rows = all
@@ -45,7 +50,7 @@ const rows = all
               ud.value->>'verified' as verified,
               ud.updated_at
        from ${users} u
-       left join public.user_data ud on ud.user_id = u.id and ud.key = $1
+       left join public.user_data ud on ${joinOn} and ud.key = $1
        order by (ud.value->>'active') = 'true' desc nulls last, u.email`,
       [PREMIUM_KEY]
     )
@@ -56,7 +61,7 @@ const rows = all
               ud.value->>'verified' as verified,
               ud.updated_at
        from public.user_data ud
-       left join ${users} u on u.id = ud.user_id
+       left join ${users} u on ${joinOn}
        where ud.key = $1
        order by ud.updated_at desc`,
       [PREMIUM_KEY]
