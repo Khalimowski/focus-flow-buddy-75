@@ -18,6 +18,10 @@ const SYNC_KEYS: string[] = [
   STORAGE_KEYS.streak,
   STORAGE_KEYS.todo,
   STORAGE_KEYS.profile,
+  // Carries the premium entitlement, which is how a purchase made on the phone
+  // reaches the browser build. premium.ts only ever writes grants and explicit
+  // revocations, so last-writer-wins can't clear it by accident.
+  STORAGE_KEYS.premium,
 ];
 
 const META_KEY = "ff.sync.meta.v1";
@@ -36,7 +40,7 @@ function notifyAuthChanged() {
 
 export type SyncUser = { id: string; email: string };
 
-type UserDataRow = { key: string; value: unknown; updated_at: string };
+type UserDataRow = { user_id?: string; key: string; value: unknown; updated_at: string };
 
 let currentUser: SyncUser | null = null;
 let initialized = false;
@@ -93,9 +97,15 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   if (!currentUser) return;
   lastPullAt = Date.now();
 
+  // user_id is filtered explicitly and selected back deliberately. RLS already
+  // scopes this to the signed-in user, but relying on it alone means a policy
+  // that ever fails open silently hands every account everyone else's data —
+  // including the premium entitlement, which would look like "everyone is
+  // suddenly premium". Belt and braces on both sides of the wire.
   const { data, error } = await client
     .from("user_data")
-    .select("key,value,updated_at")
+    .select("user_id,key,value,updated_at")
+    .eq("user_id", currentUser.id)
     .in("key", SYNC_KEYS);
   if (error) {
     console.error("[Sync] Pull failed:", error);
@@ -108,6 +118,14 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   let changed = false;
 
   for (const row of rows) {
+    // Never write another account's row into this device's storage.
+    if (row.user_id !== undefined && row.user_id !== currentUser.id) {
+      console.error(
+        "[Sync] Discarded a row belonging to another user — check the RLS policy on user_data",
+        { key: row.key },
+      );
+      continue;
+    }
     serverKeys.add(row.key);
     // Skip keys with unpushed local edits — our push below wins (LWW).
     if (meta[row.key] === row.updated_at || dirty.has(row.key)) continue;
@@ -120,8 +138,32 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   }
   saveMeta(meta);
 
+  // The entitlement is account-scoped, and localStorage outlives a sign-out.
+  // Without this, a leftover entitlement from whoever used this device before
+  // would unlock the app for the current user — and the "first device" push
+  // below would then write it into their cloud row as a real purchase.
+  //
+  // On the web the server is its only possible source (Play can't run here), so
+  // "no server row" is conclusive. On Android it isn't: a purchase made offline
+  // legitimately exists locally before it can be pushed, and Play itself is the
+  // authority there (reconcilePurchases re-grants at boot), so leave it alone.
+  if (!serverKeys.has(STORAGE_KEYS.premium)) {
+    const { isNative } = await import("./native");
+    if (!isNative() && window.localStorage.getItem(STORAGE_KEYS.premium) !== null) {
+      window.localStorage.removeItem(STORAGE_KEYS.premium);
+      dirty.delete(STORAGE_KEYS.premium);
+      changed = true;
+      window.dispatchEvent(new CustomEvent("ff.premium-changed"));
+      console.log("[Sync] Dropped a local entitlement this account doesn't own");
+    }
+  }
+
   // First device / new keys: local data the server has never seen.
   for (const key of SYNC_KEYS) {
+    // Never here for premium: an entitlement may only be created by a Play
+    // purchase (which pushes via the save listener) or by an admin writing the
+    // row directly. Inferring one from stale local state is how it leaks.
+    if (key === STORAGE_KEYS.premium) continue;
     if (!serverKeys.has(key) && window.localStorage.getItem(key) !== null) {
       dirty.add(key);
     }
@@ -431,6 +473,7 @@ export async function deleteAccount(email: string, password: string): Promise<{ 
   currentUser = null;
   dirty.clear();
   window.localStorage.removeItem(META_KEY);
+  window.localStorage.removeItem(STORAGE_KEYS.premium);
   notifyAuthChanged();
   return { accountDeleted };
 }
@@ -448,5 +491,9 @@ export async function signOut(): Promise<void> {
   // Local data stays on the device; forget sync bookkeeping so a different
   // account doesn't inherit it.
   window.localStorage.removeItem(META_KEY);
+  // The entitlement is the exception: it belongs to the account, not the
+  // device, so leaving it behind would hand premium to whoever signs in next.
+  window.localStorage.removeItem(STORAGE_KEYS.premium);
+  window.dispatchEvent(new CustomEvent("ff.premium-changed"));
   notifyAuthChanged();
 }

@@ -6,7 +6,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi", "android"] },
+  // `workers` holds standalone Cloudflare Workers deployed on their own, not
+  // part of the app bundle (see workers/premium-unlock/README.md).
+  { ignores: ["dist", ".output", ".vinxi", "android", "workers"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
