@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
 
+    <!-- Play Billing. The billing library merges this too, but Play Console reads it
+         off the uploaded bundle, so declare it here where it can't be missed. -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
     <!-- AdMob permission: lets the ads SDK pick better-fitting banners on Android 13+ -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
