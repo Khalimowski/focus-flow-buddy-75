@@ -54,6 +54,13 @@ upload key) — Play rejects bundles signed with any other key.
 
 - Local builds are unaffected: the CI signing config in
   `android/app/build.gradle` only activates when the keystore env vars are set.
+- Dependency patches (`patches/`) are applied by **patch-package** from the
+  `postinstall` script, so `npm install` and `bun install` produce the same
+  `node_modules`. They used to live in Bun's `patchedDependencies`, which npm
+  ignores — CI therefore built against an unpatched `@capacitor-community/admob`
+  and failed on its `getDefaultProguardFile('proguard-android.txt')` call, which
+  AGP 9 rejects. Add new patches with
+  `npx patch-package <package-name>`, not `bun patch`.
 - Play rejects a `versionCode` it has already seen — forgetting the bump is the
   most common failure.
 - The built `.aab` is also attached to the workflow run as an artifact, so you
