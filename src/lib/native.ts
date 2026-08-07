@@ -333,6 +333,13 @@ type WidgetBridgePlugin = {
 };
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
 
+// Swaps the launcher icon between the dark and light logo tiles. Implemented
+// with activity-aliases on the Android side (see AppIconPlugin.java).
+type AppIconPlugin = {
+  setTheme(options: { theme: "light" | "dark" }): Promise<void>;
+};
+const AppIcon = registerPlugin<AppIconPlugin>("AppIcon");
+
 type WidgetTask = {
   id: string;
   title: string;
@@ -671,6 +678,13 @@ export async function updateStatusBar(theme: "light" | "dark") {
     await WidgetBridge.setTheme({ theme });
   } catch (e) {
     console.warn("[Widget] Failed to push theme", e);
+  }
+  // …and the home-screen icon, which has a light and a dark tile. No-ops when
+  // already on the right one, so this is safe to call on every launch.
+  try {
+    await AppIcon.setTheme({ theme });
+  } catch (e) {
+    console.warn("[AppIcon] Failed to switch launcher icon", e);
   }
   try {
     // SystemBars (Capacitor core) styles status + gesture bar icons via the

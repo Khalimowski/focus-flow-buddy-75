@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Light-mode launcher icon. Same foreground as ic_launcher, white tile.
+     Which one the launcher shows is decided by the enabled activity-alias
+     (see AndroidManifest.xml and AppIconPlugin.java). -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background_light"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>

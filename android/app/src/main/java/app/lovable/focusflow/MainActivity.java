@@ -31,6 +31,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(CapacitorCalendarPlugin.class);
         registerPlugin(WidgetBridgePlugin.class);
         registerPlugin(BillingPlugin.class);
+        registerPlugin(AppIconPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Kill the Android 12+ overscroll stretch: it visually stretches the
