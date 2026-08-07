@@ -1,4 +1,4 @@
-# Building Focus Flow as a native Android app
+# Building FlowDay as a native Android app
 
 The web app is fully prepped for [Capacitor](https://capacitorjs.com). On Android,
 reminders schedule as real **system alarms** via `@capacitor/local-notifications`,

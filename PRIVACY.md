@@ -1,12 +1,12 @@
-# Privacy Policy — Focus Flow
+# Privacy Policy — FlowDay
 
 _Last updated: July 9, 2026_
 
-Focus Flow ("the app") is a task, reminder, and focus app designed for ADHD brains. This policy explains what data the app handles and where it goes.
+FlowDay ("the app") is a task, reminder, and focus app designed for ADHD brains. This policy explains what data the app handles and where it goes.
 
 ## The short version
 
-**All of your data stays on your device.** Focus Flow has no accounts, no sign-in, no analytics, and no ads. We do not collect, transmit, sell, or share any personal data.
+**All of your data stays on your device.** FlowDay has no accounts, no sign-in, no analytics, and no ads. We do not collect, transmit, sell, or share any personal data.
 
 ## Data the app stores (locally only)
 

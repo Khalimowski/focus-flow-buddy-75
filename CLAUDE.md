@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Focus Flow: an ADHD-friendly task/reminder app. One codebase ships to three targets:
+FlowDay: an ADHD-friendly task/reminder app. One codebase ships to three targets:
 - **Web**: TanStack Start in SPA mode, deployed to Cloudflare Workers (`focus-flow-buddy-75.kacper-szymanski1990.workers.dev`) and Lovable (`focus-flow-buddy-75.lovable.app`).
 - **Android**: Capacitor wraps the static `dist/client` bundle (no server on the phone).
 

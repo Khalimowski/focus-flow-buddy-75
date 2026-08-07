@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.khalimowski.focusflow",
-  appName: "Focus Flow",
+  appName: "FlowDay",
   webDir: "dist/client",
   bundledWebRuntime: false,
   android: {

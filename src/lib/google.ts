@@ -110,7 +110,7 @@ export async function googleAuthLogin(): Promise<{
 
 // --- OAuth popup callback (web only) ---
 // The web OAuth flow opens a popup whose redirect_uri is the app's own URL,
-// so after consent the popup loads Focus Flow again. The plugin finishes the
+// so after consent the popup loads FlowDay again. The plugin finishes the
 // handshake (parse tokens from the URL, postMessage them to the opener,
 // window.close()) inside the SocialLoginWeb constructor — which only runs
 // once something touches the plugin. Without that, the popup just sits there

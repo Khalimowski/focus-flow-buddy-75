@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Focus Flow</string>
-    <string name="title_activity_main">Focus Flow</string>
+    <string name="app_name">FlowDay</string>
+    <string name="title_activity_main">FlowDay</string>
     <string name="package_name">com.khalimowski.focusflow</string>
     <string name="custom_url_scheme">com.khalimowski.focusflow</string>
 

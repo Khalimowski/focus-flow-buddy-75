@@ -234,7 +234,7 @@ export function AICoach() {
         sessionStorage.setItem("ff.ai_coach.session_shown", "true");
 
         notify({
-          title: "Focus Flow AI",
+          title: "FlowDay AI",
           body: t('ai_coach_ready'),
           kind: "info"
         });
@@ -373,7 +373,7 @@ export function AICoach() {
       window.dispatchEvent(new Event('ff.data_updated'));
 
       notify({
-        title: "Focus Flow AI",
+        title: "FlowDay AI",
         body: t('ai_coach_tasks_added'),
         kind: "info"
       });

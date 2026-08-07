@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Brain, KeyRound, LogIn, Mail, UserPlus, UserRound } from "lucide-react";
+import { KeyRound, LogIn, Mail, UserPlus, UserRound } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
@@ -151,9 +152,7 @@ export function AuthGate() {
         className="w-full max-w-sm"
       >
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-glow">
-            <Brain className="size-7 text-background/90" strokeWidth={2.25} />
-          </div>
+          <LogoMark className="mb-4 size-16" />
           <h1 className="text-2xl font-bold tracking-tight">{t("app_name")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {mode === "forgot" || mode === "reset" ? t("reset_password") : t("auth_gate_subtitle")}

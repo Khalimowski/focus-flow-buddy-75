@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Brain, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,10 +16,10 @@ import { deleteAccount } from "@/lib/sync";
 export const Route = createFileRoute("/delete-account")({
   head: () => ({
     meta: [
-      { title: "Delete your account — Focus Flow" },
+      { title: "Delete your account — FlowDay" },
       {
         name: "description",
-        content: "Request deletion of your Focus Flow account and all associated data.",
+        content: "Request deletion of your FlowDay account and all associated data.",
       },
     ],
   }),
@@ -56,17 +57,15 @@ function DeleteAccountPage() {
   };
 
   const canSubmit = confirmed && email.trim().length > 3 && password.length > 0;
-  const mailto = "mailto:khalim163@gmail.com?subject=Delete%20my%20Focus%20Flow%20account";
+  const mailto = "mailto:khalim163@gmail.com?subject=Delete%20my%20FlowDay%20account";
 
   return (
     <div className="min-h-screen bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-glow">
-            <Brain className="size-7 text-background/90" strokeWidth={2.25} />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Delete your Focus Flow account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Usuwanie konta Focus Flow</p>
+          <LogoMark className="mb-4 size-16" />
+          <h1 className="text-2xl font-bold tracking-tight">Delete your FlowDay account</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Usuwanie konta FlowDay</p>
         </div>
 
         <div className="space-y-4 text-sm leading-relaxed">
@@ -175,7 +174,7 @@ function DeleteAccountPage() {
 
         <div className="mt-8 text-center">
           <Link to="/" className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-            ← Focus Flow
+            ← FlowDay
           </Link>
         </div>
       </div>

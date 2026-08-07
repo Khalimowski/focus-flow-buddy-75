@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { applyFavicon } from "../lib/favicon";
+import { useI18nStore } from "../lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -80,15 +82,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       },
-      { title: "Focus Flow" },
+      { title: "FlowDay" },
       { name: "description", content: "Calm focus & reminders for ADHD brains." },
       { name: "theme-color", content: "#0F1115" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Focus Flow" },
+      { name: "apple-mobile-web-app-title", content: "FlowDay" },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "Focus Flow" },
-      { name: "twitter:title", content: "Focus Flow" },
+      { property: "og:title", content: "FlowDay" },
+      { name: "twitter:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus & reminders for ADHD brains." },
       { name: "twitter:description", content: "Calm focus & reminders for ADHD brains." },
       {
@@ -106,7 +108,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
+      // PNG first as the universal fallback; the SVG tiles below win where
+      // they're supported, and Settings re-points the themed one at runtime.
       { rel: "icon", type: "image/png", href: "/favicon.png" },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/icon-light.svg",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/icon-dark.svg",
+        media: "(prefers-color-scheme: dark)",
+      },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
@@ -132,6 +148,13 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const theme = useI18nStore((s) => s.theme);
+
+  // Root-level so the tab icon tracks the theme everywhere, including the auth
+  // gate and /delete-account, where Settings never mounts.
+  useEffect(() => {
+    applyFavicon(theme);
+  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>

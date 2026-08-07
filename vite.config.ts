@@ -21,7 +21,7 @@ function resilientServerEntry() {
   const outputServerDir = resolve(root, ".output/server");
 
   const writeAlias = (stage: string) => {
-    console.log(`🚀 Focus Flow [${stage}]: Ensuring server entry exists...`);
+    console.log(`🚀 FlowDay [${stage}]: Ensuring server entry exists...`);
     try {
       mkdirSync(distServerDir, { recursive: true });
 

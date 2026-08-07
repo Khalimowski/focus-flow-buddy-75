@@ -1,4 +1,4 @@
-// Premium entitlement ("Focus Flow Premium").
+// Premium entitlement ("FlowDay Premium").
 //
 // What it unlocks:
 //   - the browser version of the app (see PremiumGate; native is never gated)

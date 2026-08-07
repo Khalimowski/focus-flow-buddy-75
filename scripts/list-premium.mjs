@@ -1,4 +1,4 @@
-// Who has Focus Flow Premium?
+// Who has FlowDay Premium?
 //
 // There is no file holding this — the entitlement is one row per user in
 // public.user_data with key 'ff.premium.v1'. This reads it back and joins it to

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat, CheckSquare, Brain } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat, CheckSquare } from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
@@ -18,6 +18,7 @@ import { WEB_GATE_ENABLED, usePremium } from "@/lib/premium";
 import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { WidgetPrompt } from "@/components/WidgetPrompt";
+import { LogoMark } from "@/components/Logo";
 import { isNative, updateStatusBar } from "@/lib/native";
 import { isOAuthPopupCallback } from "@/lib/google";
 
@@ -25,13 +26,13 @@ import { isOAuthPopupCallback } from "@/lib/google";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Focus Flow — Calm focus & reminders for ADHD brains" },
+      { title: "FlowDay — Calm focus & reminders for ADHD brains" },
       {
         name: "description",
         content:
           "A gentle focus timer, daily nudges, and tiny tasks — designed for ADHD brains. Install to your phone, get reminders, build streaks.",
       },
-      { property: "og:title", content: "Focus Flow" },
+      { property: "og:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus, gentle reminders, tiny wins." },
       { name: "theme-color", content: "#0F1115" },
     ],
@@ -161,20 +162,18 @@ function Home() {
 
       <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
-            >
-              <Brain className="size-5 text-background/90" strokeWidth={2.25} />
-            </motion.div>
-          </div>
-
-          <div className="text-center">
-            <h1 className="text-xl font-bold tracking-tight">{t('app_name')}</h1>
+          {/* Mark and wordmark sit together in the middle, as on the brand sheet */}
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center"
+          >
+            <h1 className="flex items-center justify-center gap-2">
+              <LogoMark className="size-9" />
+              <span className="text-xl font-bold tracking-tight">{t('app_name')}</span>
+            </h1>
             <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
-          </div>
+          </motion.div>
 
           <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2" data-tour="settings">
             {perm !== "granted" && perm !== "unsupported" && (
