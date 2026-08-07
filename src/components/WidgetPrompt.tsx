@@ -5,31 +5,54 @@ import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { getWidgetPinState, requestWidgetPin } from "@/lib/native";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "@/lib/storage";
 
-type PromptState = { dismissed?: boolean };
+// `dismissed` is the permanent answer; `snoozedUntil`/`snoozeCount` drive the
+// two-week "Not now". Old installs only ever wrote `dismissed: true`, and a
+// missing snoozeCount reads as 0, so they stay dismissed.
+type PromptState = { dismissed?: boolean; snoozedUntil?: number; snoozeCount?: number };
+
+const SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function readState(): PromptState {
+  return loadJSON<PromptState>(STORAGE_KEYS.widgetPrompt, {});
+}
 
 function markAnswered() {
   saveJSON<PromptState>(STORAGE_KEYS.widgetPrompt, { dismissed: true });
 }
 
+function markSnoozed(state: PromptState) {
+  saveJSON<PromptState>(STORAGE_KEYS.widgetPrompt, {
+    snoozedUntil: Date.now() + SNOOZE_MS,
+    snoozeCount: (state.snoozeCount ?? 0) + 1,
+  });
+}
+
 /**
- * One-time offer to put the task widget on the home screen. Android only —
- * on web (and on launchers that refuse pin requests) getWidgetPinState reports
- * unsupported and nothing renders. Settings keeps a permanent entry for anyone
- * who dismisses this.
+ * Offer to put the task widget on the home screen. Android only — on web (and
+ * on launchers that refuse pin requests) getWidgetPinState reports unsupported
+ * and nothing renders. "Not now" hides it for two weeks; from the second
+ * showing on there's also a never-ask-again button. Settings keeps a permanent
+ * entry either way.
  */
 export function WidgetPrompt() {
   const { t } = useTranslation();
   const { tutorialCompleted } = useI18nStore();
   const [show, setShow] = useState(false);
+  // Only offered once the user has already snoozed at least once — no point
+  // showing "never" to someone seeing this for the first time.
+  const [offerNever, setOfferNever] = useState(false);
   // Launcher refused the dialog — fall back to telling the user how to do it.
   const [manualHint, setManualHint] = useState(false);
 
   useEffect(() => {
-    // Don't stack on top of onboarding, don't re-ask once answered, and don't
-    // pitch an empty widget before there's a task for it to show.
+    // Don't stack on top of onboarding, don't re-ask once answered or while
+    // snoozed, and don't pitch an empty widget before there's a task to show.
     if (!tutorialCompleted) return;
-    if (loadJSON<PromptState>(STORAGE_KEYS.widgetPrompt, {}).dismissed) return;
+    const state = readState();
+    if (state.dismissed) return;
+    if (state.snoozedUntil && Date.now() < state.snoozedUntil) return;
     if (loadJSON<unknown[]>(STORAGE_KEYS.tasks, []).length === 0) return;
+    setOfferNever((state.snoozeCount ?? 0) > 0);
 
     let cancelled = false;
     const check = async () => {
@@ -57,7 +80,12 @@ export function WidgetPrompt() {
     };
   }, [tutorialCompleted]);
 
-  const dismiss = useCallback(() => {
+  const snooze = useCallback(() => {
+    markSnoozed(readState());
+    setShow(false);
+  }, []);
+
+  const never = useCallback(() => {
     markAnswered();
     setShow(false);
   }, []);
@@ -94,18 +122,26 @@ export function WidgetPrompt() {
               {t('widget_add')}
             </button>
             <button
-              onClick={dismiss}
+              onClick={snooze}
               className="rounded-full px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-secondary"
             >
               {t('widget_not_now')}
             </button>
+            {offerNever && (
+              <button
+                onClick={never}
+                className="rounded-full px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-secondary"
+              >
+                {t('widget_never')}
+              </button>
+            )}
           </div>
           {manualHint && (
             <div className="mt-2 text-[11px] text-muted-foreground">{t('widget_manual_hint')}</div>
           )}
         </div>
         <button
-          onClick={dismiss}
+          onClick={snooze}
           aria-label={t('widget_not_now')}
           className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-secondary"
         >

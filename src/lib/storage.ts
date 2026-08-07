@@ -63,7 +63,8 @@ export const STORAGE_KEYS = {
   profile: "ff.profile.v1",
   premium: "ff.premium.v1",
   // Device-local on purpose (kept out of SYNC_KEYS): whether this phone has
-  // been offered the home-screen widget. Another device's answer means nothing.
+  // been offered the home-screen widget, and until when it's snoozed. Another
+  // device's answer means nothing.
   widgetPrompt: "ff.widgetprompt.v1",
   version: "ff.storage.version",
 } as const;
