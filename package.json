@@ -11,8 +11,7 @@
     "build:dev": "vite build --mode development && node scripts/postbuild.js",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "postinstall": "patch-package"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@capacitor-community/admob": "8.0.0",
@@ -101,7 +100,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
-    "patch-package": "^8.0.1",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
@@ -112,5 +110,8 @@
   },
   "resolutions": {
     "better-auth": "^1.6.11"
+  },
+  "patchedDependencies": {
+    "@capacitor-community/admob@8.0.0": "patches/@capacitor-community%2Fadmob@8.0.0.patch"
   }
 }
