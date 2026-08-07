@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Brain, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/Logo";
 import { useI18nStore } from "@/lib/i18n";
 import { deleteAccount } from "@/lib/sync";
 
@@ -62,9 +63,7 @@ function DeleteAccountPage() {
     <div className="min-h-screen bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-glow">
-            <Brain className="size-7 text-background/90" strokeWidth={2.25} />
-          </div>
+          <Logo className="mb-4 size-14" />
           <h1 className="text-2xl font-bold tracking-tight">Delete your Focus Flow account</h1>
           <p className="mt-1 text-sm text-muted-foreground">Usuwanie konta Focus Flow</p>
         </div>
