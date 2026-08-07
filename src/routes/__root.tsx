@@ -14,6 +14,11 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { applyFavicon } from "../lib/favicon";
 import { useI18nStore } from "../lib/i18n";
 
+// Share-card art lives in public/og.png. The origin has to be baked in because
+// head meta is emitted during prerender, where there is no request to read it
+// from; point it at the canonical Workers deploy.
+const OG_IMAGE = "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev/og.png";
+
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -93,16 +98,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus & reminders for ADHD brains." },
       { name: "twitter:description", content: "Calm focus & reminders for ADHD brains." },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/7b54899b-4be2-4ce2-a24c-4a640c1a32c5/id-preview-bc7ba8c1--2aeb1c32-9331-4758-b807-0d60fb16cbb3.lovable.app-1781798098546.png",
-      },
+      // Self-hosted so the card tracks the brand: the old value was a Lovable
+      // preview screenshot of the pre-rename app. Absolute because most
+      // scrapers won't resolve a relative og:image.
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "FlowDay" },
+      { name: "twitter:image", content: OG_IMAGE },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
