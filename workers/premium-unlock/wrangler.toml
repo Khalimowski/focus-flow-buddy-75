@@ -13,7 +13,7 @@ APP_URL = "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev"
 # https://localhost; add every domain that serves the app.
 ALLOWED_ORIGINS = "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev,https://focus-flow-buddy-75.lovable.app,https://localhost,http://localhost:8080"
 
-MAIL_FROM = "Focus Flow <noreply@focusflow.app>"
+MAIL_FROM = "FlowDay <noreply@focusflow.app>"
 
 # Secrets — set with `wrangler secret put <NAME>`, never in this file:
 #   GOOGLE_SERVICE_ACCOUNT_JSON   full service-account JSON with androidpublisher access

@@ -1,5 +1,5 @@
 /**
- * Focus Flow — premium unlock service (Cloudflare Worker).
+ * FlowDay — premium unlock service (Cloudflare Worker).
  *
  * Optional companion to src/lib/premium.ts. The app works without it (purchases
  * are then trusted client-side and no email goes out); deploying it adds the
@@ -167,13 +167,13 @@ async function sendWelcomeEmail(env, to, appUrl) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.MAIL_FROM || "Focus Flow <noreply@focusflow.app>",
+      from: env.MAIL_FROM || "FlowDay <noreply@focusflow.app>",
       to: [to],
-      subject: "Your Focus Flow Premium link",
+      subject: "Your FlowDay Premium link",
       text: [
         "Thanks for going Premium!",
         "",
-        "Focus Flow now runs in your browser, and the ads in the Android app are gone.",
+        "FlowDay now runs in your browser, and the ads in the Android app are gone.",
         "",
         `Open it here: ${link}`,
         "",
@@ -192,12 +192,12 @@ function welcomeHtml(link) {
   <div style="max-width:480px;margin:0 auto">
     <h1 style="font-size:20px;margin:0 0 16px">Thanks for going Premium ✨</h1>
     <p style="font-size:14px;line-height:1.6;color:#A8ADBD;margin:0 0 24px">
-      Focus Flow now runs in your browser, and the ads in the Android app are gone.
+      FlowDay now runs in your browser, and the ads in the Android app are gone.
     </p>
     <a href="${escapeHtml(link)}"
        style="display:inline-block;background:#7C9CFF;color:#0F1115;text-decoration:none;
               padding:12px 20px;border-radius:12px;font-weight:600;font-size:14px">
-      Open Focus Flow in your browser
+      Open FlowDay in your browser
     </a>
     <p style="font-size:12px;line-height:1.6;color:#A8ADBD;margin:24px 0 0">
       Sign in with this same email address and your tasks, nudges and streaks will be

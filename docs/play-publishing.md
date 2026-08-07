@@ -15,7 +15,7 @@ needed. One-time setup below; after that, releasing is just pushing a tag.
    file — its full contents become the `PLAY_SERVICE_ACCOUNT_JSON` secret.
 3. In [Play Console](https://play.google.com/console): **Users and permissions →
    Invite new users** → enter the service account's email → grant access to the
-   Focus Flow app with the **Release to testing tracks / production** permissions
+   FlowDay app with the **Release to testing tracks / production** permissions
    (or "Admin" on the app for simplicity).
 
 ### 2. Add the GitHub repository secrets
@@ -60,4 +60,4 @@ upload key) — Play rejects bundles signed with any other key.
   can download it and upload manually if you prefer.
 - The Play API can't create the app listing or send a release for review on a
   brand-new app — the first-ever upload of an app must happen in Play Console
-  by hand (already done for Focus Flow).
+  by hand (already done for FlowDay).

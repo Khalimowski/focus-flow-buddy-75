@@ -1,4 +1,4 @@
-// Manually grant (or revoke) Focus Flow Premium for one user.
+// Manually grant (or revoke) FlowDay Premium for one user.
 //
 // Writes the same `ff.premium.v1` row that a Play purchase would produce, so
 // the entitlement reaches every device that account signs in on — the browser

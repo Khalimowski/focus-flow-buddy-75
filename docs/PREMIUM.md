@@ -1,4 +1,4 @@
-# Focus Flow Premium
+# FlowDay Premium
 
 One-time Play purchase that unlocks two things:
 
