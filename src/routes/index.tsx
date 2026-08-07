@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat, CheckSquare, Brain } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat, CheckSquare } from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
 import { SimpleToDo } from "@/components/SimpleToDo";
 import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
+import { Logo } from "@/components/Logo";
 import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { Settings } from "@/components/Settings";
@@ -164,9 +165,9 @@ function Home() {
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-primary to-mint shadow-glow"
+              className="grid size-10 place-items-center"
             >
-              <Brain className="size-5 text-background/90" strokeWidth={2.25} />
+              <Logo className="size-10" />
             </motion.div>
           </div>
 

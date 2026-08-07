@@ -142,6 +142,47 @@ export async function applyVibrationSetting() {
   }
 }
 
+// Bump whenever the notification's baked-in assets change (small icon, icon
+// colour, sound). Android parcels the fully-built Notification into the alarm
+// intent, so a reminder scheduled by an older build keeps re-posting the icon
+// it was created with — a repeating nudge clones that same parcel forever.
+// Rebuilding the APK cannot fix those; they have to be scheduled again.
+const NOTIFICATION_ASSET_VERSION = 2;
+
+// One-time re-arm after a notification asset change. Same idiom as
+// applyVibrationSetting (channels are baked in the same way): cancel the
+// canonical ids, then let reconcileNotifications rebuild them from storage.
+export async function rearmNotificationsIfAssetsChanged() {
+  if (!isNative()) return;
+  if (loadJSON<number>(STORAGE_KEYS.notifAssets, 0) === NOTIFICATION_ASSET_VERSION) {
+    await reconcileNotifications();
+    return;
+  }
+  try {
+    const pending = await LocalNotifications.getPending();
+    const canonical: number[] = [];
+    for (const n of pending.notifications) {
+      const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
+      // Postponed reminders use throwaway ids and aren't in storage, so
+      // cancelling one would lose it outright. They keep the old icon for
+      // their single firing — a fair trade against dropping the reminder.
+      if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
+        canonical.push(n.id);
+      } else if (extra.type === "nudge") {
+        canonical.push(n.id);
+      }
+    }
+    if (canonical.length > 0) await cancelNative(canonical);
+    await reconcileNotifications();
+    // Only mark it done once the rebuild actually ran, so a failure retries
+    // on the next launch instead of leaving the old icons in place.
+    saveJSON(STORAGE_KEYS.notifAssets, NOTIFICATION_ASSET_VERSION);
+    console.log(`[Native] Re-armed ${canonical.length} notifications for new assets`);
+  } catch (e) {
+    console.warn("[Native] rearmNotificationsIfAssetsChanged failed", e);
+  }
+}
+
 // Fire an immediate native notification
 export async function nativeNotify(title: string, body?: string) {
   if (!isNative()) return;
@@ -332,6 +373,13 @@ type WidgetBridgePlugin = {
   getPendingDone(): Promise<{ ids: string[] }>;
 };
 const WidgetBridge = registerPlugin<WidgetBridgePlugin>("WidgetBridge");
+
+// Swaps the launcher icon between the dark and light logo tiles. Implemented
+// with activity-aliases on the Android side (see AppIconPlugin.java).
+type AppIconPlugin = {
+  setTheme(options: { theme: "light" | "dark" }): Promise<void>;
+};
+const AppIcon = registerPlugin<AppIconPlugin>("AppIcon");
 
 type WidgetTask = {
   id: string;
@@ -648,8 +696,10 @@ export async function initNative() {
   }
 
   // Safety net: re-arm notifications from storage (covers items synced from
-  // other devices before this ran, and schedules lost to device reboots)
-  void reconcileNotifications();
+  // other devices before this ran, and schedules lost to device reboots).
+  // Also re-issues everything once after a notification asset change, since
+  // scheduled reminders carry the icon they were built with.
+  void rearmNotificationsIfAssetsChanged();
 
   // AdMob banner — dynamic import keeps the ads SDK out of the web bundle path
   void import("./ads").then((m) => m.initAds());
@@ -671,6 +721,13 @@ export async function updateStatusBar(theme: "light" | "dark") {
     await WidgetBridge.setTheme({ theme });
   } catch (e) {
     console.warn("[Widget] Failed to push theme", e);
+  }
+  // …and the home-screen icon, which has a light and a dark tile. No-ops when
+  // already on the right one, so this is safe to call on every launch.
+  try {
+    await AppIcon.setTheme({ theme });
+  } catch (e) {
+    console.warn("[AppIcon] Failed to switch launcher icon", e);
   }
   try {
     // SystemBars (Capacitor core) styles status + gesture bar icons via the

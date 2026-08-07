@@ -62,6 +62,9 @@ export const STORAGE_KEYS = {
   todo: "ff.todo.v1",
   profile: "ff.profile.v1",
   premium: "ff.premium.v1",
+  // Device-local (deliberately not in SYNC_KEYS): which build's notification
+  // assets the scheduled reminders on THIS device were created with.
+  notifAssets: "ff.notif.assets.v1",
   version: "ff.storage.version",
 } as const;
 
