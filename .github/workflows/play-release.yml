@@ -38,6 +38,14 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      # patches/ is wired up through bun's `patchedDependencies`, which npm
+      # ignores — so apply it by hand here. Without this the admob plugin still
+      # calls getDefaultProguardFile('proguard-android.txt'), which AGP 9
+      # rejects, and :capacitor-community-admob fails to configure.
+      - name: Apply dependency patches
+        working-directory: node_modules/@capacitor-community/admob
+        run: patch -p1 --forward < "$GITHUB_WORKSPACE/patches/@capacitor-community%2Fadmob@8.0.0.patch"
+
       - name: Build web bundle
         run: npm run build
 

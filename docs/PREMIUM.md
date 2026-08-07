@@ -80,11 +80,19 @@ the client.
    builds — that's the usual cause of "Product not found in Play Console".
 3. Add testers under **License testing** so they can buy without being charged.
 
-Billing Library is pinned to **7.1.1** in `android/gradle/libs.versions.toml`.
-Play enforces a minimum library version on a rolling deadline; when that moves
-past 7.x, bumping to 8.x also requires updating the
-`queryProductDetailsAsync` callback in `BillingPlugin.java` (8.0 changed it to
-return a `QueryProductDetailsResult` instead of a `List<ProductDetails>`).
+Billing Library is pinned to **9.1.0** in `android/gradle/libs.versions.toml`,
+and pulled in by `implementation libs.billing` in `android/app/build.gradle`
+— without that line `BillingPlugin.java` does not compile, and a bad merge has
+dropped it once before.
+
+Play enforces a minimum library version on a rolling deadline (8.0.0 from
+31 Aug 2026), so this pin has to move every so often. The migration from 7.x
+was the one real code change so far: 8.0 made `queryProductDetailsAsync` hand
+its callback a `QueryProductDetailsResult` instead of a `List<ProductDetails>`,
+so the list now comes from `getProductDetailsList()` and the products Play
+refused to fetch come from `getUnfetchedProductList()` — those reason codes are
+appended to the "Product not found in Play Console" message. 9.x only removed
+long-deprecated SKU-era APIs this plugin never used.
 
 ## Verification and the welcome email
 

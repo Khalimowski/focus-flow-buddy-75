@@ -15,7 +15,9 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.UnfetchedProduct;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -60,6 +62,11 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                 .setListener(this)
                 .enablePendingPurchases(
                         PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+                // Play drops the connection when the Store app updates.
+                // withConnection() already reconnects on the next call; this
+                // lets the library retry in the background as well, so an
+                // in-flight purchase callback isn't lost.
+                .enableAutoServiceReconnection()
                 .build();
     }
 
@@ -169,20 +176,37 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                 .setProductList(Collections.singletonList(product))
                 .build();
 
-        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
+        // Billing 8.0 changed this callback: instead of a bare list it hands
+        // back a QueryProductDetailsResult that also carries the products Play
+        // could not fetch, each with a reason code.
+        billingClient.queryProductDetailsAsync(params, (billingResult, result) -> {
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 callback.onError("Product query failed: " + billingResult.getDebugMessage());
                 return;
             }
+            List<ProductDetails> productDetailsList = result.getProductDetailsList();
             if (productDetailsList == null || productDetailsList.isEmpty()) {
                 // Almost always a configuration problem: the product id isn't
                 // active in Play Console, or this build isn't signed with the
                 // uploaded key / isn't on a test track.
-                callback.onError("Product not found in Play Console: " + productId);
+                callback.onError("Product not found in Play Console: " + productId
+                        + describeUnfetched(result));
                 return;
             }
             callback.onProduct(productDetailsList.get(0));
         });
+    }
+
+    /** Play's per-product reason codes, appended to the "not found" message. */
+    private static String describeUnfetched(QueryProductDetailsResult result) {
+        List<UnfetchedProduct> unfetched = result.getUnfetchedProductList();
+        if (unfetched == null || unfetched.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder(" (unfetched:");
+        for (UnfetchedProduct product : unfetched) {
+            sb.append(' ').append(product.getProductId())
+                    .append('=').append(product.getStatusCode());
+        }
+        return sb.append(')').toString();
     }
 
     /** options: { productId } -> resolved later from onPurchasesUpdated */
