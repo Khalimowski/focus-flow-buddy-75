@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Flame, Sparkles, ChevronRight, ListTodo, CalendarDays, Settings as SettingsIcon } from "lucide-react";
+import { Check, Flame, Sparkles, ChevronRight, ListTodo, CalendarDays, CalendarClock, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
 
@@ -22,6 +22,7 @@ export function Onboarding() {
     { target: "tabs", icon: ListTodo, color: "from-blue-500 to-indigo-500", title: t('tour_tabs_title'), desc: t('tour_tabs_desc') },
     { target: "days", icon: CalendarDays, color: "from-emerald-400 to-teal-500", title: t('tour_days_title'), desc: t('tour_days_desc') },
     { target: "add-task", icon: Check, color: "from-primary to-mint", title: t('onboarding_tasks_title'), desc: t('onboarding_tasks_desc') },
+    { target: "view-toggle", icon: CalendarClock, color: "from-sky-400 to-cyan-500", title: t('tour_views_title'), desc: t('tour_views_desc') },
     { target: "settings", icon: SettingsIcon, color: "from-violet-500 to-purple-500", title: t('tour_settings_title'), desc: t('tour_settings_desc') },
   ];
 
