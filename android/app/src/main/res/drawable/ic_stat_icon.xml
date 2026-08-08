@@ -1,75 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: brain + flow wave (matches logo.svg). Must stay
-     white-on-transparent — the status bar only uses the alpha channel and
-     tints it with the LocalNotifications iconColor. -->
+<!-- Notification small icon: orbits + checkmark (matches ic_launcher_foreground.xml).
+     Bold style for brand consistency.
+     Must be white-on-transparent for Android status bar compatibility. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <!-- Brain mark (lucide "brain"), scaled up-center to leave room for the wave -->
     <group
-        android:pivotX="12"
-        android:pivotY="11.5"
-        android:scaleX="0.72"
-        android:scaleY="0.72"
-        android:translateY="-2.5">
+        android:translateX="2"
+        android:translateY="2"
+        android:scaleX="0.2"
+        android:scaleY="0.2">
+        <!-- Outer Arcs -->
         <path
-            android:pathData="M12,18V5"
+            android:pathData="M 69.61 18.62 A 37 37 0 0 0 18.62 69.61"
             android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
+            android:strokeWidth="6"
+            android:strokeLineCap="round" />
         <path
-            android:pathData="M15,13a4.17,4.17 0,0 1,-3 -4,4.17 4.17,0 0,1 -3,4"
+            android:pathData="M 34.95 83.8 A 37 37 0 0 0 85.57 60.2"
             android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M17.598,6.5A3,3 0,1 0,12 5a3,3 0,1 0,-5.598 1.5"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M17.997,5.125a4,4 0,0 1,2.526 5.77"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M18,18a4,4 0,0 0,2 -7.464"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M19.967,17.483A4,4 0,1 1,12 18a4,4 0,1 1,-7.967 -0.517"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M6,18a4,4 0,0 1,-2 -7.464"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <path
-            android:pathData="M6.003,5.125a4,4 0,0 0,-2.526 5.77"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="2.2"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-    </group>
+            android:strokeWidth="6"
+            android:strokeLineCap="round" />
 
-    <!-- Flow wave accent under the brain -->
-    <path
-        android:pathData="M3.5,20.5C6.3,18.9 8.7,22.1 12,20.5C15.3,18.9 17.7,22.1 20.5,20.5"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        <!-- Inner Arcs -->
+        <path
+            android:pathData="M 70.23 35.31 A 25 25 0 0 0 26.82 40.63"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M 26.51 58.55 A 25 25 0 0 0 64.69 70.23"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round" />
+
+        <!-- Short spark between the orbits -->
+        <path
+            android:pathData="M 74.82 30.61 A 31.5 31.5 0 0 1 81.48 48.9"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="5"
+            android:strokeLineCap="round" />
+
+        <!-- Checkmark -->
+        <path
+            android:pathData="M 36 51 L 45 60 L 64 39"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="10"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+
+        <!-- Dot terminals -->
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.61, 18.62 m -6, 0 a 6, 6 0 1, 0 12, 0 a 6, 6 0 1, 0 -12, 0" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 34.95, 83.8 m -6, 0 a 6, 6 0 1, 0 12, 0 a 6, 6 0 1, 0 -12, 0" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 70.23, 35.31 m -5, 0 a 5, 5 0 1, 0 10, 0 a 5, 5 0 1, 0 -10, 0" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M 81.48, 48.9 m -4, 0 a 4, 4 0 1, 0 8, 0 a 4, 4 0 1, 0 -8, 0" />
+    </group>
 </vector>
