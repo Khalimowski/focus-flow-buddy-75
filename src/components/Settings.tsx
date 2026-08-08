@@ -304,37 +304,44 @@ export function Settings() {
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="size-4" />
-              <div className="flex flex-col">
-                <Label htmlFor="calendar-sync" className="text-sm font-medium">
-                  {t('sync_calendar')}
-                </Label>
+          {/* Device-calendar sync runs through the Capacitor calendar plugin, which
+              has no browser equivalent — the toggles would just bounce back with a
+              permission error on web. Google Calendar sync below covers that case. */}
+          {isNative() && (
+            <>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Calendar className="size-4" />
+                  <div className="flex flex-col">
+                    <Label htmlFor="calendar-sync" className="text-sm font-medium">
+                      {t('sync_calendar')}
+                    </Label>
+                  </div>
+                </div>
+                <Switch
+                  id="calendar-sync"
+                  checked={calendarSync}
+                  onCheckedChange={handleCalendarSyncChange}
+                />
               </div>
-            </div>
-            <Switch
-              id="calendar-sync"
-              checked={calendarSync}
-              onCheckedChange={handleCalendarSyncChange}
-            />
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="size-4 opacity-70" />
-              <div className="flex flex-col">
-                <Label htmlFor="nudge-calendar-sync" className="text-sm font-medium">
-                  {t('sync_nudges_calendar')}
-                </Label>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Calendar className="size-4 opacity-70" />
+                  <div className="flex flex-col">
+                    <Label htmlFor="nudge-calendar-sync" className="text-sm font-medium">
+                      {t('sync_nudges_calendar')}
+                    </Label>
+                  </div>
+                </div>
+                <Switch
+                  id="nudge-calendar-sync"
+                  checked={nudgeCalendarSync}
+                  onCheckedChange={handleNudgeCalendarSyncChange}
+                />
               </div>
-            </div>
-            <Switch
-              id="nudge-calendar-sync"
-              checked={nudgeCalendarSync}
-              onCheckedChange={handleNudgeCalendarSyncChange}
-            />
-          </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
@@ -513,7 +520,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.6.1 · {__BUILD_TIME__}
+          {t('version')} 1.6.2 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>
