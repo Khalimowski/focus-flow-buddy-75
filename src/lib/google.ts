@@ -10,7 +10,7 @@ import { useI18nStore } from "./i18n";
 //
 // Setup: create an OAuth "Web application" client in Google Cloud Console,
 // enable the Gmail and Calendar APIs, add every origin serving the app
-// (localhost:8080, *.workers.dev, *.lovable.app) to Authorized JavaScript
+// (localhost:8080, flowday.day, *.workers.dev, *.lovable.app) to Authorized JavaScript
 // origins AND Authorized redirect URIs, then put the client id in
 // VITE_GOOGLE_WEB_CLIENT_ID (.env). Gmail is a restricted scope: until Google
 // verifies the app, add yourself under "Test users" on the OAuth consent

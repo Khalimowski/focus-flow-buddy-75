@@ -32,7 +32,7 @@ export const PREMIUM_CHANGED_EVENT = "ff.premium-changed";
  */
 export const WEB_APP_URL =
   (import.meta.env.VITE_WEB_APP_URL as string | undefined) ||
-  "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev";
+  "https://flowday.day/";
 
 /**
  * Optional unlock service (see workers/premium-unlock/). It does the two things

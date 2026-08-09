@@ -198,7 +198,7 @@ account anyway. Use a guest session if you want it to stay on one machine.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `VITE_WEB_APP_URL` | workers.dev URL | Link shown in Settings and sent by email |
+| `VITE_WEB_APP_URL` | https://flowday.day/ | Link shown in Settings and sent by email |
 | `VITE_PREMIUM_UNLOCK_URL` | *(empty)* | Unlock service; empty = trust locally, no email |
 | `VITE_PREMIUM_WEB_GATE` | `true` | `false` leaves the browser build open (demo deploys) |
 
