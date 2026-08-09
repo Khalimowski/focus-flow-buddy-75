@@ -10,8 +10,9 @@ PLAY_PACKAGE_NAME = "com.khalimowski.focusflow"
 APP_URL = "https://flowday.day/"
 
 # Origins allowed to call this Worker. Capacitor's webview reports
-# https://localhost; add every domain that serves the app.
-ALLOWED_ORIGINS = "https://flowday.day/,https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev,https://focus-flow-buddy-75.lovable.app,https://localhost,http://localhost:8080"
+# https://localhost; add every domain that serves the app. These are matched
+# against the Origin header verbatim, so no trailing slashes.
+ALLOWED_ORIGINS = "https://flowday.day,https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev,https://focus-flow-buddy-75.lovable.app,https://localhost,http://localhost:8080"
 
 MAIL_FROM = "FlowDay <noreply@focusflow.app>"
 
