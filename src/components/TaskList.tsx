@@ -58,6 +58,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // Set when the next setTasks comes from re-reading storage (see reload below)
+  const skipNextSave = useRef(false);
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
@@ -112,14 +114,28 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     load();
     setLoaded(true);
 
-    window.addEventListener('ff.data_updated', load);
-    return () => window.removeEventListener('ff.data_updated', load);
+    // A reload came from storage, not from the user, so don't push it straight
+    // back out: two devices left open would otherwise echo each other's pulls
+    // forever (each pull bumps updated_at, which the other sees as a change).
+    const reload = () => {
+      skipNextSave.current = true;
+      load();
+    };
+    window.addEventListener('ff.data_updated', reload);
+    window.addEventListener('ff.remote-update', reload);
+    return () => {
+      window.removeEventListener('ff.data_updated', reload);
+      window.removeEventListener('ff.remote-update', reload);
+    };
   }, []);
 
   useEffect(() => {
-    if (loaded) {
-      saveJSON(STORAGE_KEYS.tasks, tasks);
+    if (!loaded) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
     }
+    saveJSON(STORAGE_KEYS.tasks, tasks);
   }, [tasks, loaded]);
 
   const displayItems = useMemo(() => {

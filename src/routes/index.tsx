@@ -46,9 +46,6 @@ function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
   const [mounted, setMounted] = useState(false);
-  // Bumped when cloud sync writes remote data into localStorage, so the
-  // active tab remounts and re-reads storage.
-  const [syncEpoch, setSyncEpoch] = useState(0);
   // null = session check still in flight; afterwards true/false.
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const { streak, markToday } = useStreak();
@@ -118,16 +115,11 @@ function Home() {
   }, [theme]);
 
   useEffect(() => {
-    const onRemoteUpdate = () => setSyncEpoch((e) => e + 1);
     const onAuthChanged = () => {
       void import("@/lib/sync").then((m) => setSignedIn(!!m.getSyncUser()));
     };
-    window.addEventListener("ff.remote-update", onRemoteUpdate);
     window.addEventListener("ff.auth-changed", onAuthChanged);
-    return () => {
-      window.removeEventListener("ff.remote-update", onRemoteUpdate);
-      window.removeEventListener("ff.auth-changed", onAuthChanged);
-    };
+    return () => window.removeEventListener("ff.auth-changed", onAuthChanged);
   }, []);
 
   const askPerm = async () => {
@@ -225,8 +217,11 @@ function Home() {
         })}
       </nav>
 
+      {/* Keyed by tab only: remounting on sync would wipe in-progress input
+          (draft titles, open edit rows, the picked date). Tabs re-read storage
+          on ff.remote-update instead. */}
       <motion.section
-        key={`${tab}-${syncEpoch}`}
+        key={tab}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}

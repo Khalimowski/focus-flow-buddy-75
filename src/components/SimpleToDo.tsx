@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, Trash2, Edit2, X, Save, Calendar as CalendarIcon, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,16 +56,35 @@ export function SimpleToDo() {
   const shortDateFormat = language === 'pl' ? 'd MMM' : 'MMM d';
   const { addEvent } = useHistoryStore();
 
+  // Set when the next setItems comes from re-reading storage (see reload below)
+  const skipNextSave = useRef(false);
+
   useEffect(() => {
-    const data = loadJSON<ToDoItem[]>(STORAGE_KEYS.todo, []);
-    setItems(sortItems(data));
+    const load = () => setItems(sortItems(loadJSON<ToDoItem[]>(STORAGE_KEYS.todo, [])));
+    load();
     setLoaded(true);
+
+    // A reload came from storage, not from the user, so don't push it straight
+    // back out — see the same guard in TaskList.
+    const reload = () => {
+      skipNextSave.current = true;
+      load();
+    };
+    window.addEventListener('ff.data_updated', reload);
+    window.addEventListener('ff.remote-update', reload);
+    return () => {
+      window.removeEventListener('ff.data_updated', reload);
+      window.removeEventListener('ff.remote-update', reload);
+    };
   }, []);
 
   useEffect(() => {
-    if (loaded) {
-      saveJSON(STORAGE_KEYS.todo, items);
+    if (!loaded) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
     }
+    saveJSON(STORAGE_KEYS.todo, items);
   }, [items, loaded]);
 
   const add = () => {

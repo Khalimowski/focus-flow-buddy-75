@@ -41,19 +41,35 @@ export function Reminders() {
     { label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
   ];
 
+  // Set when the next setItems comes from re-reading storage (see reload below)
+  const skipNextSave = useRef(false);
+
   useEffect(() => {
     const load = () => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []));
     load();
     setLoaded(true);
 
-    window.addEventListener('ff.data_updated', load);
-    return () => window.removeEventListener('ff.data_updated', load);
+    // A reload came from storage, not from the user, so don't push it straight
+    // back out — see the same guard in TaskList.
+    const reload = () => {
+      skipNextSave.current = true;
+      load();
+    };
+    window.addEventListener('ff.data_updated', reload);
+    window.addEventListener('ff.remote-update', reload);
+    return () => {
+      window.removeEventListener('ff.data_updated', reload);
+      window.removeEventListener('ff.remote-update', reload);
+    };
   }, []);
 
   useEffect(() => {
-    if (loaded) {
-      saveJSON(STORAGE_KEYS.reminders, items);
+    if (!loaded) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
     }
+    saveJSON(STORAGE_KEYS.reminders, items);
   }, [items, loaded]);
 
   const ref = useRef(items);

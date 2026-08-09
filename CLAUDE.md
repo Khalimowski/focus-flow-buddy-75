@@ -46,7 +46,7 @@ Cross-device sync mirrors whole localStorage values to one Postgres row per (use
 
 - Conflict model: last-writer-wins **per key** (whole list replaced, not per item).
 - Pull triggers: sign-in, app launch, refocus (5s throttle), 15s polling while visible. Push: debounced ~800ms after any `saveJSON` (via `registerSaveListener`).
-- Events: `ff.remote-update` (remote data applied → Home bumps `syncEpoch` to remount tabs; components re-read storage), `ff.auth-changed` (sign in/out → AuthGate/Settings re-evaluate), `ff.tasks_saved` (task writes → Android widget mirror).
+- Events: `ff.remote-update` (remote data applied → tab components re-read storage in place; **never remount the tabs for this** — that wipes in-progress input like a half-typed task title), `ff.auth-changed` (sign in/out → AuthGate/Settings re-evaluate), `ff.tasks_saved` (task writes → Android widget mirror).
 - **Ordering constraint**: in `signIn`/`signUp`, `fullSync()` must complete **before** `notifyAuthChanged()`. The app mounts on auth-changed; mounting mid-pull lets components save empty state over the user's cloud data (this bug shipped once).
 
 ### Auth flow
