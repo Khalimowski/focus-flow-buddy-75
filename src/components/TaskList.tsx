@@ -4,6 +4,7 @@ import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, C
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { loadReminders, type Reminder } from "@/lib/reminders";
 import { notify } from "@/lib/notifications";
 import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
@@ -25,14 +26,6 @@ type Task = {
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
-};
-
-type Reminder = {
-  id: string;
-  label: string;
-  times: string[]; // "HH:mm"
-  enabled: boolean;
-  lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
 
 const sortTasks = (list: Task[]) => {
@@ -99,8 +92,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   useEffect(() => {
     const load = () => {
       const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
-      const reminderData = loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []);
-      setReminders(reminderData);
+      setReminders(loadReminders());
 
       // Migration: ensure all tasks have a dueDate and handle missing createdAt
       const migrated = data.map(task => ({

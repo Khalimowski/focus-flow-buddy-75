@@ -4,24 +4,14 @@ import { Plus, Trash2, Droplet, Pill, StretchHorizontal, Sparkles, X } from "luc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { loadReminders, type Reminder } from "@/lib/reminders";
 import { notify } from "@/lib/notifications";
 import { dateKey, generateId } from "@/lib/utils";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
 import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
-
-type Reminder = {
-  id: string;
-  label: string;
-  times: string[]; // "HH:mm"
-  enabled: boolean;
-  lastFired: Record<string, string>; // time -> YYYY-MM-DD (local day)
-  // Which quick-add preset this came from, if any. Language-independent, so
-  // switching to Polish can't make an already-added preset look unused.
-  presetId?: string;
-};
 
 const today = () => dateKey();
 const nowHM = () => {
@@ -59,7 +49,7 @@ export function Reminders() {
   const skipNextSave = useRef(false);
 
   useEffect(() => {
-    const load = () => setItems(loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []));
+    const load = () => setItems(loadReminders());
     load();
     setLoaded(true);
 
