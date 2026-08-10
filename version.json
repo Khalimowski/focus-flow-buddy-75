@@ -1,6 +1,6 @@
 {
-  "versionCode": 31,
-  "versionName": "1.6.5",
+  "versionCode": 32,
+  "versionName": "1.6.6",
   "url": "https://github.com/Khalimowski/focus-flow-buddy-75/releases",
-  "notes": "Timeline drag fixes, correct local-day handling for streaks and nudges, and clearer sign-in errors."
+  "notes": "Google Calendar settings now follow your account across devices, and tasks or nudges added on another device finally show up in your calendar."
 }
