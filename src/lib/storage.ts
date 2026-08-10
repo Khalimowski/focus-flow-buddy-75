@@ -62,6 +62,9 @@ export const STORAGE_KEYS = {
   todo: "ff.todo.v1",
   profile: "ff.profile.v1",
   premium: "ff.premium.v1",
+  // The Google integration toggles, mirrored out of the settings store so they
+  // can sync (see i18n.ts). The rest of that store stays device-local.
+  googlePrefs: "ff.googleprefs.v1",
   // Device-local on purpose (kept out of SYNC_KEYS): whether this phone has
   // been offered the home-screen widget, and until when it's snoozed. Another
   // device's answer means nothing.

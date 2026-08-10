@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { loadJSON, saveJSON, STORAGE_KEYS } from './storage';
 
 export type Language = 'en' | 'pl';
 export type Theme = 'light' | 'dark';
@@ -16,7 +17,9 @@ interface I18nState {
   // User chose "continue as guest" on the auth gate — local-only, no sync.
   guestMode: boolean;
   vibrationType: VibrationType;
-  // Google integrations (need a connected Google account, see lib/google.ts)
+  // Google integrations (need a connected Google account, see lib/google.ts).
+  // Unlike everything above, these three sync across devices — see
+  // publishGooglePrefs below.
   googleGmail: boolean;
   googleCalendarSync: boolean;
   googleNudgeSync: boolean;
@@ -64,6 +67,58 @@ export const useI18nStore = create<I18nState>()(
     }
   )
 );
+
+// --- Google toggles: the one slice of this store that crosses devices ---
+// Everything else here describes *this* install (theme, language, guest mode,
+// the native calendar/vibration settings), so it stays put. Wanting tasks in
+// Google Calendar is an account-level choice, so those three flags are mirrored
+// into a synced storage key (SYNC_KEYS in sync.ts) and read back when a remote
+// update lands. The OAuth token is never synced (see lib/google.ts): a device
+// with the toggle on but no connection just no-ops until it connects.
+
+type GooglePrefs = { gmail: boolean; calendar: boolean; nudges: boolean };
+
+/**
+ * Store -> synced storage. Call this only for changes the user actually made.
+ * Programmatic resets (disconnecting Google here, an enable that failed) are
+ * about this device, and publishing them would switch the feature off on the
+ * user's other devices — sync is last-writer-wins.
+ */
+export function publishGooglePrefs() {
+  const { googleGmail, googleCalendarSync, googleNudgeSync } = useI18nStore.getState();
+  saveJSON<GooglePrefs>(STORAGE_KEYS.googlePrefs, {
+    gmail: googleGmail,
+    calendar: googleCalendarSync,
+    nudges: googleNudgeSync,
+  });
+}
+
+/** Synced storage -> store, after a pull brought another device's choice in. */
+function hydrateGooglePrefs() {
+  const prefs = loadJSON<GooglePrefs | null>(STORAGE_KEYS.googlePrefs, null);
+  if (!prefs) return;
+  useI18nStore.setState({
+    googleGmail: !!prefs.gmail,
+    googleCalendarSync: !!prefs.calendar,
+    googleNudgeSync: !!prefs.nudges,
+  });
+}
+
+if (typeof window !== "undefined") {
+  hydrateGooglePrefs();
+  // Toggles switched on before this key existed have never been published, and
+  // sync only pushes keys that are present locally — seed it once.
+  const { googleGmail, googleCalendarSync, googleNudgeSync } = useI18nStore.getState();
+  if (
+    window.localStorage.getItem(STORAGE_KEYS.googlePrefs) === null &&
+    (googleGmail || googleCalendarSync || googleNudgeSync)
+  ) {
+    publishGooglePrefs();
+  }
+  // Literal rather than sync.ts's REMOTE_UPDATE_EVENT: this store sits below
+  // sync in the import graph and every component pulls it in.
+  window.addEventListener("ff.remote-update", hydrateGooglePrefs);
+}
 
 export const translations = {
   en: {

@@ -22,6 +22,9 @@ const SYNC_KEYS: string[] = [
   // reaches the browser build. premium.ts only ever writes grants and explicit
   // revocations, so last-writer-wins can't clear it by accident.
   STORAGE_KEYS.premium,
+  // Whether Gmail import / Calendar push are wanted — an account-level choice,
+  // unlike the Google OAuth token, which stays on the device that granted it.
+  STORAGE_KEYS.googlePrefs,
 ];
 
 const META_KEY = "ff.sync.meta.v1";

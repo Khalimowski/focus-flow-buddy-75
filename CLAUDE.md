@@ -41,6 +41,8 @@ Play upload from being rejected over a stale version code.
 ### Data layer: localStorage is the source of truth
 All app data lives in localStorage under keys in `src/lib/storage.ts` (`STORAGE_KEYS`: tasks, reminders, streak, todo, …). Components load on mount via `loadJSON` and persist via `saveJSON`. Two zustand-persisted stores exist separately: app settings incl. `guestMode` (`src/lib/i18n.ts`, key `focus-flow-settings`) and AI-coach history (`src/lib/history.ts`).
 
+The settings store is device-local (theme, language, guest mode, native calendar/vibration) with one exception: the three **Google integration toggles** are mirrored into `STORAGE_KEYS.googlePrefs`, which *is* in `SYNC_KEYS`, so the choice follows the account across devices. Publish with `publishGooglePrefs()` and only for changes the user made — a disconnect or a failed enable is local, and publishing it would switch the feature off everywhere (sync is last-writer-wins). The OAuth token itself is never synced.
+
 ### Cloud sync (src/lib/sync.ts)
 Cross-device sync mirrors whole localStorage values to one Postgres row per (user, key) in `public.user_data` on Neon, reached **directly from the client** via Neon Data API (PostgREST) with RLS (`auth.user_id()`), authenticated by Neon Auth (hosted better-auth, cookie sessions). There is deliberately **no app server** — that's what makes the same bundle work in Capacitor.
 

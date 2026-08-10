@@ -243,8 +243,20 @@ export async function listRecentEmails(token: string, max = 15): Promise<GmailMe
 
 type CalTask = { id: string; title: string; remindAt?: string | null; done?: boolean };
 
-function loadCalMap(): Record<string, string> {
-  return loadJSON<Record<string, string>>(CALMAP_KEY, {});
+// The event we created for a task, plus the fields it was built from — that's
+// what lets reconcile notice a task that was moved or renamed on a device with
+// no Google connection, where nothing pushed the change.
+type CalEntry = { eventId: string; remindAt: string; title: string };
+
+function loadCalMap(): Record<string, CalEntry> {
+  const raw = loadJSON<Record<string, string | CalEntry>>(CALMAP_KEY, {});
+  const map: Record<string, CalEntry> = {};
+  for (const [taskId, entry] of Object.entries(raw)) {
+    // Entries written before this shape existed are a bare event id; blank
+    // fields mark them "unknown", so the first reconcile rebuilds them once.
+    map[taskId] = typeof entry === "string" ? { eventId: entry, remindAt: "", title: "" } : entry;
+  }
+  return map;
 }
 
 function calendarSyncEnabled(): boolean {
@@ -272,8 +284,9 @@ export async function pushTaskToGoogleCalendar(task: CalTask) {
   if (!token) return;
   try {
     const map = loadCalMap();
-    if (map[task.id]) {
-      await deleteEvent(token, map[task.id]);
+    const existing = map[task.id];
+    if (existing) {
+      await deleteEvent(token, existing.eventId);
       delete map[task.id];
       saveJSON(CALMAP_KEY, map);
     }
@@ -296,7 +309,7 @@ export async function pushTaskToGoogleCalendar(task: CalTask) {
       return;
     }
     const event = (await res.json()) as { id: string };
-    map[task.id] = event.id;
+    map[task.id] = { eventId: event.id, remindAt: task.remindAt, title: task.title };
     saveJSON(CALMAP_KEY, map);
     console.log(`[Google] Calendar event created for task ${task.id}`);
   } catch (e) {
@@ -305,15 +318,14 @@ export async function pushTaskToGoogleCalendar(task: CalTask) {
 }
 
 export async function removeTaskFromGoogleCalendar(taskId: string) {
-  const map = loadCalMap();
-  const eventId = map[taskId];
-  if (!eventId) return;
+  const entry = loadCalMap()[taskId];
+  if (!entry) return;
   // No fresh token (or the delete fails): keep the mapping so
   // reconcileGoogleCalendar retries once a token is available again.
   const token = getValidToken();
   if (!token) return;
   try {
-    if (await deleteEvent(token, eventId)) {
+    if (await deleteEvent(token, entry.eventId)) {
       const fresh = loadCalMap();
       delete fresh[taskId];
       saveJSON(CALMAP_KEY, fresh);
@@ -323,21 +335,49 @@ export async function removeTaskFromGoogleCalendar(taskId: string) {
   }
 }
 
-// Deletes calendar events that no longer have a live owner: the task was
-// deleted (here or on another device), completed, or lost its reminder time;
-// the nudge was deleted or disabled. This is the retry path for deletes that
-// silently failed earlier (stale token, offline, app killed mid-request) —
-// runs at boot, after sync pulls, and after a fresh Google connect.
+// Brings Google Calendar back in line with local storage, in both directions:
+//
+//   - deletes events with no live owner — the task was deleted (here or on
+//     another device), completed, or lost its reminder time; the nudge was
+//     deleted or disabled. Also the retry path for deletes that silently
+//     failed earlier (stale token, offline, app killed mid-request).
+//   - creates events for tasks/nudges that have none. Items created on another
+//     device arrive through sync, which goes nowhere near Google, so this is
+//     the only thing that ever pushes them.
+//   - rebuilds events whose task/nudge was edited somewhere that couldn't
+//     push — a moved reminder would otherwise sit in the calendar at its old
+//     time forever.
+//
+// Runs at boot, after sync pulls, and after a fresh Google connect.
+let reconciling = false;
+let reconcileQueued = false;
+
 export async function reconcileGoogleCalendar() {
+  // Boot and the first sync pull can land together; without this they both
+  // create an event for the same task. A caller that arrives mid-run is
+  // remembered rather than dropped — it may be a pull whose data landed after
+  // this run had already read storage.
+  if (reconciling) {
+    reconcileQueued = true;
+    return;
+  }
   const token = getValidToken();
   if (!token) return;
+  reconciling = true;
   try {
-    const calMap = loadCalMap();
+    const syncOn = calendarSyncEnabled();
     const tasks = loadJSON<CalTask[]>(STORAGE_KEYS.tasks, []);
-    const liveTasks = new Set(tasks.filter((t) => !t.done && t.remindAt).map((t) => t.id));
-    for (const [taskId, eventId] of Object.entries(calMap)) {
-      if (liveTasks.has(taskId)) continue;
-      if (await deleteEvent(token, eventId)) {
+    const liveTasks = new Map(tasks.filter((t) => !t.done && t.remindAt).map((t) => [t.id, t]));
+    for (const [taskId, entry] of Object.entries(loadCalMap())) {
+      const task = liveTasks.get(taskId);
+      if (task) {
+        // With the toggle off we're not maintaining events, only cleaning up
+        // after dead ones. Otherwise the event stands unless the task moved or
+        // was renamed (the push loop below then recreates it).
+        if (!syncOn) continue;
+        if (entry.remindAt === task.remindAt && entry.title === task.title) continue;
+      }
+      if (await deleteEvent(token, entry.eventId)) {
         const fresh = loadCalMap();
         delete fresh[taskId];
         saveJSON(CALMAP_KEY, fresh);
@@ -345,15 +385,43 @@ export async function reconcileGoogleCalendar() {
       }
     }
 
-    const nudgeMap = loadNudgeMap();
+    if (syncOn) {
+      const calMap = loadCalMap();
+      for (const task of liveTasks.values()) {
+        if (calMap[task.id]) continue;
+        await pushTaskToGoogleCalendar(task);
+      }
+    }
+
+    const nudgeOn = nudgeSyncEnabled();
     const reminders = loadJSON<CalNudge[]>(STORAGE_KEYS.reminders, []);
-    const liveNudges = new Set(reminders.filter((r) => r.enabled).map((r) => r.id));
-    for (const reminderId of Object.keys(nudgeMap)) {
-      if (liveNudges.has(reminderId)) continue;
+    const liveNudges = new Map(
+      reminders.filter((r) => r.enabled && r.times.length > 0).map((r) => [r.id, r]),
+    );
+    for (const [reminderId, entry] of Object.entries(loadNudgeMap())) {
+      const nudge = liveNudges.get(reminderId);
+      if (nudge) {
+        if (!nudgeOn) continue;
+        if (entry.sig === nudgeSig(nudge)) continue;
+      }
       await deleteNudgeEvents(token, reminderId);
+    }
+
+    if (nudgeOn) {
+      const nudgeMap = loadNudgeMap();
+      for (const nudge of liveNudges.values()) {
+        if (nudgeMap[nudge.id]?.eventIds.length) continue;
+        await pushNudgeToGoogleCalendar(nudge);
+      }
     }
   } catch (e) {
     console.warn("[Google] reconcileGoogleCalendar failed", e);
+  } finally {
+    reconciling = false;
+    if (reconcileQueued) {
+      reconcileQueued = false;
+      void reconcileGoogleCalendar();
+    }
   }
 }
 
@@ -373,8 +441,24 @@ export async function syncAllTasksToGoogleCalendar(tasks: CalTask[]) {
 
 type CalNudge = { id: string; label: string; times: string[]; enabled: boolean };
 
-function loadNudgeMap(): Record<string, string[]> {
-  return loadJSON<Record<string, string[]>>(NUDGEMAP_KEY, {});
+// One entry per nudge: the recurring events created for it, and a signature of
+// what they were built from (same purpose as CalEntry's fields — spotting an
+// edit made on a device that couldn't push it).
+type NudgeEntry = { eventIds: string[]; sig: string };
+
+function nudgeSig(nudge: CalNudge): string {
+  return `${nudge.label}|${nudge.times.join(",")}`;
+}
+
+function loadNudgeMap(): Record<string, NudgeEntry> {
+  const raw = loadJSON<Record<string, string[] | NudgeEntry>>(NUDGEMAP_KEY, {});
+  const map: Record<string, NudgeEntry> = {};
+  for (const [reminderId, entry] of Object.entries(raw)) {
+    // Legacy entries were a bare id array; an empty signature never matches, so
+    // the first reconcile rebuilds them once at the same times.
+    map[reminderId] = Array.isArray(entry) ? { eventIds: entry, sig: "" } : entry;
+  }
+  return map;
 }
 
 function nudgeSyncEnabled(): boolean {
@@ -382,16 +466,17 @@ function nudgeSyncEnabled(): boolean {
 }
 
 async function deleteNudgeEvents(token: string, reminderId: string) {
-  const map = loadNudgeMap();
-  const eventIds = map[reminderId];
-  if (!eventIds?.length) return;
+  const entry = loadNudgeMap()[reminderId];
+  if (!entry?.eventIds.length) return;
   // Keep ids whose delete didn't go through, so a later reconcile retries them
   const failed: string[] = [];
-  for (const eventId of eventIds) {
+  for (const eventId of entry.eventIds) {
     if (!(await deleteEvent(token, eventId))) failed.push(eventId);
   }
   const fresh = loadNudgeMap();
-  if (failed.length > 0) fresh[reminderId] = failed;
+  // Leftovers are orphans awaiting deletion, not a live copy of the nudge —
+  // clearing the signature is what makes reconcile come back for them.
+  if (failed.length > 0) fresh[reminderId] = { eventIds: failed, sig: "" };
   else delete fresh[reminderId];
   saveJSON(NUDGEMAP_KEY, fresh);
 }
@@ -433,7 +518,10 @@ export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
       const map = loadNudgeMap();
       // Merge instead of overwrite: entries that survived deleteNudgeEvents
       // are stale events still awaiting deletion, don't lose track of them
-      map[nudge.id] = [...(map[nudge.id] ?? []), ...eventIds];
+      map[nudge.id] = {
+        eventIds: [...(map[nudge.id]?.eventIds ?? []), ...eventIds],
+        sig: nudgeSig(nudge),
+      };
       saveJSON(NUDGEMAP_KEY, map);
       console.log(`[Google] ${eventIds.length} calendar event(s) created for nudge ${nudge.id}`);
     }
@@ -443,8 +531,7 @@ export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
 }
 
 export async function removeNudgeFromGoogleCalendar(reminderId: string) {
-  const map = loadNudgeMap();
-  if (!map[reminderId]?.length) return;
+  if (!loadNudgeMap()[reminderId]?.eventIds.length) return;
   const token = getValidToken();
   if (!token) return;
   try {

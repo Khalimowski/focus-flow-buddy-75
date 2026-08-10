@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useI18nStore, useTranslation, type VibrationType } from "@/lib/i18n";
+import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
 import {
   isNative,
@@ -222,6 +222,8 @@ export function Settings() {
       await disconnectGoogle();
     } finally {
       setGoogleEmail(null);
+      // Deliberately not published: the connection this drops is device-local,
+      // so the user's other devices keep syncing with their own.
       setGoogleGmail(false);
       setGoogleCalendarSync(false);
       setGoogleNudgeSync(false);
@@ -229,13 +231,22 @@ export function Settings() {
     }
   };
 
+  const handleGoogleGmailChange = (enabled: boolean) => {
+    setGoogleGmail(enabled);
+    publishGooglePrefs();
+  };
+
   const handleGoogleCalendarSyncChange = async (enabled: boolean) => {
     // Optimistically update so the toggle moves immediately
     setGoogleCalendarSync(enabled);
-    if (!enabled) return;
+    if (!enabled) {
+      publishGooglePrefs();
+      return;
+    }
 
     try {
       await ensureGoogleToken();
+      publishGooglePrefs(); // only once we know this device can honour it
       const tasks = loadJSON(STORAGE_KEYS.tasks, []);
       syncAllTasksToGoogleCalendar(tasks).catch(e => console.error("[Settings] Google Calendar sync failed", e));
       notify({
@@ -245,7 +256,7 @@ export function Settings() {
       });
     } catch (err) {
       console.error("[Settings] Google Calendar sync enable failed", err);
-      setGoogleCalendarSync(false); // revert
+      setGoogleCalendarSync(false); // revert, unpublished — a failure here is local
       notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
     }
   };
@@ -253,10 +264,14 @@ export function Settings() {
   const handleGoogleNudgeSyncChange = async (enabled: boolean) => {
     // Optimistically update so the toggle moves immediately
     setGoogleNudgeSync(enabled);
-    if (!enabled) return;
+    if (!enabled) {
+      publishGooglePrefs();
+      return;
+    }
 
     try {
       await ensureGoogleToken();
+      publishGooglePrefs(); // only once we know this device can honour it
       const reminders = loadJSON(STORAGE_KEYS.reminders, []);
       syncAllNudgesToGoogleCalendar(reminders).catch(e => console.error("[Settings] Google nudge sync failed", e));
       notify({
@@ -266,7 +281,7 @@ export function Settings() {
       });
     } catch (err) {
       console.error("[Settings] Google nudge sync enable failed", err);
-      setGoogleNudgeSync(false); // revert
+      setGoogleNudgeSync(false); // revert, unpublished — a failure here is local
       notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
     }
   };
@@ -439,7 +454,7 @@ export function Settings() {
                     <Switch
                       id="google-gmail"
                       checked={googleGmail}
-                      onCheckedChange={setGoogleGmail}
+                      onCheckedChange={handleGoogleGmailChange}
                     />
                   </div>
 
@@ -520,7 +535,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.6.5 · {__BUILD_TIME__}
+          {t('version')} 1.6.6 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>
