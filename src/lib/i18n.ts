@@ -123,7 +123,7 @@ if (typeof window !== "undefined") {
 export const translations = {
   en: {
     app_name: "FlowDay",
-    tagline: "Time-sensitive clarity for ADHD brains and beyond.",
+    tagline: "From Chaos to Flow.",
     tasks: "Tasks",
     todo: "To-Do",
     nudges: "Nudges",
@@ -400,7 +400,7 @@ export const translations = {
   },
   pl: {
     app_name: "FlowDay",
-    tagline: "Czas pod kontrolą. Dla umysłów z ADHD i nie tylko.",
+    tagline: "Od Chaosu do flow.",
     tasks: "Zadania",
     todo: "Do zrobienia",
     nudges: "Przypominajki",
