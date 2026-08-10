@@ -533,7 +533,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       </div>
 
       <div className="flex items-center justify-end gap-1">
-        <div className="flex items-center rounded-full bg-card/40 p-0.5">
+        <div className="flex items-center rounded-full bg-card/40 p-0.5" data-tour="view-toggle">
           <button
             onClick={() => switchView('list')}
             aria-label={t('view_list')}

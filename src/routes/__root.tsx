@@ -16,8 +16,8 @@ import { useI18nStore } from "../lib/i18n";
 
 // Share-card art lives in public/og.png. The origin has to be baked in because
 // head meta is emitted during prerender, where there is no request to read it
-// from; point it at the canonical Workers deploy.
-const OG_IMAGE = "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev/og.png";
+// from; point it at the canonical domain.
+const OG_IMAGE = "https://flowday.day/og.png";
 
 function NotFoundComponent() {
   return (

@@ -159,7 +159,7 @@ async function signRs256(input, privateKeyPem) {
 async function sendWelcomeEmail(env, to, appUrl) {
   if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
 
-  const link = appUrl || "https://focus-flow-buddy-75.kacper-szymanski1990.workers.dev";
+  const link = appUrl || "https://flowday.day/";
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
