@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
-import { generateId } from "@/lib/utils";
+import { dateKey, generateId } from "@/lib/utils";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
 import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
-import { useTranslation, useI18nStore } from "@/lib/i18n";
+import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 
 type Reminder = {
@@ -17,10 +17,13 @@ type Reminder = {
   label: string;
   times: string[]; // "HH:mm"
   enabled: boolean;
-  lastFired: Record<string, string>; // time -> YYYY-MM-DD
+  lastFired: Record<string, string>; // time -> YYYY-MM-DD (local day)
+  // Which quick-add preset this came from, if any. Language-independent, so
+  // switching to Polish can't make an already-added preset look unused.
+  presetId?: string;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => dateKey();
 const nowHM = () => {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
@@ -36,10 +39,21 @@ export function Reminders() {
   const { addEvent } = useHistoryStore();
 
   const PRESETS = [
-    { label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
-    { label: t('take_meds'), icon: Pill, times: ["08:00"] },
-    { label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
-  ];
+    { id: 'water', tKey: 'drink_water', label: t('drink_water'), icon: Droplet, times: ["09:00", "12:00", "15:00", "18:00"] },
+    { id: 'meds', tKey: 'take_meds', label: t('take_meds'), icon: Pill, times: ["08:00"] },
+    { id: 'stretch', tKey: 'stand_stretch', label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
+  ] as const;
+
+  // A preset counts as added when its id matches, or — for nudges saved before
+  // presetId existed — when the label matches its wording in ANY language.
+  // Comparing against the current language only was the whole bug: after a
+  // switch to Polish, "Drink water" stopped matching "Pij wodę" and the button
+  // happily added a second copy firing at the same four times.
+  const presetAdded = (p: (typeof PRESETS)[number]) =>
+    items.some((i) => {
+      if (i.presetId) return i.presetId === p.id;
+      return Object.values(translations).some((dict) => dict[p.tKey] === i.label);
+    });
 
   // Set when the next setItems comes from re-reading storage (see reload below)
   const skipNextSave = useRef(false);
@@ -74,6 +88,10 @@ export function Reminders() {
 
   const ref = useRef(items);
   ref.current = items;
+  // The tick loop is mounted once, so it would otherwise keep firing nudges
+  // with whatever language was active at mount.
+  const tRef = useRef(t);
+  tRef.current = t;
   useEffect(() => {
     const tick = () => {
       const hm = nowHM();
@@ -82,7 +100,7 @@ export function Reminders() {
       const next = ref.current.map((r) => {
         if (!r.enabled) return r;
         if (r.times.includes(hm) && r.lastFired[hm] !== d) {
-          notify({ title: r.label, body: t('gentle_nudge_emoji'), kind: "reminder" });
+          notify({ title: r.label, body: tRef.current('gentle_nudge_emoji'), kind: "reminder" });
           changed = true;
           return { ...r, lastFired: { ...r.lastFired, [hm]: d } };
         }
@@ -111,13 +129,14 @@ export function Reminders() {
   };
 
   const addPreset = (p: (typeof PRESETS)[number]) => {
-    if (items.some((i) => i.label === p.label)) return;
+    if (presetAdded(p)) return;
     const r: Reminder = {
       id: generateId(),
       label: p.label,
-      times: p.times,
+      times: [...p.times],
       enabled: true,
       lastFired: {},
+      presetId: p.id,
     };
     scheduleAll(r);
     addEvent('nudge_created', { label: p.label, preset: true });
@@ -137,7 +156,9 @@ export function Reminders() {
   };
 
   const addCustom = () => {
-    const validTimes = customTimes.filter(t => !!t);
+    // De-duplicate: two identical times mean two notification ids on the same
+    // minute (and two calendar events), with one lastFired slot between them.
+    const validTimes = [...new Set(customTimes.filter(t => !!t))].sort();
     if (!label.trim() || validTimes.length === 0) return;
     const r: Reminder = {
       id: generateId(),
@@ -181,7 +202,7 @@ export function Reminders() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {PRESETS.map((p) => {
             const Icon = p.icon;
-            const added = items.some((i) => i.label === p.label);
+            const added = presetAdded(p);
             return (
               <button
                 key={p.label}

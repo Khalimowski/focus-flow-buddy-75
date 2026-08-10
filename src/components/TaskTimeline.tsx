@@ -101,6 +101,8 @@ export function TaskTimeline({
   const sessionRef = useRef<Session | null>(null);
   const dragMinutesRef = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
+  // Set by beginPress so an unmount mid-drag can detach the window listeners.
+  const teardownRef = useRef<(() => void) | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [, setNowTick] = useState(0);
 
@@ -108,6 +110,10 @@ export function TaskTimeline({
     const id = window.setInterval(() => setNowTick((n) => n + 1), 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Switching tabs (or views) while a finger is down would otherwise leave
+  // pointermove/pointerup bound to window for the rest of the session.
+  useEffect(() => () => teardownRef.current?.(), []);
 
   const timed = useMemo(
     () =>
@@ -257,7 +263,14 @@ export function TaskTimeline({
     const onUp = (ev: PointerEvent) => {
       if (ev.pointerId !== session.pointerId) return;
       if (session.active) {
+        // Swallow only the click this same gesture is about to synthesise.
+        // Dropping onto the shelf leaves the pointer nowhere near the block, so
+        // no click follows — without the timeout the flag survived and ate the
+        // user's next real tap on an unrelated item.
         suppressClickRef.current = true;
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 0);
         const m = dragMinutesRef.current;
         // Untimed task dropped back on the shelf: nothing changed.
         if (!(m === null && !session.hadTime)) onSetTaskTime(session.itemId, m);
@@ -275,8 +288,10 @@ export function TaskTimeline({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
       document.removeEventListener("touchmove", onTouchMove);
+      teardownRef.current = null;
       cleanupSession();
     };
+    teardownRef.current = teardown;
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -297,6 +312,11 @@ export function TaskTimeline({
   };
 
   const gridHeight = endMin - startMin;
+  // Blocks are BLOCK_MIN tall and anchored at their start time, so one sitting
+  // at the very end of the axis (a 23:50 task, or anything dropped at the
+  // bottom clamp) needs that much slack below the last hour line — otherwise it
+  // hangs outside the card. The time axis itself still stops at endMin.
+  const gridBoxHeight = gridHeight + BLOCK_MIN;
   const hours: number[] = [];
   for (let m = startMin; m <= endMin; m += 60) hours.push(m);
 
@@ -378,7 +398,7 @@ export function TaskTimeline({
 
       {/* Hour grid */}
       <div className="rounded-2xl border bg-card/30 backdrop-blur p-2 pt-3">
-        <div className="relative ml-12 mr-1" style={{ height: gridHeight }}>
+        <div className="relative ml-12 mr-1" style={{ height: gridBoxHeight }}>
           <div ref={gridRef} className="absolute inset-0">
             {hours.map((m) => (
               <div

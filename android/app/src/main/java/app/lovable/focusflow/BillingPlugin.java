@@ -45,8 +45,27 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
     private static final String TAG = "BillingPlugin";
 
     private BillingClient billingClient;
-    /** The in-flight purchase() call, resolved from onPurchasesUpdated. */
-    private PluginCall pendingPurchaseCall;
+    /**
+     * The in-flight purchase() call, resolved from onPurchasesUpdated. Written
+     * from the Play callback thread and read from the WebView thread, hence
+     * volatile, and always taken via {@link #takePendingPurchaseCall()} so two
+     * paths can never resolve the same call twice.
+     */
+    private volatile PluginCall pendingPurchaseCall;
+
+    /** Atomically claims the parked call, leaving nothing behind for a second caller. */
+    private synchronized PluginCall takePendingPurchaseCall() {
+        PluginCall call = pendingPurchaseCall;
+        pendingPurchaseCall = null;
+        return call;
+    }
+
+    /** Claims the purchase slot, or returns false if one is already in flight. */
+    private synchronized boolean claimPurchaseSlot(PluginCall call) {
+        if (pendingPurchaseCall != null) return false;
+        pendingPurchaseCall = call;
+        return true;
+    }
 
     private interface ConnectionCallback {
         void onReady();
@@ -198,10 +217,14 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
             call.reject("No activity available to host the purchase flow");
             return;
         }
-        if (pendingPurchaseCall != null) {
+        // Claim the slot up front. Checking here but assigning after the async
+        // connect+query left a window where two quick taps both got through and
+        // the first call was orphaned (kept alive, never resolved).
+        if (!claimPurchaseSlot(call)) {
             call.reject("A purchase is already in progress");
             return;
         }
+        call.setKeepAlive(true);
 
         withConnection(new ConnectionCallback() {
             @Override
@@ -218,39 +241,47 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                                         Collections.singletonList(productParams))
                                 .build();
 
-                        // Park the call before launching: Play can call back
-                        // before launchBillingFlow returns.
-                        pendingPurchaseCall = call;
-                        call.setKeepAlive(true);
-
+                        // The call is already parked (and kept alive): Play can
+                        // call back before launchBillingFlow even returns.
                         BillingResult result =
                                 billingClient.launchBillingFlow(activity, flowParams);
                         if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                            pendingPurchaseCall = null;
-                            call.setKeepAlive(false);
-                            call.reject("Could not open Play checkout: "
+                            failPurchase(call, "Could not open Play checkout: "
                                     + result.getDebugMessage());
                         }
                     }
 
                     @Override
                     public void onError(String message) {
-                        call.reject(message);
+                        failPurchase(call, message);
                     }
                 });
             }
 
             @Override
             public void onError(String message) {
-                call.reject(message);
+                failPurchase(call, message);
             }
         });
     }
 
+    /**
+     * Reject a purchase() call and free the slot. Every early-exit path must go
+     * through here — leaving the slot occupied locks out every later purchase
+     * attempt for the lifetime of the process.
+     */
+    private void failPurchase(PluginCall call, String message) {
+        // Only the winner of the race with onPurchasesUpdated may settle the
+        // call — otherwise a launch error arriving after Play already reported
+        // success would reject a call that was resolved a moment earlier.
+        if (takePendingPurchaseCall() == null) return;
+        call.setKeepAlive(false);
+        call.reject(message);
+    }
+
     @Override
     public void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
-        PluginCall call = pendingPurchaseCall;
-        pendingPurchaseCall = null;
+        PluginCall call = takePendingPurchaseCall();
 
         // Acknowledge regardless of whether anyone is listening — an
         // unacknowledged purchase is auto-refunded by Play after three days.
@@ -347,6 +378,13 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
 
     @Override
     protected void handleOnDestroy() {
+        // A purchase still parked here would leave the JS promise pending
+        // forever; reject it so the UI can leave its "busy" state.
+        PluginCall pending = takePendingPurchaseCall();
+        if (pending != null) {
+            pending.setKeepAlive(false);
+            pending.reject("Purchase flow interrupted");
+        }
         if (billingClient != null) {
             billingClient.endConnection();
             billingClient = null;

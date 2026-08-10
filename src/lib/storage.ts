@@ -9,10 +9,10 @@ export function loadJSON<T>(key: string, fallback: T): T {
   if (!isBrowser) return fallback;
   try {
     const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      console.log(`[Storage] No data found for key: ${key}`);
-      return fallback;
-    }
+    // A missing key is the normal state for a fresh install and for every
+    // optional feature, and loadJSON runs on every render pass — logging it
+    // buried real errors under dozens of lines per page load.
+    if (!raw) return fallback;
     const data = JSON.parse(raw);
 
     // Safety check for empty or corrupted data

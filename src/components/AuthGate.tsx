@@ -52,46 +52,82 @@ export function AuthGate() {
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The server's own wording ("user already exists", "password too short", …).
+  // Kept next to the friendly message instead of console-only: without it every
+  // failure looked identical and there was no way to tell what to change.
+  const [detail, setDetail] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const MIN_PASSWORD = 8;
+  const emailLooksValid = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
   const run = async (fn: () => Promise<void>, failMsg: string) => {
     setBusy(true);
     setError(null);
+    setDetail(null);
     setInfo(null);
     try {
       await fn();
     } catch (e) {
       console.error("[AuthGate]", e);
       setError(failMsg);
+      const message = e instanceof Error ? e.message.trim() : "";
+      if (message && message !== failMsg) setDetail(message);
     } finally {
       setBusy(false);
     }
   };
 
-  const submitAuth = () =>
-    run(async () => {
+  /** Client-side checks, so the obvious mistakes don't need a round trip. */
+  const validate = (opts: { password?: boolean }): boolean => {
+    if (!emailLooksValid(email.trim())) {
+      setInfo(null);
+      setDetail(null);
+      setError(t("auth_invalid_email"));
+      return false;
+    }
+    if (opts.password && password.length < MIN_PASSWORD) {
+      setInfo(null);
+      setDetail(null);
+      setError(t("auth_password_too_short"));
+      return false;
+    }
+    return true;
+  };
+
+  const submitAuth = () => {
+    // Sign-in doesn't enforce the length rule: an existing account may predate
+    // it, and telling someone their correct password is "too short" is absurd.
+    if (!validate({ password: mode === "signup" })) return;
+    return run(async () => {
       if (mode === "signin") await signIn(email.trim(), password);
       else await signUp(email.trim(), password);
       setGuestMode(false);
     }, mode === "signin" ? t("auth_signin_failed") : t("auth_signup_failed"));
+  };
 
-  const submitForgot = () =>
-    run(async () => {
+  const submitForgot = () => {
+    if (!validate({})) return;
+    return run(async () => {
       await requestPasswordReset(email.trim());
       setMode("reset");
       setInfo(t("reset_code_sent"));
     }, t("reset_email_failed"));
+  };
 
-  const submitReset = () =>
-    run(async () => {
+  const submitReset = () => {
+    if (!validate({ password: true })) return;
+    return run(async () => {
       await resetPassword(email.trim(), otp.trim(), password);
       await signIn(email.trim(), password);
       setGuestMode(false);
     }, t("reset_failed"));
+  };
 
   const submitGoogle = async () => {
     setBusy(true);
     setError(null);
+    setDetail(null);
     setInfo(null);
     try {
       // Web returns null and navigates away to Google; native resolves with
@@ -126,13 +162,15 @@ export function AuthGate() {
     }
   };
 
-  const submitCodeRequest = () =>
-    run(async () => {
+  const submitCodeRequest = () => {
+    if (!validate({})) return;
+    return run(async () => {
       await requestSignInOtp(email.trim());
       setOtp("");
       setMode("codeverify");
       setInfo(t("signin_code_sent"));
     }, t("signin_code_failed"));
+  };
 
   const submitCodeVerify = () =>
     run(async () => {
@@ -192,7 +230,12 @@ export function AuthGate() {
           )}
 
           {info && <p className="text-xs text-mint">{info}</p>}
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <div className="space-y-0.5">
+              <p className="text-xs text-destructive">{error}</p>
+              {detail && <p className="text-[11px] text-muted-foreground">{detail}</p>}
+            </div>
+          )}
 
           {(mode === "signin" || mode === "signup") && (
             <>
@@ -211,7 +254,7 @@ export function AuthGate() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => { setMode("code"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("code"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 <Mail className="mr-2 size-4" /> {t("signin_with_code")}
@@ -219,7 +262,7 @@ export function AuthGate() {
               <div className="flex items-center justify-between text-xs">
                 <button
                   className="text-muted-foreground underline-offset-2 hover:underline"
-                  onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); }}
+                  onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(null); setDetail(null); }}
                   disabled={busy}
                 >
                   {mode === "signin" ? t("auth_no_account") : t("auth_have_account")}
@@ -227,7 +270,7 @@ export function AuthGate() {
                 {mode === "signin" && (
                   <button
                     className="text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => { setMode("forgot"); setError(null); }}
+                    onClick={() => { setMode("forgot"); setError(null); setDetail(null); }}
                     disabled={busy}
                   >
                     {t("forgot_password")}
@@ -244,7 +287,7 @@ export function AuthGate() {
               </Button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("signin"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 {t("back_to_signin")}
@@ -263,7 +306,7 @@ export function AuthGate() {
               </Button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("signin"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 {t("back_to_signin")}
@@ -278,7 +321,7 @@ export function AuthGate() {
               </Button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("signin"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 {t("back_to_signin")}
@@ -297,14 +340,14 @@ export function AuthGate() {
               </Button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => { setMode("code"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("code"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 {t("resend_signin_code")}
               </button>
               <button
                 className="w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                onClick={() => { setMode("signin"); setError(null); setDetail(null); setInfo(null); }}
                 disabled={busy}
               >
                 {t("back_to_signin")}

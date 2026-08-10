@@ -24,6 +24,7 @@ export default {
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (request.method !== "POST") return json({ error: "Method not allowed" }, 405, cors);
+    if (!originAllowed(request, env)) return json({ error: "Forbidden origin" }, 403, cors);
 
     let body;
     try {
@@ -221,17 +222,39 @@ function corsHeaders(request, env) {
   // The app calls this from the browser build and from Capacitor
   // (https://localhost), so an explicit allow-list is required.
   const origin = request.headers.get("Origin") || "";
-  const allowed = (env.ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-  const allow = allowed.includes(origin) ? origin : allowed[0] || "";
-  return {
-    "Access-Control-Allow-Origin": allow,
+  const allowed = allowedOrigins(env);
+  // Echo only an origin we actually allow. Falling back to allowed[0] for an
+  // unknown origin advertised a header that was never true for that caller.
+  const allow = allowed.includes(origin) ? origin : "";
+  const headers = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     Vary: "Origin",
   };
+  if (allow) headers["Access-Control-Allow-Origin"] = allow;
+  return headers;
+}
+
+function allowedOrigins(env) {
+  return (env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Whether this caller may use the endpoint at all. CORS only constrains
+ * browsers; this refuses the request outright, which is what keeps a scripted
+ * caller from driving the Play API and the mail sender on our budget.
+ * An empty ALLOWED_ORIGINS means "unconfigured" and stays permissive, matching
+ * the rest of the service's opt-in design.
+ */
+function originAllowed(request, env) {
+  const allowed = allowedOrigins(env);
+  if (allowed.length === 0) return true;
+  const origin = request.headers.get("Origin");
+  // Non-browser callers (no Origin header) are the ones worth stopping here.
+  return !!origin && allowed.includes(origin);
 }
 
 function json(body, status, headers) {

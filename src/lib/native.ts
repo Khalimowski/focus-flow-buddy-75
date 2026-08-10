@@ -5,6 +5,7 @@ import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle } from "@capacit
 import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
+import { dateKey } from "./utils";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
 
@@ -453,7 +454,8 @@ export async function reconcileNotifications() {
     const settings = useI18nStore.getState();
     const lang = translations[settings.language] || translations.en;
     const now = Date.now();
-    const today = new Date().toISOString().slice(0, 10);
+    // Local day key — must match what the Reminders UI writes into lastFired.
+    const today = dateKey();
 
     type TaskLike = { id: string; title: string; done: boolean; remindAt?: string | null };
     type ReminderLike = {
@@ -605,7 +607,7 @@ export async function initNative() {
         const time = extra.time;
         if (actionId === 'done') {
           const reminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
-          const dateStr = new Date().toISOString().slice(0, 10);
+          const dateStr = dateKey();
           const updated = reminders.map(r =>
             r.id === nudgeId ? { ...r, lastFired: { ...r.lastFired, [time]: dateStr } } : r
           );
@@ -645,7 +647,7 @@ export async function initNative() {
     const doneTaskIds = tasks.filter(t => t.done).map(t => hashId("task:" + t.id));
 
     const reminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
-    const dateStr = new Date().toISOString().slice(0, 10);
+    const dateStr = dateKey();
     const firedNudgeIds: number[] = [];
 
     reminders.forEach(r => {

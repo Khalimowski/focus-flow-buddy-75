@@ -199,7 +199,9 @@ function Home() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`relative flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition ${
+              // min-w-0 + truncate: the labels are translated, and Polish
+              // "Przypominajki" ran off the right edge of a 375px screen.
+              className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-sm font-medium transition sm:gap-2 sm:px-3 ${
                 active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -210,8 +212,8 @@ function Home() {
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
-              <Icon className="relative size-4" />
-              <span className="relative">{t.label}</span>
+              <Icon className="relative size-4 shrink-0" />
+              <span className="relative truncate">{t.label}</span>
             </button>
           );
         })}

@@ -149,9 +149,24 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Keep <html lang> on the language the UI is actually rendering. The shell is
+ * emitted during prerender (one static HTML file serves every language), so
+ * this can only be corrected on the client — screen readers otherwise read
+ * Polish copy with English pronunciation rules.
+ */
+function useDocumentLanguage(language: string) {
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const theme = useI18nStore((s) => s.theme);
+  const language = useI18nStore((s) => s.language);
+
+  useDocumentLanguage(language);
 
   // Root-level so the tab icon tracks the theme everywhere, including the auth
   // gate and /delete-account, where Settings never mounts.

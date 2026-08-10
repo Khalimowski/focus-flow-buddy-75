@@ -284,7 +284,7 @@ export async function signUp(email: string, password: string): Promise<SyncUser>
   };
   if (res?.error) throw new Error(res.error.message || "Sign-up failed");
   // Some configs auto-create a session on sign-up; if not, sign in explicitly.
-  let user = await fetchSessionUser();
+  const user = await fetchSessionUser();
   if (!user) {
     return signIn(email, password);
   }
@@ -452,7 +452,14 @@ export async function deleteAccount(email: string, password: string): Promise<{ 
   };
   if (res?.error) throw new Error(res.error.message || "Sign-in failed");
 
-  const del = await client.from("user_data").delete().neq("key", "");
+  const session = await fetchSessionUser();
+  if (!session) throw new Error("Sign-in failed");
+
+  // Scope the delete explicitly, exactly like the pull in doFullSync. RLS
+  // should already confine this to the signed-in user, but an unfiltered
+  // DELETE is the one statement where a policy that ever failed open would
+  // wipe every account's data instead of just leaking it.
+  const del = await client.from("user_data").delete().eq("user_id", session.id);
   if (del.error) throw new Error(del.error.message || "Data deletion failed");
 
   let accountDeleted = false;
@@ -473,7 +480,13 @@ export async function deleteAccount(email: string, password: string): Promise<{ 
   currentUser = null;
   dirty.clear();
   window.localStorage.removeItem(META_KEY);
-  window.localStorage.removeItem(STORAGE_KEYS.premium);
+  // Wipe the local copy too. Leaving it behind meant the deleted account's
+  // tasks were still on the device — and the next account signed in here would
+  // have pushed them to the cloud as its own via the "first device" branch.
+  for (const key of SYNC_KEYS) window.localStorage.removeItem(key);
+  window.localStorage.removeItem(STORAGE_KEYS.inAppNotifs);
+  window.dispatchEvent(new CustomEvent("ff.premium-changed"));
+  window.dispatchEvent(new CustomEvent(REMOTE_UPDATE_EVENT));
   notifyAuthChanged();
   return { accountDeleted };
 }

@@ -158,15 +158,14 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       // Sort logic: Done items at bottom
       if (a.done !== b.done) return a.done ? 1 : -1;
 
-      const getMinutes = (item: any) => {
+      const getMinutes = (item: (typeof filteredTasks)[number] | (typeof nudgeItems)[number]) => {
         if (item.kind === 'task') {
           if (!item.remindAt) return 9999;
           const d = new Date(item.remindAt);
           return d.getHours() * 60 + d.getMinutes();
-        } else {
-          const [h, m] = item.time.split(':').map(Number);
-          return h * 60 + m;
         }
+        const [h, m] = item.time.split(':').map(Number);
+        return h * 60 + m;
       };
 
       const minA = getMinutes(a);
@@ -374,25 +373,28 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   };
 
   const toggle = (id: string) => {
-    setTasks(prev => {
-      const updated = prev.map((item) => {
-        if (item.id !== id) return item;
-        const becoming = !item.done;
-        if (becoming) {
-          onComplete?.();
-          addEvent('task_completed', { title: item.title });
+    // Side effects stay OUT of the setTasks updater: React runs updaters during
+    // render, so notifying the streak/history stores from in there was a
+    // "setState while rendering another component" error, and an updater React
+    // chooses to re-run would fire the cancel/calendar calls twice.
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const becoming = !task.done;
 
-          // Remove from native notifications and calendar when done
-          if (isNative()) {
-            void cancelNative([hashId("task:" + id)]);
-            void deleteFromCalendar(item.title);
-          }
-          void removeTaskFromGoogleCalendar(id);
-        }
-        return { ...item, done: becoming };
-      });
-      return sortTasks(updated);
-    });
+    setTasks(prev =>
+      sortTasks(prev.map((item) => (item.id === id ? { ...item, done: becoming } : item))),
+    );
+
+    if (!becoming) return;
+    onComplete?.();
+    addEvent('task_completed', { title: task.title });
+
+    // Remove from native notifications and calendar when done
+    if (isNative()) {
+      void cancelNative([hashId("task:" + id)]);
+      void deleteFromCalendar(task.title);
+    }
+    void removeTaskFromGoogleCalendar(id);
   };
 
   const moveToTodo = (id: string) => {
@@ -456,7 +458,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       {/* Daily Strip */}
-      <div className="flex items-center justify-between gap-2 overflow-x-auto py-3 px-1 scrollbar-hide" data-tour="days">
+      {/* Sizes shrink below sm so the whole week AND the date picker fit a
+          375px phone — the strip scrolls horizontally with no visible
+          scrollbar, so anything past the edge was effectively undiscoverable. */}
+      <div className="flex items-center justify-between gap-1 overflow-x-auto py-3 px-1 scrollbar-hide sm:gap-2" data-tour="days">
         {dayStrip.map((date, i) => {
           const active = isSameDay(date, selectedDate);
           const isToday = isSameDay(date, new Date());
@@ -467,7 +472,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 setSelectedDate(startOfDay(date));
                 setNewTaskDate(startOfDay(date));
               }}
-              className={`flex min-w-[50px] flex-col items-center rounded-2xl py-3.5 transition-all ${
+              className={`flex min-w-[38px] flex-1 flex-col items-center rounded-2xl py-3.5 transition-all sm:min-w-[50px] ${
                 active
                   ? "bg-primary text-primary-foreground shadow-glow scale-102 ring-1 ring-primary/20"
                   : "bg-card/40 text-muted-foreground hover:bg-card/60"
@@ -483,7 +488,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         })}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-2xl bg-card/40 size-[50px] shrink-0 hover:bg-card/60">
+            <Button variant="ghost" size="icon" className="rounded-2xl bg-card/40 size-[38px] shrink-0 hover:bg-card/60 sm:size-[50px]">
               <CalendarIcon className="size-4" />
             </Button>
           </PopoverTrigger>
