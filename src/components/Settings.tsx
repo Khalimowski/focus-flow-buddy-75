@@ -520,7 +520,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.6.4 · {__BUILD_TIME__}
+          {t('version')} 1.6.5 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>

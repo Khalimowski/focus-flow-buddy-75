@@ -1,4 +1,5 @@
 import { SocialLogin } from "@capgo/capacitor-social-login";
+import { Capacitor } from "@capacitor/core";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { useI18nStore } from "./i18n";
 
@@ -11,10 +12,13 @@ import { useI18nStore } from "./i18n";
 // Setup: create an OAuth "Web application" client in Google Cloud Console,
 // enable the Gmail and Calendar APIs, add every origin serving the app
 // (localhost:8080, flowday.day, *.workers.dev, *.lovable.app) to Authorized JavaScript
-// origins AND Authorized redirect URIs, then put the client id in
-// VITE_GOOGLE_WEB_CLIENT_ID (.env). Gmail is a restricted scope: until Google
-// verifies the app, add yourself under "Test users" on the OAuth consent
-// screen or sign-in fails with 403: access_denied.
+// origins, add each of those origins **with a trailing slash** (the exact
+// strings googleRedirectUri() returns) to Authorized redirect URIs, then put
+// the client id in VITE_GOOGLE_WEB_CLIENT_ID (.env). A missing entry fails with
+// "Error 400: redirect_uri_mismatch" before the consent screen ever renders —
+// see docs/GOOGLE_OAUTH.md for the full list. Gmail is a restricted scope:
+// until Google verifies the app, add yourself under "Test users" on the OAuth
+// consent screen or sign-in fails with 403: access_denied.
 
 const CLIENT_ID = (import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID as string | undefined) || "";
 
@@ -44,10 +48,33 @@ export function getGoogleConnection(): GoogleConnection | null {
   return loadJSON<GoogleConnection | null>(CONN_KEY, null);
 }
 
+// The web OAuth redirect target, pinned to the app root.
+//
+// Left unset, the plugin derives redirect_uri from `origin + pathname`, so the
+// URI Google is asked to honour changes with whatever page the user happens to
+// be on — "/" from the home screen, "/delete-account" from that route, a
+// deep-linked preview path on Lovable. Google matches redirect URIs exactly, so
+// every one of those variants would need its own Authorized redirect URI entry
+// and any that is missing fails with "Error 400: redirect_uri_mismatch".
+// Pinning it means one entry per origin, and it lands on "/" — the only route
+// that finishes the popup handshake (see isOAuthPopupCallback below).
+export function googleRedirectUri(): string {
+  if (typeof window === "undefined") return "";
+  return window.location.origin + "/";
+}
+
 let initialized = false;
 async function ensureInit() {
   if (initialized) return;
-  await SocialLogin.initialize({ google: { webClientId: CLIENT_ID } });
+  const google: { webClientId: string; redirectUrl?: string } = { webClientId: CLIENT_ID };
+  // Native signs in through Credential Manager — no redirect, no redirect_uri.
+  if (!Capacitor.isNativePlatform()) {
+    google.redirectUrl = googleRedirectUri();
+    // Logged so a redirect_uri_mismatch can be fixed by copying this exact
+    // string into the Google Cloud console's Authorized redirect URIs.
+    console.log(`[Google] OAuth redirect_uri: ${google.redirectUrl}`);
+  }
+  await SocialLogin.initialize({ google });
   initialized = true;
 }
 
