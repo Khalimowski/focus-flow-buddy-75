@@ -376,29 +376,6 @@ export function Settings() {
             </>
           )}
 
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <Vibrate className="size-4" />
-              <Label className="text-sm font-medium">
-                {t('vibration')}
-              </Label>
-            </div>
-            <Select
-              value={vibrationType}
-              onValueChange={(val) => handleVibrationChange(val as VibrationType)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="long">{t('vibration_long')}</SelectItem>
-                <SelectItem value="short">{t('vibration_short')}</SelectItem>
-                <SelectItem value="double">{t('vibration_double')}</SelectItem>
-                <SelectItem value="off">{t('vibration_off')}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -430,6 +407,29 @@ export function Settings() {
                 />
               </div>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Vibrate className="size-4" />
+              <Label className="text-sm font-medium">
+                {t('vibration')}
+              </Label>
+            </div>
+            <Select
+              value={vibrationType}
+              onValueChange={(val) => handleVibrationChange(val as VibrationType)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="long">{t('vibration_long')}</SelectItem>
+                <SelectItem value="short">{t('vibration_short')}</SelectItem>
+                <SelectItem value="double">{t('vibration_double')}</SelectItem>
+                <SelectItem value="off">{t('vibration_off')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
