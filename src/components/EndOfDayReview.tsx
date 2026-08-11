@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { dateKey, generateId, shiftDateKey } from "@/lib/utils";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { unseenEntries } from "@/lib/changelog";
 import { useHistoryStore } from "@/lib/history";
 import { cancelNative, deleteFromCalendar, hashId, isNative, scheduleNativeAt } from "@/lib/native";
 import { pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
@@ -91,6 +92,10 @@ export function EndOfDayReview() {
 
   const check = useCallback(() => {
     if (!eodReview || !tutorialCompleted || openRef.current) return;
+    // Release notes get the screen first — two modals at half past eleven is
+    // one too many. Dismissing them clears this, and the interval below brings
+    // the check-in back within the minute.
+    if (unseenEntries().length > 0) return;
 
     const day = reviewDayFor(eodTime);
     // A fresh install defaults to "yesterday already answered": no ambush on

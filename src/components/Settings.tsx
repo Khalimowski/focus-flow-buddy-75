@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
+import { APP_VERSION } from "@/lib/changelog";
+import { WHATS_NEW_OPEN_EVENT } from "@/components/WhatsNew";
 import {
   isNative,
   ensureCalendarPermission,
@@ -582,11 +584,23 @@ export function Settings() {
               <GraduationCap className="mr-2 size-4" />
               {t('replay_tutorial')}
             </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                // Let the sheet close before the dialog opens over it
+                setTimeout(() => window.dispatchEvent(new Event(WHATS_NEW_OPEN_EVENT)), 300);
+              }}
+            >
+              <Sparkles className="mr-2 size-4" />
+              {t('whats_new_title')}
+            </Button>
           </div>
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.7.0 · {__BUILD_TIME__}
+          {t('version')} {APP_VERSION} · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>

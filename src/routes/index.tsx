@@ -19,6 +19,7 @@ import { AICoach } from "@/components/AICoach";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { WidgetPrompt } from "@/components/WidgetPrompt";
 import { EndOfDayReview } from "@/components/EndOfDayReview";
+import { WhatsNew } from "@/components/WhatsNew";
 import { LogoMark } from "@/components/Logo";
 import { isNative, updateStatusBar } from "@/lib/native";
 import { isOAuthPopupCallback } from "@/lib/google";
@@ -153,6 +154,7 @@ function Home() {
       <AICoach />
       <InAppToaster />
       <EndOfDayReview />
+      <WhatsNew />
 
       <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">

@@ -25,9 +25,16 @@ Bun is the primary package manager (`bun.lock`); npm works for scripts.
 
 Every session that changes app code MUST, before finishing, bump `versionCode`
 (+1, mandatory — Play rejects a reused number) and `versionName` in
-`android/app/build.gradle`, and keep the version shown in the Settings footer
-(`src/components/Settings.tsx`) in step with `versionName`. This keeps the next
-Play upload from being rejected over a stale version code.
+`android/app/build.gradle`, and keep `APP_VERSION` in `src/lib/changelog.ts`
+equal to `versionName` — that constant is what the Settings footer shows and
+what the release-notes popup compares against. This keeps the next Play upload
+from being rejected over a stale version code.
+
+While you're in `changelog.ts`, add a `CHANGELOG` entry at the top for the new
+version, in **both `en` and `pl`**, describing the change in user-facing terms
+(skip anything invisible to them — refactors, build fixes). That entry is the
+"what's new" dialog users see on their first launch after updating; a version
+with no entry shows nothing.
 
 ## Git rules (Lovable-connected repo)
 

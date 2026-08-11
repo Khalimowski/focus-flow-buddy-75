@@ -72,6 +72,10 @@ export const STORAGE_KEYS = {
   // Also device-local: the last day whose end-of-day review was answered. The
   // *tasks* it moves sync; which screen you dismissed at 23:30 does not.
   endOfDay: "ff.eod.v1",
+  // Device-local too: the newest release whose notes have been read here. Each
+  // device updates on its own schedule, so another one's answer means nothing —
+  // and syncing it would hide the notes on a phone that hasn't updated yet.
+  whatsNew: "ff.whatsnew.v1",
   version: "ff.storage.version",
 } as const;
 
