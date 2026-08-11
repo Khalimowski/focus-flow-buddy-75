@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -10,6 +10,7 @@ import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } 
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
+import { TaskCalendar } from "@/components/TaskCalendar";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -34,6 +35,8 @@ type Reminder = {
   enabled: boolean;
   lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
+
+type ViewMode = 'list' | 'timeline' | 'calendar';
 
 const sortTasks = (list: Task[]) => {
   return [...list].sort((a, b) => {
@@ -65,14 +68,15 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [time, setTime] = useState("");
   const [newTaskDate, setNewTaskDate] = useState<Date>(startOfDay(new Date()));
 
-  const [viewMode, setViewMode] = useState<'list' | 'timeline'>(() => {
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
-      return localStorage.getItem("ff.tasks_view") === "timeline" ? "timeline" : "list";
+      const saved = localStorage.getItem("ff.tasks_view");
+      return saved === "timeline" || saved === "calendar" ? saved : "list";
     } catch {
       return "list";
     }
   });
-  const switchView = (mode: 'list' | 'timeline') => {
+  const switchView = (mode: ViewMode) => {
     setViewMode(mode);
     try { localStorage.setItem("ff.tasks_view", mode); } catch { /* private mode */ }
   };
@@ -575,10 +579,36 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           >
             <CalendarClock className="size-3" /> {t('view_timeline')}
           </button>
+          <button
+            onClick={() => switchView('calendar')}
+            aria-label={t('view_calendar')}
+            aria-pressed={viewMode === 'calendar'}
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all ${
+              viewMode === 'calendar' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <CalendarDays className="size-3" /> {t('view_calendar')}
+          </button>
         </div>
       </div>
 
-      {viewMode === 'timeline' ? (
+      {viewMode === 'calendar' ? (
+        <TaskCalendar
+          tasks={tasks}
+          selectedDate={selectedDate}
+          onSelectDate={(d) => {
+            setSelectedDate(d);
+            setNewTaskDate(d);
+          }}
+          onToggleTask={toggle}
+          onEditTask={(task) => {
+            switchView('list');
+            setSelectedDate(startOfDay(parseISO(task.dueDate)));
+            startEdit(task);
+          }}
+          onDeleteTask={remove}
+        />
+      ) : viewMode === 'timeline' ? (
         displayItems.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10">
             {t('tasks_empty')}
