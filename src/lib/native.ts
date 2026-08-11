@@ -138,6 +138,9 @@ export async function applyVibrationSetting() {
     }
     if (canonical.length > 0) await cancelNative(canonical);
     await reconcileNotifications();
+    // Re-armed rather than cancelled above: scheduling by the same id replaces
+    // it, which is all it takes to pick up the new channel.
+    await refreshEndOfDayPrompt();
   } catch (e) {
     console.warn("[Native] applyVibrationSetting failed", e);
   }
@@ -236,6 +239,64 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
     console.log(`Daily notification ${id} scheduled.`);
   } catch (e) {
     console.error("scheduleNativeDaily failed", e);
+  }
+}
+
+// --- End-of-day review nudge ---
+// One notification, re-armed from storage rather than left repeating: a daily
+// `repeats: true` schedule would fire on evenings with nothing left to move.
+// The id is fixed, so scheduling replaces any earlier arming.
+const EOD_NOTIF_ID = hashId("eod:review");
+
+/**
+ * Arm (or clear) the "you still have open tasks" nudge for the next occurrence
+ * of the user's check-in time. Cheap and idempotent — called at boot, on every
+ * task save, and whenever the setting changes.
+ */
+export async function refreshEndOfDayPrompt() {
+  if (!isNative()) return;
+  try {
+    const settings = useI18nStore.getState();
+    if (!settings.eodReview) {
+      await cancelNative([EOD_NOTIF_ID]);
+      return;
+    }
+
+    const [h, m] = settings.eodTime.split(":").map(Number);
+    const at = new Date();
+    at.setHours(h || 0, m || 0, 0, 0);
+    // Past today's time already: the next check-in is tomorrow's.
+    if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+
+    // Only nudge about days that have actually arrived by then — a task planned
+    // for next week isn't "unfinished" tonight.
+    const dayKey = dateKey(at);
+    type TaskLike = { done: boolean; dueDate?: string };
+    const tasks = loadJSON<TaskLike[]>(STORAGE_KEYS.tasks, []);
+    const open = tasks.filter((t) => !t.done && (t.dueDate ?? dayKey) <= dayKey);
+    if (open.length === 0) {
+      await cancelNative([EOD_NOTIF_ID]);
+      return;
+    }
+
+    await ensureChannel();
+    const lang = translations[settings.language] || translations.en;
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id: EOD_NOTIF_ID,
+          title: lang.eod_notif_title,
+          body: lang.eod_notif_body,
+          schedule: { at, allowWhileIdle: true },
+          channelId: currentChannelId(),
+          smallIcon: "ic_stat_icon",
+          sound: "boink",
+          extra: { type: "eod" },
+        },
+      ],
+    });
+  } catch (e) {
+    console.warn("[Native] refreshEndOfDayPrompt failed", e);
   }
 }
 
@@ -671,6 +732,8 @@ export async function initNative() {
   try {
     window.addEventListener("ff.tasks_saved", () => {
       void pushTasksToWidget();
+      // Ticking the last open task off should take tonight's check-in with it
+      void refreshEndOfDayPrompt();
     });
     void App.addListener("resume", () => {
       void syncWidgetTicks();
@@ -683,6 +746,7 @@ export async function initNative() {
   // Safety net: re-arm notifications from storage (covers items synced from
   // other devices before this ran, and schedules lost to device reboots)
   void reconcileNotifications();
+  void refreshEndOfDayPrompt();
 
   // AdMob banner — dynamic import keeps the ads SDK out of the web bundle path
   void import("./ads").then((m) => m.initAds());

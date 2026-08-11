@@ -69,6 +69,9 @@ export const STORAGE_KEYS = {
   // been offered the home-screen widget, and until when it's snoozed. Another
   // device's answer means nothing.
   widgetPrompt: "ff.widgetprompt.v1",
+  // Also device-local: the last day whose end-of-day review was answered. The
+  // *tasks* it moves sync; which screen you dismissed at 23:30 does not.
+  endOfDay: "ff.eod.v1",
   version: "ff.storage.version",
 } as const;
 

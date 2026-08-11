@@ -17,6 +17,11 @@ interface I18nState {
   // User chose "continue as guest" on the auth gate — local-only, no sync.
   guestMode: boolean;
   vibrationType: VibrationType;
+  // End-of-day review: offer to reschedule whatever is still open, at eodTime
+  // ("HH:mm"). Device-local like the rest of the notification settings — the
+  // nudge is scheduled per device.
+  eodReview: boolean;
+  eodTime: string;
   // Google integrations (need a connected Google account, see lib/google.ts).
   // Unlike everything above, these three sync across devices — see
   // publishGooglePrefs below.
@@ -30,6 +35,8 @@ interface I18nState {
   setTutorialCompleted: (completed: boolean) => void;
   setGuestMode: (guest: boolean) => void;
   setVibrationType: (type: VibrationType) => void;
+  setEodReview: (enabled: boolean) => void;
+  setEodTime: (time: string) => void;
   setGoogleGmail: (enabled: boolean) => void;
   setGoogleCalendarSync: (enabled: boolean) => void;
   setGoogleNudgeSync: (enabled: boolean) => void;
@@ -45,6 +52,8 @@ export const useI18nStore = create<I18nState>()(
       tutorialCompleted: false,
       guestMode: false,
       vibrationType: 'long',
+      eodReview: true,
+      eodTime: '23:30',
       googleGmail: false,
       googleCalendarSync: false,
       googleNudgeSync: false,
@@ -55,6 +64,8 @@ export const useI18nStore = create<I18nState>()(
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
       setGuestMode: (guestMode) => set({ guestMode }),
       setVibrationType: (vibrationType) => set({ vibrationType }),
+      setEodReview: (eodReview) => set({ eodReview }),
+      setEodTime: (eodTime) => set({ eodTime }),
       setGoogleGmail: (googleGmail) => set({ googleGmail }),
       setGoogleCalendarSync: (googleCalendarSync) => set({ googleCalendarSync }),
       setGoogleNudgeSync: (googleNudgeSync) => set({ googleNudgeSync }),
@@ -182,6 +193,23 @@ export const translations = {
     calendar_empty: "Nothing planned",
     calendar_more: "+{n} more",
     calendar_popup_hint: "Pick a day, then add a task to it below.",
+    eod_title: "Still open from today",
+    eod_desc: "{n} left unfinished. Where should they go?",
+    eod_overdue: "Overdue",
+    eod_moving: "Moving {n}",
+    eod_select_all: "Select all",
+    eod_clear_selection: "Clear",
+    eod_tomorrow: "Move to tomorrow",
+    eod_pick_day: "Pick a day",
+    eod_to_todo: "Move to To-Do",
+    eod_keep: "Leave them where they are",
+    eod_move_to_day: "Move to {date}",
+    eod_moved_to_day: "Moved to {date} ✓",
+    eod_notif_title: "How did today go?",
+    eod_notif_body: "Some tasks are still open — move them to another day or your To-Do list.",
+    eod_setting: "End-of-day check-in",
+    eod_setting_desc: "Ask what to do with unfinished tasks.",
+    eod_time_label: "Check-in time",
     oauth_popup_finishing: "Finishing Google sign-in… this window will close itself.",
     reminder_title: "Reminder",
     add_time: "Add Time",
@@ -466,6 +494,23 @@ export const translations = {
     calendar_empty: "Nic zaplanowanego",
     calendar_more: "+{n} więcej",
     calendar_popup_hint: "Wybierz dzień, a potem dodaj do niego zadanie poniżej.",
+    eod_title: "Zostało z dzisiaj",
+    eod_desc: "Niedokończone: {n}. Gdzie mają trafić?",
+    eod_overdue: "Zaległe",
+    eod_moving: "Przenosisz: {n}",
+    eod_select_all: "Zaznacz wszystkie",
+    eod_clear_selection: "Wyczyść",
+    eod_tomorrow: "Przenieś na jutro",
+    eod_pick_day: "Wybierz dzień",
+    eod_to_todo: "Przenieś do „Do zrobienia”",
+    eod_keep: "Zostaw tak, jak jest",
+    eod_move_to_day: "Przenieś na {date}",
+    eod_moved_to_day: "Przeniesiono na {date} ✓",
+    eod_notif_title: "Jak minął dzień?",
+    eod_notif_body: "Masz jeszcze niedokończone zadania — przenieś je na inny dzień lub do „Do zrobienia”.",
+    eod_setting: "Podsumowanie dnia",
+    eod_setting_desc: "Zapytaj, co zrobić z niedokończonymi zadaniami.",
+    eod_time_label: "Godzina podsumowania",
     oauth_popup_finishing: "Kończenie logowania Google… to okno zamknie się samo.",
     reminder_title: "Przypomnienie",
     add_time: "Dodaj godzinę",

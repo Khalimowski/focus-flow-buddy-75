@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages, LayoutGrid } from "lucide-react";
+import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages, LayoutGrid, MoonStar } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -16,6 +16,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
@@ -26,6 +27,7 @@ import {
   updateStatusBar,
   syncAllToCalendar,
   applyVibrationSetting,
+  refreshEndOfDayPrompt,
   getWidgetPinState,
   requestWidgetPin,
   type WidgetPinState,
@@ -52,6 +54,8 @@ export function Settings() {
     calendarSync, setCalendarSync,
     nudgeCalendarSync, setNudgeCalendarSync,
     vibrationType, setVibrationType,
+    eodReview, setEodReview,
+    eodTime, setEodTime,
     googleGmail, setGoogleGmail,
     googleCalendarSync, setGoogleCalendarSync,
     googleNudgeSync, setGoogleNudgeSync,
@@ -125,6 +129,20 @@ export function Settings() {
     setVibrationType(type);
     // Move already-scheduled notifications onto the matching channel (no-op on web)
     void applyVibrationSetting();
+  };
+
+  // Both the in-app prompt and the nudge that brings the user to it read these,
+  // so re-arm the notification as soon as either changes (no-op on web).
+  const handleEodReviewChange = (enabled: boolean) => {
+    setEodReview(enabled);
+    void refreshEndOfDayPrompt();
+  };
+
+  const handleEodTimeChange = (value: string) => {
+    // Clearing the time field would leave the check-in with no cut-off
+    if (!value) return;
+    setEodTime(value);
+    void refreshEndOfDayPrompt();
   };
 
   const handleCalendarSyncChange = async (enabled: boolean) => {
@@ -381,6 +399,39 @@ export function Settings() {
             </Select>
           </div>
 
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <MoonStar className="size-4" />
+                <div className="flex flex-col">
+                  <Label htmlFor="eod-review" className="text-sm font-medium">
+                    {t('eod_setting')}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">{t('eod_setting_desc')}</span>
+                </div>
+              </div>
+              <Switch
+                id="eod-review"
+                checked={eodReview}
+                onCheckedChange={handleEodReviewChange}
+              />
+            </div>
+            {eodReview && (
+              <div className="flex items-center justify-between pl-7">
+                <Label htmlFor="eod-time" className="text-xs text-muted-foreground">
+                  {t('eod_time_label')}
+                </Label>
+                <Input
+                  id="eod-time"
+                  type="time"
+                  value={eodTime}
+                  onChange={(e) => handleEodTimeChange(e.target.value)}
+                  className="h-8 w-28 rounded-full border-none bg-secondary/50 font-mono text-xs"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <Languages className="size-4" />
@@ -535,7 +586,7 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} 1.6.9 · {__BUILD_TIME__}
+          {t('version')} 1.7.0 · {__BUILD_TIME__}
         </div>
       </SheetContent>
     </Sheet>
