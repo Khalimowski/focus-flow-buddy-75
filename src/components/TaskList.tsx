@@ -10,7 +10,7 @@ import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } 
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
-import { TaskCalendar } from "@/components/TaskCalendar";
+import { TaskCalendarDialog } from "@/components/TaskCalendarDialog";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -36,7 +36,7 @@ type Reminder = {
   lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
 
-type ViewMode = 'list' | 'timeline' | 'calendar';
+type ViewMode = 'list' | 'timeline';
 
 const sortTasks = (list: Task[]) => {
   return [...list].sort((a, b) => {
@@ -70,8 +70,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
-      const saved = localStorage.getItem("ff.tasks_view");
-      return saved === "timeline" || saved === "calendar" ? saved : "list";
+      return localStorage.getItem("ff.tasks_view") === "timeline" ? "timeline" : "list";
     } catch {
       return "list";
     }
@@ -80,6 +79,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     setViewMode(mode);
     try { localStorage.setItem("ff.tasks_view", mode); } catch { /* private mode */ }
   };
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -186,16 +186,19 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     return Array.from({ length: 7 }).map((_, i) => addDays(start, i));
   }, []);
 
-  const add = async () => {
-    if (!title.trim()) return;
+  // Shared by the inline composer and the calendar popup: everything a new task
+  // needs is passed in, so no caller depends on the composer's own state.
+  const addTask = (rawTitle: string, time: string, date: Date) => {
+    const cleanTitle = rawTitle.trim();
+    if (!cleanTitle) return;
 
     try {
       let remindAt: string | null = null;
-      const dueDate = format(newTaskDate, 'yyyy-MM-dd');
+      const dueDate = format(date, 'yyyy-MM-dd');
 
       if (time) {
         const [h, m] = time.split(":").map(Number);
-        const d = new Date(newTaskDate);
+        const d = new Date(date);
         d.setHours(h, m, 0, 0);
         remindAt = d.toISOString();
       }
@@ -203,7 +206,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       const id = generateId();
       const newTask: Task = {
         id,
-        title: title.trim(),
+        title: cleanTitle,
         done: false,
         remindAt,
         dueDate,
@@ -212,22 +215,27 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
       // 1. Immediate UI update
       setTasks(prev => sortTasks([newTask, ...prev]));
-      setTitle("");
-      setTime("");
-      setNewTaskDate(selectedDate);
 
       // 2. Background native sync
       if (isNative() && remindAt) {
-        deleteFromCalendar(title.trim()).catch(e => console.error("Sync: delete failed", e));
-        scheduleNativeAt(hashId("task:" + id), title.trim(), t('reminder_title'), new Date(remindAt), calendarSync, id)
+        deleteFromCalendar(cleanTitle).catch(e => console.error("Sync: delete failed", e));
+        scheduleNativeAt(hashId("task:" + id), cleanTitle, t('reminder_title'), new Date(remindAt), calendarSync, id)
           .catch(e => console.error("Sync: schedule failed", e));
       }
       void pushTaskToGoogleCalendar(newTask);
 
-      addEvent('task_created', { title: title.trim(), hasReminder: !!remindAt, date: dueDate });
+      addEvent('task_created', { title: cleanTitle, hasReminder: !!remindAt, date: dueDate });
     } catch (e) {
       console.error("Task add failed", e);
     }
+  };
+
+  const add = () => {
+    if (!title.trim()) return;
+    addTask(title, time, newTaskDate);
+    setTitle("");
+    setTime("");
+    setNewTaskDate(selectedDate);
   };
 
   // Gmail import: subject becomes the task title on the selected day (no time)
@@ -579,36 +587,39 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           >
             <CalendarClock className="size-3" /> {t('view_timeline')}
           </button>
-          <button
-            onClick={() => switchView('calendar')}
-            aria-label={t('view_calendar')}
-            aria-pressed={viewMode === 'calendar'}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold transition-all ${
-              viewMode === 'calendar' ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <CalendarDays className="size-3" /> {t('view_calendar')}
-          </button>
         </div>
+        {/* The calendar is a popup rather than a third view: it spans months, so
+            it wants the whole screen rather than the tab's column. */}
+        <button
+          onClick={() => setCalendarOpen(true)}
+          aria-label={t('view_calendar')}
+          className="flex items-center gap-1.5 rounded-full bg-card/40 px-3 py-1.5 text-[10px] font-bold text-muted-foreground transition-all hover:bg-card/60 hover:text-foreground"
+        >
+          <CalendarDays className="size-3" /> {t('view_calendar')}
+        </button>
       </div>
 
-      {viewMode === 'calendar' ? (
-        <TaskCalendar
-          tasks={tasks}
-          selectedDate={selectedDate}
-          onSelectDate={(d) => {
-            setSelectedDate(d);
-            setNewTaskDate(d);
-          }}
-          onToggleTask={toggle}
-          onEditTask={(task) => {
-            switchView('list');
-            setSelectedDate(startOfDay(parseISO(task.dueDate)));
-            startEdit(task);
-          }}
-          onDeleteTask={remove}
-        />
-      ) : viewMode === 'timeline' ? (
+      <TaskCalendarDialog
+        open={calendarOpen}
+        onOpenChange={setCalendarOpen}
+        tasks={tasks}
+        selectedDate={selectedDate}
+        onSelectDate={(d) => {
+          setSelectedDate(d);
+          setNewTaskDate(d);
+        }}
+        onAddTask={addTask}
+        onToggleTask={toggle}
+        onEditTask={(task) => {
+          setCalendarOpen(false);
+          switchView('list');
+          setSelectedDate(startOfDay(parseISO(task.dueDate)));
+          startEdit(task);
+        }}
+        onDeleteTask={remove}
+      />
+
+      {viewMode === 'timeline' ? (
         displayItems.length === 0 ? (
           <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10">
             {t('tasks_empty')}
