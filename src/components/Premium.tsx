@@ -1,14 +1,9 @@
 import { useEffect, useState } from "react";
-import { Sparkles, Check, Copy, Mail, Globe, RotateCw } from "lucide-react";
+import { Sparkles, Check, Mail, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
-import {
-  WEB_APP_URL,
-  isUnlockServiceConfigured,
-  redeemWithUnlockService,
-  usePremium,
-} from "@/lib/premium";
+import { isUnlockServiceConfigured, redeemWithUnlockService, usePremium } from "@/lib/premium";
 import {
   getPremiumProduct,
   isBillingSupported,
@@ -33,20 +28,10 @@ export function PremiumPerks() {
   );
 }
 
-/** The browser link plus copy / email-it-to-me actions. Shown once premium is on. */
+/** The email-it-to-me action for the browser version. Shown once premium is on. */
 export function PremiumWebLink() {
   const { t } = useTranslation();
   const [emailing, setEmailing] = useState(false);
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(WEB_APP_URL);
-      notify({ title: t("premium_link_copied"), kind: "info" });
-    } catch {
-      // Clipboard is blocked in some webviews — the link is visible anyway.
-      notify({ title: WEB_APP_URL, kind: "info" });
-    }
-  };
 
   const sendEmail = async () => {
     if (!isUnlockServiceConfigured()) {
@@ -67,34 +52,9 @@ export function PremiumWebLink() {
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Globe className="size-3.5 shrink-0" />
-        <span className="font-medium text-foreground">{t("premium_web_link")}</span>
-      </div>
-      <a
-        href={WEB_APP_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="block break-all rounded-lg border bg-card/40 px-3 py-2 text-[11px] text-primary underline-offset-2 hover:underline"
-      >
-        {WEB_APP_URL}
-      </a>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" className="flex-1" onClick={copyLink}>
-          <Copy className="mr-1.5 size-3.5" /> {t("premium_copy_link")}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1"
-          disabled={emailing}
-          onClick={sendEmail}
-        >
-          <Mail className="mr-1.5 size-3.5" /> {t("premium_email_link")}
-        </Button>
-      </div>
-    </div>
+    <Button size="sm" variant="outline" className="w-full" disabled={emailing} onClick={sendEmail}>
+      <Mail className="mr-1.5 size-3.5" /> {t("premium_email_link")}
+    </Button>
   );
 }
 
