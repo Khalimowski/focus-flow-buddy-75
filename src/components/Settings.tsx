@@ -309,7 +309,7 @@ export function Settings() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full bg-background/80 backdrop-blur border-primary/20 shadow-lg">
+        <Button variant="outline" size="icon" className="rounded-full bg-background/80 border-primary/20 shadow-lg">
           <SettingsIcon className="size-6 text-primary" />
           <span className="sr-only">{t('settings')}</span>
         </Button>

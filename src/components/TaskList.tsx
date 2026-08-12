@@ -517,7 +517,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         </Popover>
       </div>
 
-      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm" data-tour="add-task">
+      <div className="rounded-2xl border bg-card/50 p-4 shadow-sm" data-tour="add-task">
         <div className="flex flex-col gap-3">
           <Input
             name="task-title"
@@ -657,7 +657,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className={`flex items-center gap-3 rounded-2xl border p-3 backdrop-blur ${
+              // No backdrop-blur: one blur layer per row had the GPU re-blurring
+              // every visible card on every scroll frame. The backdrop is a
+              // smooth gradient, so it never looked blurred anyway.
+              className={`flex items-center gap-3 rounded-2xl border p-3 ${
                 item.kind === 'nudge'
                   ? "bg-amber-500/5 border-amber-500/10 shadow-sm"
                   : "bg-card/40 border-border"

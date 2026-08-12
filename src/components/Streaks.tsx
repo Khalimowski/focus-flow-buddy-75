@@ -73,7 +73,7 @@ export function StreakStrip({ streak }: { streak: Streak }) {
   });
 
   return (
-    <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur">
+    <div className="rounded-2xl border bg-card/40 p-5">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">

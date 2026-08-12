@@ -156,7 +156,7 @@ function Home() {
       <EndOfDayReview />
       <WhatsNew />
 
-      <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top-sm backdrop-blur-xl">
+      <header className="bg-header sticky top-0 z-30 -mx-4 mb-10 px-4 pb-2 pt-safe-top-sm">
         <div className="relative flex items-center justify-center min-h-[64px]">
           {/* Mark and wordmark sit together in the middle, as on the brand sheet */}
           <motion.div
@@ -189,7 +189,7 @@ function Home() {
         <StreakStrip streak={streak} />
       </div>
 
-      <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur" data-tour="tabs">
+      <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1" data-tour="tabs">
         {(
           [
             { id: "tasks", label: t('tasks'), icon: ListTodo },

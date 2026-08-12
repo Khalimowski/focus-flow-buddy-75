@@ -142,7 +142,6 @@
   }
 
   html, body {
-    background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -156,10 +155,32 @@
     overflow-x: clip;
   }
 
+  /* Base colour lives on <html> alone so it reaches the canvas while leaving
+     <body> transparent. A body background would paint *over* the fixed
+     gradient layer below: body is a non-positioned block, and its background
+     is painted after the negative-z-index layer, not before it. */
+  html {
+    background-color: var(--color-background);
+  }
+
   body {
-    background-image: var(--gradient-focus);
-    background-attachment: fixed;
     min-height: 100vh;
+  }
+
+  /* The focus glow used to be `background-image` + `background-attachment:
+     fixed` on <body>. A fixed attachment can't be scrolled as a layer, so
+     Android WebView repainted the full-viewport gradient on *every* scroll
+     frame — the main screen dropped frames while the settings sheet (which
+     locks body scroll and scrolls its own box) stayed smooth. Painting it
+     once into a fixed, viewport-sized layer looks identical and lets the
+     compositor scroll the page without touching it again. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--gradient-focus);
   }
 
   ::selection {
@@ -202,4 +223,21 @@
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
+
+  /* Opaque stand-in for the sticky header's old translucent-plus-blur look.
+     `backdrop-filter` over a scrolling page is the most expensive thing a
+     phone GPU can be asked to do per frame: the blur has to be recomputed
+     from scratch every time the content behind it moves. The header sits at
+     the viewport top and so does the fixed gradient layer behind it, so
+     repainting that same gradient here — anchored to the viewport, not to
+     the header's own box height — reproduces the exact pixels it used to
+     blur, for free, and hides the scrolling content properly instead of
+     letting it ghost through an 80%-opaque bar. */
+  .bg-header {
+    background-color: var(--color-background);
+    background-image: var(--gradient-focus);
+    background-size: 100vw 100vh;
+    background-position: top center;
+    background-repeat: no-repeat;
+  }
 }

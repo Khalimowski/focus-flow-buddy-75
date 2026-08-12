@@ -170,7 +170,7 @@ export function SimpleToDo() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
+      <div className="rounded-2xl border bg-card/50 p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Input
             name="todo-title"
@@ -205,7 +205,7 @@ export function SimpleToDo() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="flex items-center gap-3 rounded-2xl border bg-card/40 border-border p-3 backdrop-blur"
+              className="flex items-center gap-3 rounded-2xl border bg-card/40 border-border p-3"
             >
               {schedulingId === item.id ? (
                 <div className="flex flex-col gap-3 w-full p-1">

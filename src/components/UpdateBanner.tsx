@@ -17,7 +17,7 @@ export function UpdateBanner() {
           initial={{ opacity: 0, y: -16, height: 0 }}
           animate={{ opacity: 1, y: 0, height: "auto" }}
           exit={{ opacity: 0, y: -16, height: 0 }}
-          className="mb-4 flex items-center gap-3 overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 p-3 backdrop-blur"
+          className="mb-4 flex items-center gap-3 overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 p-3"
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/20 text-primary">
             <Download className="size-4" />

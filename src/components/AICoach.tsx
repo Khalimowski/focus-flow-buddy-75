@@ -396,7 +396,7 @@ export function AICoach() {
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           className="fixed bottom-24 left-4 right-4 z-40"
         >
-          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-card/95 p-5 backdrop-blur-xl shadow-glow">
+          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-card/95 p-5 shadow-glow">
             <div className="absolute -right-4 -top-4 size-24 rounded-full bg-primary/10 blur-2xl" />
 
             <button

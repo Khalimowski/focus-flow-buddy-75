@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.1";
+export const APP_VERSION = "1.7.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.2",
+    items: {
+      en: [
+        "Scrolling on the main screen is much smoother, especially on mid-range phones.",
+      ],
+      pl: [
+        "Przewijanie na ekranie głównym jest dużo płynniejsze, zwłaszcza na telefonach ze średniej półki.",
+      ],
+    },
+  },
   {
     version: "1.7.1",
     items: {

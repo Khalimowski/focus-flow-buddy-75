@@ -397,7 +397,7 @@ export function TaskTimeline({
       )}
 
       {/* Hour grid */}
-      <div className="rounded-2xl border bg-card/30 backdrop-blur p-2 pt-3">
+      <div className="rounded-2xl border bg-card/30 p-2 pt-3">
         <div className="relative ml-12 mr-1" style={{ height: gridBoxHeight }}>
           <div ref={gridRef} className="absolute inset-0">
             {hours.map((m) => (

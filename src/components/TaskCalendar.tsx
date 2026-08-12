@@ -235,7 +235,7 @@ export function TaskCalendar({
       <div className="text-center text-sm font-bold capitalize">{headerLabel}</div>
 
       {scale === "month" ? (
-        <div className="rounded-2xl border bg-card/30 p-2 backdrop-blur">
+        <div className="rounded-2xl border bg-card/30 p-2">
           <div className="grid grid-cols-7 gap-1 pb-1">
             {weekdayLabels.map((label, i) => (
               <div
@@ -313,7 +313,7 @@ export function TaskCalendar({
             return (
               <div
                 key={date.toISOString()}
-                className={`rounded-2xl border p-3 backdrop-blur transition ${
+                className={`rounded-2xl border p-3 transition ${
                   selected && scale === "week"
                     ? "border-primary/40 bg-primary/5"
                     : "border-border bg-card/30"
