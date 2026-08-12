@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Clock, Minus, Moon, Plus, Sun, Sunrise, Sunset } from "lucide-react";
+import { forwardRef, useEffect, useRef, useState } from "react";
+import { Clock, Keyboard, LayoutGrid, Minus, Moon, Plus, Sun, Sunrise, Sunset } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
  * on a small screen. This replaces it with a tap-only sheet: 24 hour chips
  * grouped by part of day, minutes in 5-minute steps with a ±1 fine adjust,
  * and shortcuts for the times people actually pick ("now", "+1 h").
+ *
+ * The keyboard button turns the readout into two number fields for anyone who
+ * would rather just type it, same as the stock dialog's keyboard mode.
  *
  * Values are "HH:mm" strings, same as the inputs it replaces, and "" means
  * "no time set" wherever the caller allows it (`clearable`).
@@ -81,6 +84,13 @@ export function TimePicker({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Clock24>(() => parseTime(value) ?? roundedNow());
   const [unit, setUnit] = useState<"hour" | "minute">("hour");
+  // Keyboard mode: the readout becomes two number fields. Their text is held
+  // separately from `draft` so a half-typed or momentarily empty field doesn't
+  // have to be a valid time.
+  const [typing, setTyping] = useState(false);
+  const [hourText, setHourText] = useState("");
+  const [minuteText, setMinuteText] = useState("");
+  const minuteRef = useRef<HTMLInputElement>(null);
 
   // Every opening starts from whatever the field holds now (an empty field
   // opens on the next round five minutes), so a cancelled edit leaves nothing
@@ -89,7 +99,49 @@ export function TimePicker({
     if (!open) return;
     setDraft(parseTime(value) ?? roundedNow());
     setUnit("hour");
+    setTyping(false);
   }, [open, value]);
+
+  const startTyping = () => {
+    setHourText(pad(draft.h));
+    setMinuteText(pad(draft.m));
+    setTyping(true);
+  };
+
+  const editHourText = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 2);
+    if (!digits) {
+      setHourText("");
+      return;
+    }
+    const h = Math.min(23, Number(digits));
+    // Show the clamp, so the field never disagrees with the time it sets
+    setHourText(h === Number(digits) ? digits : pad(h));
+    setDraft((d) => ({ ...d, h }));
+    // Two digits, or a first digit no hour can start with, means the hour is
+    // finished — move to the minutes like the phone's own picker does.
+    if (digits.length === 2 || Number(digits) > 2) {
+      minuteRef.current?.focus();
+      minuteRef.current?.select();
+    }
+  };
+
+  const editMinuteText = (raw: string) => {
+    const digits = raw.replace(/\D/g, "").slice(0, 2);
+    if (!digits) {
+      setMinuteText("");
+      return;
+    }
+    const m = Math.min(59, Number(digits));
+    setMinuteText(m === Number(digits) ? digits : pad(m));
+    setDraft((d) => ({ ...d, m }));
+  };
+
+  // Leaving a field zero-pads what's in it; a field left empty falls back to
+  // the draft. Read `prev` rather than the draft, which the auto-advance blur
+  // races: that blur fires in the same tick as the setDraft that caused it.
+  const padHourText = () => setHourText((prev) => (prev ? pad(Number(prev)) : pad(draft.h)));
+  const padMinuteText = () => setMinuteText((prev) => (prev ? pad(Number(prev)) : pad(draft.m)));
 
   const commit = (next: Clock24) => {
     onChange(`${pad(next.h)}:${pad(next.m)}`);
@@ -130,15 +182,39 @@ export function TimePicker({
             </DialogTitle>
           </DialogHeader>
 
-          {/* Readout doubles as the hour/minute switch */}
+          {/* Readout: the hour/minute switch, or the two fields to type into */}
           <div className="flex items-center justify-center gap-1 rounded-2xl bg-secondary/40 p-2">
-            <UnitButton active={unit === "hour"} onClick={() => setUnit("hour")}>
-              {pad(draft.h)}
-            </UnitButton>
-            <span className="font-mono text-3xl font-bold text-muted-foreground">:</span>
-            <UnitButton active={unit === "minute"} onClick={() => setUnit("minute")}>
-              {pad(draft.m)}
-            </UnitButton>
+            {typing ? (
+              <>
+                <TimeField
+                  value={hourText}
+                  onChange={editHourText}
+                  onBlur={padHourText}
+                  onEnter={() => commit(draft)}
+                  label={t("time_hours")}
+                  autoFocus
+                />
+                <span className="font-mono text-3xl font-bold text-muted-foreground">:</span>
+                <TimeField
+                  ref={minuteRef}
+                  value={minuteText}
+                  onChange={editMinuteText}
+                  onBlur={padMinuteText}
+                  onEnter={() => commit(draft)}
+                  label={t("time_minutes")}
+                />
+              </>
+            ) : (
+              <>
+                <UnitButton active={unit === "hour"} onClick={() => setUnit("hour")}>
+                  {pad(draft.h)}
+                </UnitButton>
+                <span className="font-mono text-3xl font-bold text-muted-foreground">:</span>
+                <UnitButton active={unit === "minute"} onClick={() => setUnit("minute")}>
+                  {pad(draft.m)}
+                </UnitButton>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap justify-center gap-1.5">
@@ -149,69 +225,85 @@ export function TimePicker({
             <QuickChip onClick={() => setDraft((d) => shift(d, 60))}>{t("time_plus_1h")}</QuickChip>
           </div>
 
-          {/* Fixed height so switching hour/minute doesn't resize the dialog
-              under the finger that just tapped */}
-          <div className="flex min-h-[11.5rem] items-center">
-            {unit === "hour" ? (
-              <div className="flex w-full flex-col gap-1.5">
-                {HOUR_ROWS.map(({ icon: Icon, hours }) => (
-                  <div key={hours[0]} className="flex items-center gap-1.5">
-                    <Icon className="size-3 shrink-0 text-muted-foreground" />
-                    {hours.map((h) => (
-                      <NumberChip
-                        key={h}
-                        selected={draft.h === h}
-                        // Picking an hour moves straight on to minutes, so a
-                        // full time is two taps.
-                        onClick={() => {
-                          setDraft((d) => ({ ...d, h }));
-                          setUnit("minute");
-                        }}
-                      >
-                        {pad(h)}
-                      </NumberChip>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex w-full flex-col gap-1.5">
-                {[MINUTE_STEPS.slice(0, 6), MINUTE_STEPS.slice(6)].map((row) => (
-                  <div key={row[0]} className="flex items-center gap-1.5">
-                    {row.map((m) => (
-                      <NumberChip
-                        key={m}
-                        selected={draft.m === m}
-                        onClick={() => setDraft((d) => ({ ...d, m }))}
-                      >
-                        {pad(m)}
-                      </NumberChip>
-                    ))}
-                  </div>
-                ))}
-                {/* Anything off the five-minute grid gets set here */}
-                <div className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-secondary/30 p-1.5">
-                  <StepButton
-                    label={t("time_minute_down")}
-                    onClick={() => setDraft((d) => ({ ...d, m: (d.m + 59) % 60 }))}
-                  >
-                    <Minus className="size-3.5" />
-                  </StepButton>
-                  <span className="min-w-14 text-center font-mono text-sm font-bold">
-                    {pad(draft.m)} {t("time_minutes_short")}
-                  </span>
-                  <StepButton
-                    label={t("time_minute_up")}
-                    onClick={() => setDraft((d) => ({ ...d, m: (d.m + 1) % 60 }))}
-                  >
-                    <Plus className="size-3.5" />
-                  </StepButton>
+          {/* The grid would sit under the soft keyboard anyway, so typing mode
+              drops it and keeps the dialog short. Fixed height otherwise, so
+              switching hour/minute doesn't resize it under the finger that
+              just tapped. */}
+          {typing ? (
+            <p className="py-2 text-center text-[11px] text-muted-foreground">
+              {t("time_type_hint")}
+            </p>
+          ) : (
+            <div className="flex min-h-[11.5rem] items-center">
+              {unit === "hour" ? (
+                <div className="flex w-full flex-col gap-1.5">
+                  {HOUR_ROWS.map(({ icon: Icon, hours }) => (
+                    <div key={hours[0]} className="flex items-center gap-1.5">
+                      <Icon className="size-3 shrink-0 text-muted-foreground" />
+                      {hours.map((h) => (
+                        <NumberChip
+                          key={h}
+                          selected={draft.h === h}
+                          // Picking an hour moves straight on to minutes, so a
+                          // full time is two taps.
+                          onClick={() => {
+                            setDraft((d) => ({ ...d, h }));
+                            setUnit("minute");
+                          }}
+                        >
+                          {pad(h)}
+                        </NumberChip>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex w-full flex-col gap-1.5">
+                  {[MINUTE_STEPS.slice(0, 6), MINUTE_STEPS.slice(6)].map((row) => (
+                    <div key={row[0]} className="flex items-center gap-1.5">
+                      {row.map((m) => (
+                        <NumberChip
+                          key={m}
+                          selected={draft.m === m}
+                          onClick={() => setDraft((d) => ({ ...d, m }))}
+                        >
+                          {pad(m)}
+                        </NumberChip>
+                      ))}
+                    </div>
+                  ))}
+                  {/* Anything off the five-minute grid gets set here */}
+                  <div className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-secondary/30 p-1.5">
+                    <StepButton
+                      label={t("time_minute_down")}
+                      onClick={() => setDraft((d) => ({ ...d, m: (d.m + 59) % 60 }))}
+                    >
+                      <Minus className="size-3.5" />
+                    </StepButton>
+                    <span className="min-w-14 text-center font-mono text-sm font-bold">
+                      {pad(draft.m)} {t("time_minutes_short")}
+                    </span>
+                    <StepButton
+                      label={t("time_minute_up")}
+                      onClick={() => setDraft((d) => ({ ...d, m: (d.m + 1) % 60 }))}
+                    >
+                      <Plus className="size-3.5" />
+                    </StepButton>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              aria-label={typing ? t("time_grid_mode") : t("time_keyboard_mode")}
+              onClick={() => (typing ? setTyping(false) : startTyping())}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors cursor-pointer hover:bg-secondary/60 hover:text-foreground"
+            >
+              {typing ? <LayoutGrid className="size-4" /> : <Keyboard className="size-4" />}
+            </button>
             {clearable && (
               <Button
                 variant="ghost"
@@ -269,6 +361,42 @@ function UnitButton({
     </button>
   );
 }
+
+/** One half of the readout in keyboard mode, styled to match UnitButton. */
+const TimeField = forwardRef<
+  HTMLInputElement,
+  {
+    value: string;
+    onChange: (value: string) => void;
+    onBlur: () => void;
+    onEnter: () => void;
+    label: string;
+    autoFocus?: boolean;
+  }
+>(({ value, onChange, onBlur, onEnter, label, autoFocus }, ref) => (
+  <input
+    ref={ref}
+    type="text"
+    // Numeric keypad without the spinner and validation baggage of type=number
+    inputMode="numeric"
+    pattern="[0-9]*"
+    maxLength={2}
+    aria-label={label}
+    autoFocus={autoFocus}
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    onFocus={(e) => e.target.select()}
+    onBlur={onBlur}
+    onKeyDown={(e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onEnter();
+      }
+    }}
+    className="w-[2.1em] rounded-xl bg-primary/15 py-1 text-center font-mono text-4xl font-bold leading-none text-primary outline-none focus:ring-2 focus:ring-ring"
+  />
+));
+TimeField.displayName = "TimeField";
 
 function QuickChip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (

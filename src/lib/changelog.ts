@@ -27,9 +27,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     items: {
       en: [
         "Picking a time now opens FlowDay's own picker instead of the phone's grey clock dial — hours grouped by part of the day, minutes in five-minute steps, and shortcuts for \"now\" or an hour from now.",
+        "Prefer typing? The keyboard button in the picker turns it into two fields you can type the time straight into.",
       ],
       pl: [
         "Wybór godziny otwiera teraz własny selektor FlowDay zamiast szarej tarczy zegara z telefonu — godziny pogrupowane wedle pory dnia, minuty co pięć minut i skróty „teraz” oraz „za godzinę”.",
+        "Wolisz wpisać godzinę? Przycisk klawiatury w selektorze zamienia go na dwa pola, w które wpiszesz ją wprost.",
       ],
     },
   },
