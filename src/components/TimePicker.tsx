@@ -3,18 +3,21 @@ import { Clock, Keyboard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
+import { isNative } from "@/lib/native";
 import { cn } from "@/lib/utils";
 
 /**
- * Time picker in FlowDay's own style.
+ * Time field, in whichever form suits the platform.
  *
- * `<input type="time">` hands the phone's WebView its stock Material clock
- * dial — a grey analog face that ignores the app's theme. This keeps the
- * interaction people already know (drag a hand around a 24-hour dial, or tap
- * the keyboard button and type) and dresses it in the app's own colours.
+ * The dial exists because Android's WebView answers `<input type="time">` with
+ * its stock Material clock: a grey analog face that ignores the app's theme
+ * and is fiddly on a phone. Desktop browsers answer it with a plain field you
+ * type into, which is exactly what the web app wants, so the dialog is
+ * native-only and the browser keeps the typed input it always had.
  *
- * Values are "HH:mm" strings, same as the inputs it replaces, and "" means
- * "no time set" wherever the caller allows it (`clearable`).
+ * Either way the value is an "HH:mm" string and "" means "no time set"
+ * wherever the caller allows it (`clearable`), so callers need not care which
+ * one they got.
  */
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -77,7 +80,35 @@ type Props = {
   "aria-label"?: string;
 };
 
-export function TimePicker({
+export function TimePicker(props: Props) {
+  // Constant for the lifetime of the app, so this never swaps one for the
+  // other mid-session.
+  return isNative() ? <DialTimePicker {...props} /> : <TypedTimeInput {...props} />;
+}
+
+/**
+ * The browser's own time field — type into it, same as before the dial
+ * existed. Styled to match the pills around it rather than left bare.
+ */
+function TypedTimeInput({ value, onChange, size = "md", className, id, ...rest }: Props) {
+  const { t } = useTranslation();
+  return (
+    <input
+      type="time"
+      id={id}
+      aria-label={rest["aria-label"] ?? t("time_picker_title")}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "rounded-full border-none bg-secondary/50 text-center font-mono font-medium text-foreground outline-none transition-colors hover:bg-secondary focus-visible:ring-1 focus-visible:ring-ring",
+        size === "sm" ? "h-7 px-2 text-[10px]" : "h-8 px-3 text-xs",
+        className,
+      )}
+    />
+  );
+}
+
+function DialTimePicker({
   value,
   onChange,
   clearable = false,

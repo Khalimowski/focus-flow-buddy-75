@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.5";
+export const APP_VERSION = "1.7.6";
 
 export type ChangelogEntry = {
   version: string;
@@ -23,15 +23,17 @@ export type ChangelogEntry = {
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.7.5",
+    version: "1.7.6",
     items: {
       en: [
-        "Picking a time now opens FlowDay's own clock instead of the phone's grey dial — drag the hand around the 24-hour face.",
+        "On your phone, picking a time now opens FlowDay's own clock instead of the grey system dial — drag the hand around the 24-hour face.",
         "Prefer typing? The keyboard button turns the clock into two fields you can type the time straight into.",
+        "In the browser, times stay a plain field you type into, just as before.",
       ],
       pl: [
-        "Wybór godziny otwiera teraz własny zegar FlowDay zamiast szarej tarczy z telefonu — przeciągnij wskazówkę po 24-godzinnej tarczy.",
+        "Na telefonie wybór godziny otwiera teraz własny zegar FlowDay zamiast szarej tarczy systemowej — przeciągnij wskazówkę po 24-godzinnej tarczy.",
         "Wolisz wpisać godzinę? Przycisk klawiatury zamienia zegar na dwa pola, w które wpiszesz ją wprost.",
+        "W przeglądarce godzinę wpisujesz w zwykłym polu, tak jak dotychczas.",
       ],
     },
   },
