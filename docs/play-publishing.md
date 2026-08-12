@@ -36,8 +36,11 @@ upload key) — Play rejects bundles signed with any other key.
 ## Releasing
 
 1. Bump `versionCode` (+1, mandatory) and `versionName` in
-   `android/app/build.gradle`, and the version label in
-   `src/components/Settings.tsx`. Commit to `main`.
+   `android/app/build.gradle`, and `APP_VERSION` in `src/lib/changelog.ts` to
+   match `versionName` — that constant is what the Settings footer shows and
+   what the in-app release-notes popup compares against. Add a `CHANGELOG`
+   entry for the new version there too (`en` **and** `pl`), or the popup has
+   nothing to show. Commit to `main`.
 2. Tag and push:
 
    ```bash
@@ -49,6 +52,24 @@ upload key) — Play rejects bundles signed with any other key.
    (including production), use GitHub → **Actions → Publish to Google Play →
    Run workflow** and pick the track — or promote the internal build inside
    Play Console, which also lets you add release notes.
+
+## Telling users what changed
+
+Three separate things, easy to confuse:
+
+- **The in-app popup** (`src/lib/changelog.ts`) — the one users actually read.
+  It fires on the first launch after the version changes, which on Play is
+  *after* an automatic background update, when they're most likely wondering
+  what moved. Ships in the bundle; nothing to publish.
+- **Play Console release notes** — entered when promoting a release. Shown on
+  the store listing and the Updates screen; most users never open either.
+- **`version.json`** (repo root) — the older self-hosted check behind
+  `UpdateBanner`. It nags installs older than `versionCode` and links to the
+  Play listing. Bump it only after a release reaches production, and expect it
+  to run ahead of staged rollouts: it announces a version Play may not have
+  offered to a given device yet, so the button can land on a listing that still
+  says "Open". Play's In-App Updates API is the per-device-accurate
+  replacement if that ever gets annoying.
 
 ## Notes
 

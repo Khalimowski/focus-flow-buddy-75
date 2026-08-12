@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "1.6.6",
-  "url": "https://github.com/Khalimowski/focus-flow-buddy-75/releases",
-  "notes": "Google Calendar settings now follow your account across devices, and tasks or nudges added on another device finally show up in your calendar."
+  "versionCode": 37,
+  "versionName": "1.7.1",
+  "url": "https://play.google.com/store/apps/details?id=com.khalimowski.focusflow",
+  "notes": "A calendar view with day, week and month scales, an end-of-day check-in for whatever is still unfinished, and a short note after each update telling you what changed."
 }
