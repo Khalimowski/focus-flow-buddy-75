@@ -11,6 +11,7 @@ import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, remo
 import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
 import { TaskCalendarDialog } from "@/components/TaskCalendarDialog";
+import { TimePicker } from "@/components/TimePicker";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -530,11 +531,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           />
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <div className="flex gap-2">
-              <Input
-                type="time"
+              <TimePicker
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-28 font-mono h-8 text-xs rounded-full bg-secondary/50 border-none"
+                onChange={setTime}
+                clearable
+                className="w-28 justify-center"
               />
               <Popover>
                 <PopoverTrigger asChild>
@@ -676,11 +677,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex gap-1.5 shrink-0">
-                      <Input
-                        type="time"
+                      <TimePicker
                         value={editTime}
-                        onChange={(e) => setEditTime(e.target.value)}
-                        className="w-[84px] font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
+                        onChange={setEditTime}
+                        clearable
+                        size="sm"
+                        className="w-[84px] justify-center"
                       />
                       <Popover>
                         <PopoverTrigger asChild>

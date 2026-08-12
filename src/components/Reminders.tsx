@@ -11,6 +11,7 @@ import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar
 import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
 import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { TimePicker } from "@/components/TimePicker";
 
 type Reminder = {
   id: string;
@@ -245,11 +246,12 @@ export function Reminders() {
                   exit={{ opacity: 0, height: 0 }}
                   className="flex gap-2 items-center"
                 >
-                  <Input
-                    type="time"
+                  <TimePicker
                     value={time}
-                    onChange={(e) => updateCustomTime(index, e.target.value)}
-                    className="w-32 font-mono"
+                    onChange={(next) => updateCustomTime(index, next)}
+                    // The button next to it already says "Add time"
+                    placeholder="--:--"
+                    className="h-9 w-32 justify-center text-sm"
                   />
                   {customTimes.length > 1 && (
                     <Button

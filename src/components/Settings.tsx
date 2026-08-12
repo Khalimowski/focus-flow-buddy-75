@@ -16,7 +16,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
@@ -47,6 +46,7 @@ import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
 import { AccountSync, SignedInAs } from "@/components/AccountSync";
 import { PremiumSection } from "@/components/Premium";
+import { TimePicker } from "@/components/TimePicker";
 
 export function Settings() {
   const [open, setOpen] = useState(false);
@@ -400,12 +400,11 @@ export function Settings() {
                 <Label htmlFor="eod-time" className="text-xs text-muted-foreground">
                   {t('eod_time_label')}
                 </Label>
-                <Input
+                <TimePicker
                   id="eod-time"
-                  type="time"
                   value={eodTime}
-                  onChange={(e) => handleEodTimeChange(e.target.value)}
-                  className="h-8 w-28 rounded-full border-none bg-secondary/50 font-mono text-xs"
+                  onChange={handleEodTimeChange}
+                  className="w-28 justify-center"
                 />
               </div>
             )}

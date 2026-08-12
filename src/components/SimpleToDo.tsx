@@ -13,6 +13,7 @@ import { format, isSameDay, startOfDay } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { TimePicker } from "@/components/TimePicker";
 
 type ToDoItem = {
   id: string;
@@ -212,11 +213,12 @@ export function SimpleToDo() {
                   <div className="text-sm font-medium break-words">{item.title}</div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex gap-1.5 shrink-0">
-                      <Input
-                        type="time"
+                      <TimePicker
                         value={schedTime}
-                        onChange={(e) => setSchedTime(e.target.value)}
-                        className="w-[84px] font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
+                        onChange={setSchedTime}
+                        clearable
+                        size="sm"
+                        className="w-[84px] justify-center"
                       />
                       <Popover>
                         <PopoverTrigger asChild>

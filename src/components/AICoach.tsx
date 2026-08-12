@@ -20,6 +20,7 @@ import {
   type UserProfile,
 } from "@/lib/profile";
 import { format } from "date-fns";
+import { TimePicker } from "@/components/TimePicker";
 
 type SuggestionStep = "greeting" | "interview" | "preview";
 
@@ -453,17 +454,17 @@ export function AICoach() {
                         <p className="text-[11px] font-medium">{t('ai_coach_q_work_hours')}</p>
                         <div className="flex items-center gap-2 text-[11px]">
                           <span className="text-muted-foreground">{t('ai_coach_work_from')}</span>
-                          <input
-                            type="time"
+                          <TimePicker
                             value={draft.workStart ?? "09:00"}
-                            onChange={(e) => setDraft((d) => ({ ...d, workStart: e.target.value }))}
+                            onChange={(workStart) => setDraft((d) => ({ ...d, workStart }))}
+                            size="sm"
                             className={timeInputClass}
                           />
                           <span className="text-muted-foreground">{t('ai_coach_work_to')}</span>
-                          <input
-                            type="time"
+                          <TimePicker
                             value={draft.workEnd ?? "17:00"}
-                            onChange={(e) => setDraft((d) => ({ ...d, workEnd: e.target.value }))}
+                            onChange={(workEnd) => setDraft((d) => ({ ...d, workEnd }))}
+                            size="sm"
                             className={timeInputClass}
                           />
                         </div>

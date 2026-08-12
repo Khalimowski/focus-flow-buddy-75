@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.1";
+export const APP_VERSION = "1.7.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.2",
+    items: {
+      en: [
+        "Picking a time now opens FlowDay's own picker instead of the phone's grey clock dial — hours grouped by part of the day, minutes in five-minute steps, and shortcuts for \"now\" or an hour from now.",
+      ],
+      pl: [
+        "Wybór godziny otwiera teraz własny selektor FlowDay zamiast szarej tarczy zegara z telefonu — godziny pogrupowane wedle pory dnia, minuty co pięć minut i skróty „teraz” oraz „za godzinę”.",
+      ],
+    },
+  },
   {
     version: "1.7.1",
     items: {

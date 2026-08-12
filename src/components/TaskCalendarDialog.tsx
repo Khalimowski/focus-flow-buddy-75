@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TaskCalendar, type CalendarTask } from "@/components/TaskCalendar";
+import { TimePicker } from "@/components/TimePicker";
 import { useTranslation } from "@/lib/i18n";
 
 type Props = {
@@ -91,11 +92,11 @@ export function TaskCalendarDialog({
             />
             <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
               <div className="flex items-center gap-2">
-                <Input
-                  type="time"
+                <TimePicker
                   value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="h-8 w-28 rounded-full border-none bg-secondary/50 font-mono text-xs"
+                  onChange={setTime}
+                  clearable
+                  className="w-28 justify-center"
                 />
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/50 px-3 py-1.5 text-[10px] font-bold">
                   <CalendarIcon className="size-3" />
