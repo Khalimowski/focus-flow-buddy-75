@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
-import { Clock, Keyboard, LayoutGrid, Minus, Moon, Plus, Sun, Sunrise, Sunset } from "lucide-react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
+import { Clock, Keyboard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
@@ -9,13 +9,10 @@ import { cn } from "@/lib/utils";
  * Time picker in FlowDay's own style.
  *
  * `<input type="time">` hands the phone's WebView its stock Material clock
- * dial — a grey analog face that ignores the app's theme and is fiddly to hit
- * on a small screen. This replaces it with a tap-only sheet: 24 hour chips
- * grouped by part of day, minutes in 5-minute steps with a ±1 fine adjust,
- * and shortcuts for the times people actually pick ("now", "+1 h").
- *
- * The keyboard button turns the readout into two number fields for anyone who
- * would rather just type it, same as the stock dialog's keyboard mode.
+ * dial — a grey analog face that ignores the app's theme. This keeps the
+ * interaction people already know (drag a hand around a 24-hour dial, or tap
+ * the keyboard button and type) and dresses it in the app's own colours, plus
+ * shortcuts for the times people actually pick ("now", "+1 h").
  *
  * Values are "HH:mm" strings, same as the inputs it replaces, and "" means
  * "no time set" wherever the caller allows it (`clearable`).
@@ -23,14 +20,18 @@ import { cn } from "@/lib/utils";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-const HOUR_ROWS = [
-  { icon: Moon, hours: [0, 1, 2, 3, 4, 5] },
-  { icon: Sunrise, hours: [6, 7, 8, 9, 10, 11] },
-  { icon: Sun, hours: [12, 13, 14, 15, 16, 17] },
-  { icon: Sunset, hours: [18, 19, 20, 21, 22, 23] },
-];
+// Dial geometry, in SVG units. The face fills the viewport, so DIAL/2 is both
+// the centre and the outer edge; CSS scales the whole thing to fit the dialog.
+const DIAL = 240;
+const C = DIAL / 2;
+const R_OUTER = 100;
+const R_INNER = 66;
+const KNOB = 19;
 
-const MINUTE_STEPS = Array.from({ length: 12 }, (_, i) => i * 5);
+/** Both rings are indexed by angle / 30°, clockwise from the top. */
+const OUTER_HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const INNER_HOURS = [0, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+const MINUTE_MARKS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
 type Clock24 = { h: number; m: number };
 
@@ -53,6 +54,18 @@ function roundedNow(): Clock24 {
 function shift({ h, m }: Clock24, minutes: number): Clock24 {
   const total = (h * 60 + m + minutes + 1440) % 1440;
   return { h: Math.floor(total / 60), m: total % 60 };
+}
+
+function polar(deg: number, r: number) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: C + r * Math.sin(rad), y: C - r * Math.cos(rad) };
+}
+
+/** Where an hour sits: 1–12 on the outer ring, 13–23 and 00 on the inner one. */
+function hourAt(h: number) {
+  const outer = OUTER_HOURS.indexOf(h);
+  if (outer >= 0) return { deg: outer * 30, r: R_OUTER };
+  return { deg: INNER_HOURS.indexOf(h) * 30, r: R_INNER };
 }
 
 type Props = {
@@ -225,84 +238,32 @@ export function TimePicker({
             <QuickChip onClick={() => setDraft((d) => shift(d, 60))}>{t("time_plus_1h")}</QuickChip>
           </div>
 
-          {/* The grid would sit under the soft keyboard anyway, so typing mode
-              drops it and keeps the dialog short. Fixed height otherwise, so
-              switching hour/minute doesn't resize it under the finger that
-              just tapped. */}
+          {/* The dial would sit under the soft keyboard anyway, so typing mode
+              drops it and keeps the dialog short. */}
           {typing ? (
             <p className="py-2 text-center text-[11px] text-muted-foreground">
               {t("time_type_hint")}
             </p>
           ) : (
-            <div className="flex min-h-[11.5rem] items-center">
-              {unit === "hour" ? (
-                <div className="flex w-full flex-col gap-1.5">
-                  {HOUR_ROWS.map(({ icon: Icon, hours }) => (
-                    <div key={hours[0]} className="flex items-center gap-1.5">
-                      <Icon className="size-3 shrink-0 text-muted-foreground" />
-                      {hours.map((h) => (
-                        <NumberChip
-                          key={h}
-                          selected={draft.h === h}
-                          // Picking an hour moves straight on to minutes, so a
-                          // full time is two taps.
-                          onClick={() => {
-                            setDraft((d) => ({ ...d, h }));
-                            setUnit("minute");
-                          }}
-                        >
-                          {pad(h)}
-                        </NumberChip>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex w-full flex-col gap-1.5">
-                  {[MINUTE_STEPS.slice(0, 6), MINUTE_STEPS.slice(6)].map((row) => (
-                    <div key={row[0]} className="flex items-center gap-1.5">
-                      {row.map((m) => (
-                        <NumberChip
-                          key={m}
-                          selected={draft.m === m}
-                          onClick={() => setDraft((d) => ({ ...d, m }))}
-                        >
-                          {pad(m)}
-                        </NumberChip>
-                      ))}
-                    </div>
-                  ))}
-                  {/* Anything off the five-minute grid gets set here */}
-                  <div className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-secondary/30 p-1.5">
-                    <StepButton
-                      label={t("time_minute_down")}
-                      onClick={() => setDraft((d) => ({ ...d, m: (d.m + 59) % 60 }))}
-                    >
-                      <Minus className="size-3.5" />
-                    </StepButton>
-                    <span className="min-w-14 text-center font-mono text-sm font-bold">
-                      {pad(draft.m)} {t("time_minutes_short")}
-                    </span>
-                    <StepButton
-                      label={t("time_minute_up")}
-                      onClick={() => setDraft((d) => ({ ...d, m: (d.m + 1) % 60 }))}
-                    >
-                      <Plus className="size-3.5" />
-                    </StepButton>
-                  </div>
-                </div>
-              )}
-            </div>
+            <Dial
+              unit={unit}
+              value={draft}
+              onChange={setDraft}
+              // Picking an hour moves straight on to minutes, so a full time
+              // is two taps.
+              onPicked={() => unit === "hour" && setUnit("minute")}
+              label={unit === "hour" ? t("time_hours") : t("time_minutes")}
+            />
           )}
 
           <div className="flex items-center gap-2 pt-1">
             <button
               type="button"
-              aria-label={typing ? t("time_grid_mode") : t("time_keyboard_mode")}
+              aria-label={typing ? t("time_clock_mode") : t("time_keyboard_mode")}
               onClick={() => (typing ? setTyping(false) : startTyping())}
               className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors cursor-pointer hover:bg-secondary/60 hover:text-foreground"
             >
-              {typing ? <LayoutGrid className="size-4" /> : <Keyboard className="size-4" />}
+              {typing ? <Clock className="size-4" /> : <Keyboard className="size-4" />}
             </button>
             {clearable && (
               <Button
@@ -333,6 +294,177 @@ export function TimePicker({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/**
+ * The 24-hour clock face: 1–12 on the outer ring, 13–23 and 00 on the inner
+ * one, minutes at every 5 with any minute reachable by dragging between them.
+ */
+function Dial({
+  unit,
+  value,
+  onChange,
+  onPicked,
+  label,
+}: {
+  unit: "hour" | "minute";
+  value: Clock24;
+  onChange: (next: Clock24) => void;
+  onPicked: () => void;
+  label: string;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+
+  // Screen point -> the hour or minute it points at. The rect is read every
+  // time rather than cached: the dialog animates in, so its size and position
+  // are not stable until well after mount.
+  const applyPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const dx = ((clientX - rect.left) / rect.width) * DIAL - C;
+      const dy = ((clientY - rect.top) / rect.height) * DIAL - C;
+      const deg = ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+      if (unit === "minute") {
+        onChange({ ...value, m: Math.round(deg / 6) % 60 });
+        return;
+      }
+      const idx = Math.round(deg / 30) % 12;
+      // Which ring the finger is nearer decides morning or evening.
+      const ring = Math.hypot(dx, dy) < (R_OUTER + R_INNER) / 2 ? INNER_HOURS : OUTER_HOURS;
+      onChange({ ...value, h: ring[idx] });
+    },
+    [onChange, unit, value],
+  );
+
+  const nudge = (delta: number) => {
+    if (unit === "hour") onChange({ ...value, h: (value.h + delta + 24) % 24 });
+    else onChange({ ...value, m: (value.m + delta + 60) % 60 });
+  };
+
+  const selected = unit === "hour" ? hourAt(value.h) : { deg: value.m * 6, r: R_OUTER };
+  const tip = polar(selected.deg, selected.r);
+
+  return (
+    <div className="flex justify-center py-1">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${DIAL} ${DIAL}`}
+        role="slider"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={unit === "hour" ? 23 : 59}
+        aria-valuenow={unit === "hour" ? value.h : value.m}
+        aria-valuetext={`${pad(value.h)}:${pad(value.m)}`}
+        tabIndex={0}
+        // touch-none keeps a drag across the face from scrolling the dialog
+        className="size-[15rem] max-w-full cursor-pointer touch-none select-none outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+        onPointerDown={(e) => {
+          dragging.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          applyPoint(e.clientX, e.clientY);
+        }}
+        onPointerMove={(e) => {
+          if (dragging.current) applyPoint(e.clientX, e.clientY);
+        }}
+        onPointerUp={(e) => {
+          dragging.current = false;
+          e.currentTarget.releasePointerCapture(e.pointerId);
+          onPicked();
+        }}
+        onPointerCancel={() => {
+          dragging.current = false;
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp" || e.key === "ArrowRight") nudge(1);
+          else if (e.key === "ArrowDown" || e.key === "ArrowLeft") nudge(-1);
+          else return;
+          e.preventDefault();
+        }}
+      >
+        <circle cx={C} cy={C} r={C} fill="currentColor" className="text-secondary/40" />
+
+        <line
+          x1={C}
+          y1={C}
+          x2={tip.x}
+          y2={tip.y}
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          className="text-primary"
+        />
+        <circle cx={C} cy={C} r={3.5} fill="currentColor" className="text-primary" />
+        <circle cx={tip.x} cy={tip.y} r={KNOB} fill="currentColor" className="text-primary" />
+        {/* A minute off the five-minute marks lands between two labels, so the
+            knob gets a pip to show it is pointing at something exact. */}
+        {unit === "minute" && value.m % 5 !== 0 && (
+          <circle
+            cx={tip.x}
+            cy={tip.y}
+            r={2.5}
+            fill="currentColor"
+            className="text-primary-foreground"
+          />
+        )}
+
+        {unit === "hour"
+          ? [
+              { hours: OUTER_HOURS, r: R_OUTER, size: 15, muted: false },
+              { hours: INNER_HOURS, r: R_INNER, size: 12, muted: true },
+            ].map(({ hours, r, size, muted }) =>
+              hours.map((h, i) => {
+                const p = polar(i * 30, r);
+                const on = value.h === h;
+                return (
+                  <text
+                    key={`${r}-${h}`}
+                    x={p.x}
+                    y={p.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={size}
+                    fill="currentColor"
+                    className={cn(
+                      "font-mono",
+                      on
+                        ? "font-bold text-primary-foreground"
+                        : muted
+                          ? "text-muted-foreground"
+                          : "text-foreground",
+                    )}
+                  >
+                    {r === R_OUTER ? h : pad(h)}
+                  </text>
+                );
+              }),
+            )
+          : MINUTE_MARKS.map((m, i) => {
+              const p = polar(i * 30, R_OUTER);
+              const on = value.m === m;
+              return (
+                <text
+                  key={m}
+                  x={p.x}
+                  y={p.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={15}
+                  fill="currentColor"
+                  className={cn(
+                    "font-mono",
+                    on ? "font-bold text-primary-foreground" : "text-foreground",
+                  )}
+                >
+                  {pad(m)}
+                </text>
+              );
+            })}
+      </svg>
+    </div>
   );
 }
 
@@ -404,53 +536,6 @@ function QuickChip({ onClick, children }: { onClick: () => void; children: React
       type="button"
       onClick={onClick}
       className="rounded-full bg-card/60 px-3 py-1 text-[10px] font-bold text-muted-foreground transition-colors cursor-pointer hover:bg-card hover:text-foreground"
-    >
-      {children}
-    </button>
-  );
-}
-
-function NumberChip({
-  selected,
-  onClick,
-  children,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={cn(
-        "h-9 flex-1 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer",
-        selected
-          ? "bg-primary text-primary-foreground shadow-soft"
-          : "bg-secondary/40 text-foreground/80 hover:bg-secondary",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-function StepButton({
-  label,
-  onClick,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className="flex size-7 items-center justify-center rounded-full bg-secondary/60 text-foreground transition-colors cursor-pointer hover:bg-secondary"
     >
       {children}
     </button>
