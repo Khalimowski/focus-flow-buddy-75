@@ -11,8 +11,7 @@ import { cn } from "@/lib/utils";
  * `<input type="time">` hands the phone's WebView its stock Material clock
  * dial — a grey analog face that ignores the app's theme. This keeps the
  * interaction people already know (drag a hand around a 24-hour dial, or tap
- * the keyboard button and type) and dresses it in the app's own colours, plus
- * shortcuts for the times people actually pick ("now", "+1 h").
+ * the keyboard button and type) and dresses it in the app's own colours.
  *
  * Values are "HH:mm" strings, same as the inputs it replaces, and "" means
  * "no time set" wherever the caller allows it (`clearable`).
@@ -49,11 +48,6 @@ function roundedNow(): Clock24 {
   const d = new Date();
   d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0);
   return { h: d.getHours(), m: d.getMinutes() };
-}
-
-function shift({ h, m }: Clock24, minutes: number): Clock24 {
-  const total = (h * 60 + m + minutes + 1440) % 1440;
-  return { h: Math.floor(total / 60), m: total % 60 };
 }
 
 function polar(deg: number, r: number) {
@@ -228,14 +222,6 @@ export function TimePicker({
                 </UnitButton>
               </>
             )}
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-1.5">
-            <QuickChip onClick={() => setDraft(roundedNow())}>{t("time_now")}</QuickChip>
-            <QuickChip onClick={() => setDraft((d) => shift(d, 30))}>
-              {t("time_plus_30m")}
-            </QuickChip>
-            <QuickChip onClick={() => setDraft((d) => shift(d, 60))}>{t("time_plus_1h")}</QuickChip>
           </div>
 
           {/* The dial would sit under the soft keyboard anyway, so typing mode
@@ -529,15 +515,3 @@ const TimeField = forwardRef<
   />
 ));
 TimeField.displayName = "TimeField";
-
-function QuickChip({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full bg-card/60 px-3 py-1 text-[10px] font-bold text-muted-foreground transition-colors cursor-pointer hover:bg-card hover:text-foreground"
-    >
-      {children}
-    </button>
-  );
-}
