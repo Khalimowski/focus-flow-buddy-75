@@ -121,15 +121,17 @@ async function ensureChannel() {
 }
 
 // Re-issue pending notifications so they pick up the channel matching the
-// current vibration setting. Cancels canonical task/nudge ids only —
-// postponed notifications use throwaway ids and are left to fire as-is.
+// current vibration setting. Cancels canonical task/nudge ids only — the
+// throwaway copies left by a postpone are marked and left to fire as-is
+// (a postponed task moved its remindAt, so reconcile re-arms it from storage).
 export async function applyVibrationSetting() {
   if (!isNative()) return;
   try {
     const pending = await LocalNotifications.getPending();
     const canonical: number[] = [];
     for (const n of pending.notifications) {
-      const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
+      const extra = (n.extra ?? {}) as { type?: string; taskId?: string; postponed?: boolean };
+      if (extra.postponed) continue;
       if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
         canonical.push(n.id);
       } else if (extra.type === "nudge") {
@@ -203,6 +205,135 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
     console.log(`[Native] Notification ${id} scheduled.`);
   } catch (e) {
     console.error("[Native] scheduleNativeAt failed", e);
+  }
+}
+
+// --- Postponing from a notification action ---
+
+const POSTPONE_MINUTES = 15;
+
+type PostponableTask = {
+  id: string;
+  title: string;
+  done: boolean;
+  remindAt: string | null;
+  dueDate?: string;
+  notified?: boolean;
+};
+
+/**
+ * Move a task's reminder POSTPONE_MINUTES into the future.
+ *
+ * The notification is only half of it: `remindAt` has to move in storage too,
+ * or the task keeps its old time everywhere else (list, timeline, widget,
+ * calendars, other devices) and `reconcileNotifications` — which arms from
+ * storage — has nothing to re-arm after a reboot.
+ */
+async function postponeTask(taskId: string | undefined, notifTitle: string) {
+  const nextAt = new Date(Date.now() + POSTPONE_MINUTES * 60 * 1000);
+  const settings = useI18nStore.getState();
+  const lang = translations[settings.language] || translations.en;
+
+  const tasks = loadJSON<PostponableTask[]>(STORAGE_KEYS.tasks, []);
+  const task = taskId ? tasks.find((t) => t.id === taskId) : undefined;
+
+  // No task behind this notification (deleted since, or a pre-taskId build):
+  // still honour the button with a one-off reminder rather than dropping it.
+  if (!task) {
+    await schedulePostponed(
+      hashId("task:" + taskId + Date.now()),
+      notifTitle,
+      lang.postponed_reminder,
+      nextAt,
+      { type: "task", taskId, title: notifTitle },
+      "TASK_ACTIONS",
+    );
+    return;
+  }
+
+  // Ticked off in the meantime (widget, another device): nothing to postpone.
+  if (task.done) return;
+
+  saveJSON(
+    STORAGE_KEYS.tasks,
+    tasks.map((t) =>
+      t.id === task.id
+        ? { ...t, remindAt: nextAt.toISOString(), dueDate: dateKey(nextAt), notified: false }
+        : t,
+    ),
+  ); // fires ff.tasks_saved -> widget re-push, and queues the cloud push
+  window.dispatchEvent(new CustomEvent("ff.data_updated"));
+
+  // Same idiom as TaskList's edit path: the canonical id replaces the old
+  // schedule, and delete-by-title keeps the calendar from collecting duplicates.
+  if (settings.calendarSync) await deleteFromCalendar(task.title);
+  await scheduleNativeAt(
+    hashId("task:" + task.id),
+    task.title,
+    lang.reminder_title,
+    nextAt,
+    settings.calendarSync,
+    task.id,
+  );
+  void import("./google").then((g) =>
+    g.pushTaskToGoogleCalendar({ id: task.id, title: task.title, remindAt: nextAt.toISOString() }),
+  );
+  void refreshEndOfDayPrompt();
+}
+
+/**
+ * Push a daily nudge slot back by POSTPONE_MINUTES with a one-shot copy. The
+ * repeating notification behind it stays armed for tomorrow, so only the extra
+ * copy is throwaway — `postponed: true` marks it so reconcile leaves it alone.
+ */
+async function postponeNudge(
+  nudgeId: string | undefined,
+  time: string | undefined,
+  notifTitle: string,
+) {
+  const nextAt = new Date(Date.now() + POSTPONE_MINUTES * 60 * 1000);
+  const settings = useI18nStore.getState();
+  const lang = translations[settings.language] || translations.en;
+  await schedulePostponed(
+    hashId("nudge:" + nudgeId + Date.now()),
+    notifTitle,
+    lang.gentle_nudge_emoji,
+    nextAt,
+    { type: "nudge", nudgeId, time, title: notifTitle },
+    "NUDGE_ACTIONS",
+  );
+}
+
+// One-shot copy of a notification that keeps its original identity (so its own
+// action buttons still work) but is exempt from reconcile's cleanup.
+async function schedulePostponed(
+  id: number,
+  title: string,
+  body: string,
+  at: Date,
+  extra: Record<string, unknown>,
+  actionTypeId: string,
+) {
+  if (!isNative()) return;
+  try {
+    await ensureChannel();
+    await LocalNotifications.schedule({
+      notifications: [
+        {
+          id,
+          title,
+          body,
+          schedule: { at, allowWhileIdle: true },
+          channelId: currentChannelId(),
+          smallIcon: "ic_stat_icon",
+          sound: "boink",
+          actionTypeId,
+          extra: { ...extra, postponed: true },
+        },
+      ],
+    });
+  } catch (e) {
+    console.error("[Native] schedulePostponed failed", e);
   }
 }
 
@@ -560,9 +691,16 @@ export async function reconcileNotifications() {
     const staleNudgeLabels = new Set<string>();
     for (const n of pending.notifications) {
       pendingIds.add(n.id);
-      const extra = (n.extra ?? {}) as { type?: string; taskId?: string; nudgeId?: string; title?: string };
-      // Only touch canonical ids — postponed reminders use throwaway ids and
-      // should be left to fire.
+      const extra = (n.extra ?? {}) as {
+        type?: string;
+        taskId?: string;
+        nudgeId?: string;
+        title?: string;
+        postponed?: boolean;
+      };
+      // Only touch canonical ids — postponed copies carry throwaway ids that
+      // storage knows nothing about, and should be left to fire.
+      if (extra.postponed) continue;
       if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
         if (!wantTask.has(n.id)) stale.push(n.id);
       } else if (extra.type === "nudge") {
@@ -622,22 +760,24 @@ export async function initNative() {
   if (!isNative()) return;
   console.log("[Native] Initializing features...");
 
-  // Register notification actions
+  // Register notification actions. Labels are baked in at boot, so a language
+  // switch reaches the buttons on the next app start.
   try {
+    const bootLang = translations[useI18nStore.getState().language] || translations.en;
     await LocalNotifications.registerActionTypes({
       types: [
         {
           id: 'TASK_ACTIONS',
           actions: [
-            { id: 'done', title: 'Done' },
-            { id: 'postpone', title: 'Postpone (15m)' }
+            { id: 'done', title: bootLang.notif_done },
+            { id: 'postpone', title: bootLang.notif_postpone }
           ]
         },
         {
           id: 'NUDGE_ACTIONS',
           actions: [
-            { id: 'done', title: 'Got it!' },
-            { id: 'postpone', title: 'Remind later' }
+            { id: 'done', title: bootLang.notif_nudge_done },
+            { id: 'postpone', title: bootLang.notif_nudge_postpone }
           ]
         }
       ]
@@ -659,9 +799,7 @@ export async function initNative() {
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
         } else if (actionId === 'postpone') {
-          const nextAt = new Date(Date.now() + 15 * 60 * 1000);
-          const id = hashId("task:" + taskId + Date.now()); // New ID to avoid conflicts
-          void scheduleNativeAt(id, extra.title, "Postponed reminder", nextAt, false, taskId);
+          await postponeTask(taskId, extra.title);
         }
       } else if (extra.type === 'nudge') {
         const nudgeId = extra.nudgeId;
@@ -675,9 +813,7 @@ export async function initNative() {
           saveJSON(STORAGE_KEYS.reminders, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
         } else if (actionId === 'postpone') {
-          const nextAt = new Date(Date.now() + 15 * 60 * 1000);
-          const id = hashId("nudge:" + nudgeId + Date.now());
-          void scheduleNativeAt(id, extra.title, "Postponed nudge", nextAt, false);
+          await postponeNudge(nudgeId, time, extra.title);
         }
       }
     });

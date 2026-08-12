@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.1";
+export const APP_VERSION = "1.7.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.2",
+    items: {
+      en: [
+        "Postponing a reminder from the notification now really moves the task 15 minutes later — the new time shows up in the app, the widget and your calendar.",
+        "Notification buttons are now in your chosen language.",
+      ],
+      pl: [
+        "Odłożenie przypomnienia z powiadomienia naprawdę przesuwa zadanie o 15 minut — nowa godzina pojawia się w aplikacji, widżecie i kalendarzu.",
+        "Przyciski w powiadomieniach są teraz w wybranym języku.",
+      ],
+    },
+  },
   {
     version: "1.7.1",
     items: {
