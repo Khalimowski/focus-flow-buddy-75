@@ -16,7 +16,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { TimeInput } from "@/components/ui/time-input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
@@ -400,11 +400,10 @@ export function Settings() {
                 <Label htmlFor="eod-time" className="text-xs text-muted-foreground">
                   {t('eod_time_label')}
                 </Label>
-                <Input
+                <TimeInput
                   id="eod-time"
-                  type="time"
                   value={eodTime}
-                  onChange={(e) => handleEodTimeChange(e.target.value)}
+                  onValueChange={handleEodTimeChange}
                   className="h-8 w-28 rounded-full border-none bg-secondary/50 font-mono text-xs"
                 />
               </div>

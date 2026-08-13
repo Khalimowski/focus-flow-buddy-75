@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
+import { formatTimeOfDay } from "@/lib/time";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { dateKey, generateId, shiftDateKey } from "@/lib/utils";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
@@ -341,10 +342,7 @@ export function EndOfDayReview() {
                         {task.remindAt && (
                           <span className="flex items-center gap-1">
                             <Clock className="size-3" />
-                            {new Date(task.remindAt).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {formatTimeOfDay(task.remindAt)}
                           </span>
                         )}
                         {overdue && (

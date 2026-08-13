@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Trash2, Droplet, Pill, StretchHorizontal, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeInput } from "@/components/ui/time-input";
 import { Switch } from "@/components/ui/switch";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
@@ -245,10 +246,9 @@ export function Reminders() {
                   exit={{ opacity: 0, height: 0 }}
                   className="flex gap-2 items-center"
                 >
-                  <Input
-                    type="time"
+                  <TimeInput
                     value={time}
-                    onChange={(e) => updateCustomTime(index, e.target.value)}
+                    onValueChange={(v) => updateCustomTime(index, v)}
                     className="w-32 font-mono"
                   />
                   {customTimes.length > 1 && (

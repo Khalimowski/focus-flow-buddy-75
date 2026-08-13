@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useHistoryStore } from "@/lib/history";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
+import { TimeInput } from "@/components/ui/time-input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, hashId } from "@/lib/native";
@@ -453,17 +454,17 @@ export function AICoach() {
                         <p className="text-[11px] font-medium">{t('ai_coach_q_work_hours')}</p>
                         <div className="flex items-center gap-2 text-[11px]">
                           <span className="text-muted-foreground">{t('ai_coach_work_from')}</span>
-                          <input
-                            type="time"
+                          <TimeInput
+                            unstyled
                             value={draft.workStart ?? "09:00"}
-                            onChange={(e) => setDraft((d) => ({ ...d, workStart: e.target.value }))}
+                            onValueChange={(v) => setDraft((d) => ({ ...d, workStart: v }))}
                             className={timeInputClass}
                           />
                           <span className="text-muted-foreground">{t('ai_coach_work_to')}</span>
-                          <input
-                            type="time"
+                          <TimeInput
+                            unstyled
                             value={draft.workEnd ?? "17:00"}
-                            onChange={(e) => setDraft((d) => ({ ...d, workEnd: e.target.value }))}
+                            onValueChange={(v) => setDraft((d) => ({ ...d, workEnd: v }))}
                             className={timeInputClass}
                           />
                         </div>

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeInput } from "@/components/ui/time-input";
+import { formatTimeOfDay } from "@/lib/time";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { generateId } from "@/lib/utils";
@@ -530,10 +532,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           />
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <div className="flex gap-2">
-              <Input
-                type="time"
+              <TimeInput
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
+                onValueChange={setTime}
                 className="w-28 font-mono h-8 text-xs rounded-full bg-secondary/50 border-none"
               />
               <Popover>
@@ -676,10 +677,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex gap-1.5 shrink-0">
-                      <Input
-                        type="time"
+                      <TimeInput
                         value={editTime}
-                        onChange={(e) => setEditTime(e.target.value)}
+                        onValueChange={setEditTime}
                         className="w-[84px] font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
                       />
                       <Popover>
@@ -741,10 +741,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                     <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
                       <Clock className="size-3" />
                       {item.kind === 'task' && item.remindAt ? (
-                        new Date(item.remindAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
+                        formatTimeOfDay(item.remindAt)
                       ) : (
                         item.kind === 'nudge' ? item.time : ""
                       )}

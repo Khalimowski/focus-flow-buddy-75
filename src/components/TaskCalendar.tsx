@@ -16,6 +16,7 @@ import {
 } from "date-fns";
 import { pl } from "date-fns/locale";
 import { useTranslation } from "@/lib/i18n";
+import { formatTimeOfDay } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 
 export type CalendarTask = {
@@ -56,7 +57,7 @@ const byTime = (a: CalendarTask, b: CalendarTask) => {
 
 const timeLabel = (task: CalendarTask) =>
   task.remindAt
-    ? new Date(task.remindAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    ? formatTimeOfDay(task.remindAt)
     : "";
 
 /** Day / week / month overview of every task, sharing the tab's selected date. */
