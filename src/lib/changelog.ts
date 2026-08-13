@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.1";
+export const APP_VERSION = "1.7.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,13 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.2",
+    items: {
+      en: ["In the browser, times are now always shown and entered on a 24-hour clock — no more AM/PM."],
+      pl: ["W przeglądarce godziny są teraz zawsze pokazywane i wpisywane w formacie 24-godzinnym — bez AM/PM."],
+    },
+  },
   {
     version: "1.7.1",
     items: {

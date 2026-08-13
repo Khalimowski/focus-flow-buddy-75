@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, Trash2, Edit2, X, Save, Calendar as CalendarIcon, ListTodo } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TimeInput } from "@/components/ui/time-input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { generateId } from "@/lib/utils";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
@@ -212,10 +213,9 @@ export function SimpleToDo() {
                   <div className="text-sm font-medium break-words">{item.title}</div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex gap-1.5 shrink-0">
-                      <Input
-                        type="time"
+                      <TimeInput
                         value={schedTime}
-                        onChange={(e) => setSchedTime(e.target.value)}
+                        onValueChange={setSchedTime}
                         className="w-[84px] font-mono h-7 text-[10px] rounded-full bg-secondary/50 border-none"
                       />
                       <Popover>

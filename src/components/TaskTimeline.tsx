@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clock, Edit2, Sparkles, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
+import { formatTimeOfDay } from "@/lib/time";
 
 export type TimelineTask = {
   kind: "task";
@@ -53,7 +54,7 @@ const itemMinutes = (item: TimelineItem): number | null => {
 const fmtMinutes = (min: number) => {
   const d = new Date();
   d.setHours(Math.floor(min / 60), min % 60, 0, 0);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return formatTimeOfDay(d);
 };
 
 const findScrollParent = (el: HTMLElement | null): HTMLElement | null => {
