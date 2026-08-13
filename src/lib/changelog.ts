@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.6";
+export const APP_VERSION = "1.7.7";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,23 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.7",
+    items: {
+      en: [
+        "Dictation now sets the time as well as the title — say “dentist at half past four” and you get a task called Dentist at 16:30, reminder already on.",
+        "It follows the everyday ways of saying it: “at nine thirty”, “quarter to seven”, “eight pm”, “at noon”, “at seventeen thirty”.",
+        "Polish works the same, with its own phrasings — “o wpół do piątej”, “za kwadrans piąta”, “w południe”.",
+        "Not sure it heard you right? The time lands in the picker next to the field, so you can see it before adding the task.",
+      ],
+      pl: [
+        "Dyktowanie ustawia teraz nie tylko treść, ale i godzinę — powiedz „dentysta o wpół do piątej”, a dostaniesz zadanie Dentysta na 16:30, od razu z przypomnieniem.",
+        "Rozumie zwykłe sposoby mówienia o godzinie: „o dziewiątej trzydzieści”, „za kwadrans piąta”, „kwadrans po piątej”, „w południe”, „o siedemnastej”.",
+        "Po angielsku działa tak samo, w tamtejszych zwrotach — „at half past four”, „quarter to seven”, „at noon”.",
+        "Nie masz pewności, czy dobrze usłyszał? Godzina trafia do pola obok, więc widzisz ją przed dodaniem zadania.",
+      ],
+    },
+  },
   {
     version: "1.7.6",
     items: {

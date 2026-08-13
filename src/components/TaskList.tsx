@@ -13,6 +13,7 @@ import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
 import { TaskCalendarDialog } from "@/components/TaskCalendarDialog";
 import { TimePicker } from "@/components/TimePicker";
 import { MicButton } from "@/components/MicButton";
+import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -247,12 +248,32 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const startDictation = () => {
     dictationBase.current = title.trim();
   };
-  const applyDictation = useCallback((text: string) => {
+  const applyDictation = useCallback((text: string, isFinal: boolean) => {
     const base = dictationBase.current;
     // Vosk returns lowercase and unpunctuated; a leading capital is all a task
     // title needs to stop looking like a transcript.
-    setTitle(base ? `${base} ${text}` : text.charAt(0).toUpperCase() + text.slice(1));
-  }, []);
+    const compose = (body: string) =>
+      base ? `${base} ${body}` : body.charAt(0).toUpperCase() + body.slice(1);
+
+    // Only the settled sentence gets searched: an interim result rewrites its
+    // own tail every word or two, so "at four" would set 16:00 a moment before
+    // "at four thirty" arrives.
+    const spoken = isFinal ? extractSchedule(text, language) : null;
+    if (!spoken) {
+      setTitle(compose(text));
+      return;
+    }
+
+    // What was spoken wins over what's already in the pickers — it's the more
+    // recent thing the user asked for. Saying only a date leaves the time
+    // alone, and vice versa.
+    if (spoken.time) setTime(spoken.time);
+    if (spoken.date) setNewTaskDate(spoken.date);
+    // "tomorrow at half past four" with nothing around it is all schedule and
+    // no title, so leave the field as it was instead of blanking what was
+    // already typed.
+    setTitle(spoken.title ? compose(spoken.title) : base);
+  }, [language]);
 
   // Gmail import: subject becomes the task title on the selected day (no time)
   const importFromEmail = (subject: string) => {
