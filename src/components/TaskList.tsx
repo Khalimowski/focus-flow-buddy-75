@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
 import { TaskCalendarDialog } from "@/components/TaskCalendarDialog";
 import { TimePicker } from "@/components/TimePicker";
+import { MicButton } from "@/components/MicButton";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
@@ -238,6 +239,20 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     setTime("");
     setNewTaskDate(selectedDate);
   };
+
+  // Dictation writes on top of whatever was already typed rather than replacing
+  // it, so a half-typed title survives and a second take appends. The base is
+  // frozen when the mic opens because every interim result rewrites the tail.
+  const dictationBase = useRef("");
+  const startDictation = () => {
+    dictationBase.current = title.trim();
+  };
+  const applyDictation = useCallback((text: string) => {
+    const base = dictationBase.current;
+    // Vosk returns lowercase and unpunctuated; a leading capital is all a task
+    // title needs to stop looking like a transcript.
+    setTitle(base ? `${base} ${text}` : text.charAt(0).toUpperCase() + text.slice(1));
+  }, []);
 
   // Gmail import: subject becomes the task title on the selected day (no time)
   const importFromEmail = (subject: string) => {
@@ -559,9 +574,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <GmailImport onImport={importFromEmail} />
               )}
             </div>
-            <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft">
-              <Plus className="size-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <MicButton onStart={startDictation} onTranscript={applyDictation} />
+              <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft">
+                <Plus className="size-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>

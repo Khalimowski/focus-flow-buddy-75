@@ -44,6 +44,19 @@ export const Route = createFileRoute("/")({
 
 type Tab = "tasks" | "reminders" | "todo";
 
+// Radix layers (dialogs, sheets, popovers, menus) all dismiss on Escape and
+// mark themselves open in the DOM, so the hardware back button can close the
+// topmost one by faking the keypress — Radix keeps the layer stack itself.
+const OPEN_LAYER_SELECTOR = ['dialog', 'alertdialog', 'menu', 'listbox']
+  .map((role) => `[role="${role}"][data-state="open"]`)
+  .join(",");
+
+const dismissTopLayer = () => {
+  if (!document.querySelector(OPEN_LAYER_SELECTOR)) return false;
+  document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  return true;
+};
+
 function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
@@ -95,6 +108,11 @@ function Home() {
       const initBackListener = async () => {
         const { App } = await import("@capacitor/app");
         const backListener = App.addListener("backButton", ({ canGoBack }) => {
+          // An open dialog/sheet/popover takes back first: on screen, "back"
+          // means closing that layer, not leaving the app. Dialogs that don't
+          // register history state (the calendar, the time picker) would
+          // otherwise fall through to minimizeApp below.
+          if (dismissTopLayer()) return;
           // Only navigate back within entries the app itself created (the
           // settings sheet's pushed state, or router navigations). Backing
           // beyond the first entry lands on a page the router can't render

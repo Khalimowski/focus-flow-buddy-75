@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.5";
+export const APP_VERSION = "1.7.6";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.6",
+    items: {
+      en: [
+        "Say your task instead of typing it — the microphone next to the add button writes the words straight into the field, and stops on its own once you go quiet.",
+        "Understands English and Polish, matching whichever language the app is set to.",
+        "Dictation runs entirely on your phone, so it works with no signal. The first tap downloads the voice pack (about 40 MB) once.",
+      ],
+      pl: [
+        "Powiedz zadanie zamiast je wpisywać — mikrofon obok przycisku dodawania wpisuje słowa prosto do pola i sam kończy, gdy przestaniesz mówić.",
+        "Rozumie polski i angielski — dyktuje w języku, na który ustawiona jest aplikacja.",
+        "Dyktowanie działa w całości na telefonie, więc nie potrzebuje zasięgu. Pierwsze użycie pobiera pakiet głosowy (około 53 MB).",
+      ],
+    },
+  },
   {
     version: "1.7.5",
     items: {
