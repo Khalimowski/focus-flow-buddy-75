@@ -15,7 +15,12 @@ import {
 /** Perk list, shared by the settings section and the web lock screen. */
 export function PremiumPerks() {
   const { t } = useTranslation();
-  const perks = [t("premium_perk_web"), t("premium_perk_ads"), t("premium_perk_sync")];
+  const perks = [
+    t("premium_perk_web"),
+    t("premium_perk_voice"),
+    t("premium_perk_ads"),
+    t("premium_perk_sync"),
+  ];
   return (
     <ul className="space-y-2">
       {perks.map((perk) => (

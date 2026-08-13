@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.7";
+export const APP_VERSION = "1.7.8";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.8",
+    items: {
+      en: [
+        "Adding tasks by voice is now part of FlowDay Premium, alongside the browser version and no banner ads.",
+        "Already have Premium? Nothing changes — the microphone works exactly as before.",
+        "Without it, the microphone stays on screen with a sparkle; tap it to see where to unlock it. Tasks you already dictated are untouched.",
+      ],
+      pl: [
+        "Dodawanie zadań głosem jest teraz częścią FlowDay Premium — obok wersji przeglądarkowej i braku banerów reklamowych.",
+        "Masz już Premium? Nic się nie zmienia — mikrofon działa dokładnie tak jak wcześniej.",
+        "Bez niego mikrofon zostaje na ekranie z gwiazdką; dotknij go, aby zobaczyć, gdzie go odblokować. Wcześniej podyktowane zadania pozostają nietknięte.",
+      ],
+    },
+  },
   {
     version: "1.7.7",
     items: {
