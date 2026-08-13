@@ -15,13 +15,29 @@ import { resolve } from 'node:path';
 // is the backstop that survives someone changing that setting again: a red
 // build on a side branch costs a retry, a silent production rollback costs
 // every user the last five releases. Set ALLOW_BRANCH_DEPLOY=1 to override.
-const ciBranch = process.env.WORKERS_CI_BRANCH;
-if (
-  process.env.WORKERS_CI === '1' &&
-  ciBranch &&
-  ciBranch !== 'main' &&
-  process.env.ALLOW_BRANCH_DEPLOY !== '1'
-) {
+//
+// It deliberately **fails open**. Blocking is only correct when the branch is
+// known and is definitely not production; anything unrecognised builds as
+// normal. A guard that wrongly blocks main takes the whole site down to a
+// stale build, which is the exact failure it exists to prevent — whereas
+// failing open just restores the old behaviour, and the dashboard setting is
+// the real fix anyway. Hence the refs/heads/ stripping and the empty check:
+// the runner's exact value for WORKERS_CI_BRANCH is not something this repo
+// gets to assume.
+const onWorkersCi = process.env.WORKERS_CI === '1';
+const ciBranch = (process.env.WORKERS_CI_BRANCH ?? '').trim().replace(/^refs\/heads\//, '');
+
+// Printed on every CI build so the Builds log shows what the runner actually
+// passes. If this guard ever misbehaves, that line is the diagnostic.
+if (onWorkersCi) {
+  console.log(
+    `ℹ️ Prebuild: Workers CI branch = ${ciBranch ? `"${ciBranch}"` : "(not set)"} ` +
+      `(raw: ${JSON.stringify(process.env.WORKERS_CI_BRANCH ?? null)})`,
+  );
+}
+
+const isProductionBranch = ciBranch === '' || ciBranch === 'main';
+if (onWorkersCi && !isProductionBranch && process.env.ALLOW_BRANCH_DEPLOY !== '1') {
   console.error(
     [
       '',
