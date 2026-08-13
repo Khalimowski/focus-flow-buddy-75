@@ -44,27 +44,43 @@ const clamp = (n: number, max: number) => (Number.isNaN(n) ? 0 : Math.min(Math.m
 /** Splits any partially typed value into its hour / minute digits. */
 const segments = (raw: string): [string, string] => {
   const cleaned = raw.replace(/[^\d:]/g, "");
-  if (cleaned.includes(":")) {
-    const [h, m = ""] = cleaned.split(":");
-    return [h.slice(0, 2), m.replace(/:/g, "").slice(0, 2)];
+  const colon = cleaned.indexOf(":");
+  let h = (colon === -1 ? cleaned : cleaned.slice(0, colon)).replace(/\D/g, "");
+  let m = (colon === -1 ? "" : cleaned.slice(colon + 1)).replace(/\D/g, "");
+  // Digits past the hour belong to the minutes, wherever the colon sits.
+  if (h.length > 2) {
+    m = h.slice(2) + m;
+    h = h.slice(0, 2);
   }
   // A second digit that can't belong to the hour means the first one was the
   // whole hour: typing 9 then 3 is 09:3, not 93 clamped down to 23.
-  const digits = cleaned.length >= 2 && cleaned[0] > "2" ? `0${cleaned}` : cleaned;
-  return [digits.slice(0, 2), digits.slice(2, 4)];
+  if (h.length === 2 && Number(h) > 23) {
+    m = h.slice(1) + m;
+    h = `0${h.slice(0, 1)}`;
+  }
+  return [h, m.slice(0, 2)];
 };
 
 /**
- * Keeps a half-typed value legal while the user types: digits only, colon after
- * the hour, and no impossible segment (25:99 can never appear on screen).
+ * Keeps a half-typed value legal while the user types: digits only, the colon
+ * in place from the first keystroke, and no impossible segment (25:99 can never
+ * appear on screen).
  */
 export const maskTimeDraft = (raw: string): string => {
   let [h, m] = segments(raw);
+  if (h === "" && m === "") return "";
   if (h.length === 2) h = pad2(clamp(Number(h), 23));
   if (m.length === 2) m = pad2(clamp(Number(m), 59));
-  if (m === "" && !raw.includes(":")) return h;
   return `${h}:${m}`;
 };
+
+/**
+ * Where the caret belongs in a draft. While only the hour is typed it has to
+ * stay left of the colon, or React re-setting the value parks it at the end and
+ * the next digit lands in the minutes ("1" + "9" would read 01:09, not 19:00).
+ */
+export const caretPosFor = (draft: string): number | null =>
+  draft.endsWith(":") ? draft.length - 1 : null;
 
 /** Turns a draft into a storable "HH:MM" (or "" when nothing was entered). */
 export const normalizeTimeDraft = (raw: string): string => {

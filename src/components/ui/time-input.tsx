@@ -1,7 +1,17 @@
 import * as React from "react";
 
 import { Input } from "@/components/ui/input";
-import { isCompleteTime, maskTimeDraft, normalizeTimeDraft, usesMaskedTimeInput } from "@/lib/time";
+import {
+  caretPosFor,
+  isCompleteTime,
+  maskTimeDraft,
+  normalizeTimeDraft,
+  usesMaskedTimeInput,
+} from "@/lib/time";
+
+// The caret has to be repositioned before the browser paints, but this file is
+// also pulled into the prerender pass, where layout effects warn.
+const useLayoutEffect = typeof window === "undefined" ? React.useEffect : React.useLayoutEffect;
 
 type TimeInputProps = Omit<React.ComponentProps<"input">, "type" | "value" | "onChange"> & {
   /** "HH:MM" (24h) or "" — same shape as a native time input's value. */
@@ -23,6 +33,16 @@ const TimeInput = React.forwardRef<HTMLInputElement, TimeInputProps>(
     const masked = usesMaskedTimeInput();
     const Field = unstyled ? "input" : Input;
     const [draft, setDraft] = React.useState(value);
+    const innerRef = React.useRef<HTMLInputElement | null>(null);
+
+    const attachRef = React.useCallback(
+      (node: HTMLInputElement | null) => {
+        innerRef.current = node;
+        if (typeof ref === "function") ref(node);
+        else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = node;
+      },
+      [ref],
+    );
 
     // Follow the parent when it changes the value under us (cleared after an
     // add, switched to another task), but don't clobber a draft the user is
@@ -31,10 +51,18 @@ const TimeInput = React.forwardRef<HTMLInputElement, TimeInputProps>(
       setDraft((prev) => (normalizeTimeDraft(prev) === value ? prev : value));
     }, [value]);
 
+    useLayoutEffect(() => {
+      if (!masked) return;
+      const el = innerRef.current;
+      if (!el || el !== document.activeElement) return;
+      const pos = caretPosFor(draft);
+      if (pos !== null) el.setSelectionRange(pos, pos);
+    }, [masked, draft]);
+
     if (!masked) {
       return (
         <Field
-          ref={ref}
+          ref={attachRef}
           type="time"
           value={value}
           onChange={(e) => onValueChange(e.target.value)}
@@ -60,7 +88,7 @@ const TimeInput = React.forwardRef<HTMLInputElement, TimeInputProps>(
 
     return (
       <Field
-        ref={ref}
+        ref={attachRef}
         type="text"
         inputMode="numeric"
         autoComplete="off"
