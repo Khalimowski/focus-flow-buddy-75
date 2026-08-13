@@ -47,14 +47,29 @@ type Tab = "tasks" | "reminders" | "todo";
 // Radix layers (dialogs, sheets, popovers, menus) all dismiss on Escape and
 // mark themselves open in the DOM, so the hardware back button can close the
 // topmost one by faking the keypress — Radix keeps the layer stack itself.
-const OPEN_LAYER_SELECTOR = ['dialog', 'alertdialog', 'menu', 'listbox']
+const OPEN_LAYER_SELECTOR = ["dialog", "alertdialog", "menu", "listbox"]
   .map((role) => `[role="${role}"][data-state="open"]`)
   .join(",");
 
-const dismissTopLayer = () => {
-  if (!document.querySelector(OPEN_LAYER_SELECTOR)) return false;
+const countOpenLayers = () => document.querySelectorAll(OPEN_LAYER_SELECTOR).length;
+
+/**
+ * Closes the topmost open overlay, if any. `onMiss` runs when there was
+ * nothing to close, or when the layer refused to go — React needs a tick to
+ * re-render the closed state, so the outcome is only knowable next timeout.
+ * Without that fallback a layer that ignores Escape would eat the back press
+ * and leave the button doing nothing at all.
+ */
+const dismissTopLayer = (onMiss: () => void) => {
+  const before = countOpenLayers();
+  if (before === 0) {
+    onMiss();
+    return;
+  }
   document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  return true;
+  setTimeout(() => {
+    if (countOpenLayers() >= before) onMiss();
+  }, 0);
 };
 
 function Home() {
@@ -108,22 +123,24 @@ function Home() {
       const initBackListener = async () => {
         const { App } = await import("@capacitor/app");
         const backListener = App.addListener("backButton", ({ canGoBack }) => {
+          const leaveScreen = () => {
+            // Only navigate back within entries the app itself created (the
+            // settings sheet's pushed state, or router navigations). Backing
+            // beyond the first entry lands on a page the router can't render
+            // (white screen), so minimize instead.
+            const state = window.history.state as { settings?: boolean; __TSR_index?: number } | null;
+            const hasInAppHistory = !!state?.settings || (state?.__TSR_index ?? 0) > 0;
+            if (canGoBack && hasInAppHistory) {
+              window.history.back();
+            } else {
+              void App.minimizeApp();
+            }
+          };
           // An open dialog/sheet/popover takes back first: on screen, "back"
           // means closing that layer, not leaving the app. Dialogs that don't
           // register history state (the calendar, the time picker) would
-          // otherwise fall through to minimizeApp below.
-          if (dismissTopLayer()) return;
-          // Only navigate back within entries the app itself created (the
-          // settings sheet's pushed state, or router navigations). Backing
-          // beyond the first entry lands on a page the router can't render
-          // (white screen), so minimize instead.
-          const state = window.history.state as { settings?: boolean; __TSR_index?: number } | null;
-          const hasInAppHistory = !!state?.settings || (state?.__TSR_index ?? 0) > 0;
-          if (canGoBack && hasInAppHistory) {
-            window.history.back();
-          } else {
-            void App.minimizeApp();
-          }
+          // otherwise drop straight through to minimizeApp.
+          dismissTopLayer(leaveScreen);
         });
         return backListener;
       };
