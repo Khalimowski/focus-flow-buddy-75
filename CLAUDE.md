@@ -91,6 +91,30 @@ Unset = purchases trusted client-side, no email. Full notes: `docs/PREMIUM.md`.
 ### Build pipeline (fragile — read before touching)
 `vite.config.ts` uses `@lovable.dev/vite-tanstack-config`, which bundles tanstackStart/react/tailwind/nitro — do not add those plugins manually. Known trap: newer config versions enable the **nitro deploy plugin** on every build, which retargets output to `.output/` and breaks TanStack's SPA prerender (expects `dist/server/server.js`). Current defenses: `nitro: false` when `CF_PAGES`/`WORKERS_CI` env vars are set (Cloudflare builders), explicit `nitro.output` dirs pinned to `dist/`, a `resilientServerEntry` shim plugin, and `scripts/prebuild.js`/`postbuild.js` (placeholder server entry; `_shell.html` → `index.html` copy that Capacitor and static hosting require). Verify both `npm run build` and `WORKERS_CI=1 npm run build` still produce `dist/client/index.html` after changing any of this.
 
+Two more defenses, both added after production sat five releases behind `main`
+for two days while deploys ran green every day:
+
+- **The worker name is pinned in `postbuild.js`** (`focus-flow-buddy-75`).
+  Nitro derives one from the git remote when nothing pins it, giving
+  `khalimowski-focus-flow-buddy-75` — a worker that does not exist. Since the
+  build also writes `.wrangler/deploy/config.json`, a bare `wrangler deploy` at
+  the repo root follows it to `dist/server/wrangler.json` and would silently
+  create that second worker while the live domains kept serving the old build.
+- **`prebuild.js` refuses to build a non-`main` branch under `WORKERS_CI`.**
+  Workers Builds runs this build for every watched branch, and this project's
+  *non-production branch deploy command* had been changed from the default
+  `wrangler versions upload` (upload only) to a full deploy — so every push to
+  a `claude/*` branch republished that branch over production. The dashboard
+  setting (Settings → Build → Branch control) is the real fix; this guard is
+  what survives it being changed back. `ALLOW_BRANCH_DEPLOY=1` overrides.
+
+To deploy by hand from a verified build, pass the name explicitly rather than
+trusting config discovery:
+
+```bash
+npx wrangler deploy --config dist/server/wrangler.json --name focus-flow-buddy-75
+```
+
 ### Environment files
 - `.env` (committed): public `VITE_NEON_AUTH_URL` / `VITE_NEON_DATA_API_URL`, baked into client bundles.
 - `.env.local` (gitignored): `DATABASE_URL` etc. — admin credentials used only by local scripts, never by app code.
