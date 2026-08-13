@@ -977,6 +977,10 @@ function readPlDayNumber(norm: string[], i: number): { value: number; next: numb
     const unit = PL_DAY_ORDINALS[norm[i + 1]];
     if (unit !== undefined && unit >= 1 && unit <= 9) return { value: base + unit, next: i + 2 };
   }
+  // Same guard as English: in "dwudziestego pierwszego", "pierwszego" is 21's
+  // unit, not the 1st.
+  const preceding = PL_DAY_ORDINALS[norm[i - 1]];
+  if (i > 0 && (preceding === 20 || preceding === 30) && base <= 9) return null;
   return { value: base, next: i + 1 };
 }
 

@@ -7,7 +7,12 @@ page. Nothing is sent anywhere: after the one-time model download, dictation
 works with the phone in airplane mode.
 
 Code: `src/lib/speech.ts` (engine), `src/components/MicButton.tsx` (UI),
-wired into `src/components/TaskList.tsx`.
+`src/lib/voice-time.ts` (spoken times and dates), wired into
+`src/components/TaskList.tsx`.
+
+`MicButton` fires exactly one of two callbacks per session: `onTranscript` when
+words were recognised, or `onEmpty` when none were. That pairing is what lets
+the caller clear the field on `onStart` without risking the user's text.
 
 ## How a session runs
 
@@ -18,8 +23,11 @@ wired into `src/components/TaskList.tsx`.
    The processor is routed through a **muted** gain node, because a
    ScriptProcessorNode only runs while it reaches the destination and wiring the
    mic to the speakers would feed back.
-3. Interim results stream into the field as you talk, appended to whatever was
-   already typed.
+3. The field is cleared the moment you tap, and interim results stream into it
+   as you talk — so each take replaces the last instead of piling onto it. The
+   old text is kept in a ref and put back if the session ends having produced
+   nothing at all (silence, a refused mic, a failed download, or a cancel
+   before it started listening), so a failed dictation costs nothing.
 4. It stops **2 s after the recogniser last picked up a word**, or on a second
    tap, or after 8 s if you never said anything, or at a 60 s ceiling.
 
@@ -30,12 +38,22 @@ session the moment you stop talking.
 The loaded model holds ~50 MB in its worker, so it is terminated after 3 minutes
 idle and reloaded (from cache, no network) on the next tap.
 
-## Spoken times
+## Spoken times and dates
 
-`src/lib/voice-time.ts` pulls a clock time out of the finished transcript, so
-"dentist at half past four" fills the time picker with 16:30 and leaves
-"Dentist" as the title. Without it every spoken time stayed baked into the
-title and the task got no reminder at all.
+`src/lib/voice-time.ts` pulls the *when* out of the finished transcript, so
+"dentist tomorrow at half past four" sets the day to tomorrow, the time picker
+to 16:30, and leaves "Dentist" as the title. Without it every spoken time
+stayed baked into the title and the task got no reminder at all.
+
+`extractSchedule()` returns `{ time, date, title }`, either of the first two
+possibly null. **Time and date are matched independently**, each claiming its
+own span of words, so they can come in either order and either can be absent —
+a date with no time is just a task on that day with no reminder. The date scan
+skips any word the time scan already claimed, so "at four" in "in four days at
+four" can't be read twice.
+
+`now` is injectable (`extractSchedule(text, lang, now)`) so the relative forms
+can be tested against a fixed day.
 
 It runs **only on the final transcript**, never on interim results — those
 rewrite their own tail every word or two, so "at four" would set 16:00 a moment
@@ -56,6 +74,22 @@ words, because they don't share a grammar:
 
 `7:30` and 24-hour forms (`seventeen thirty`, `o siedemnastej`) work in both.
 
+Dates, same split:
+
+| | English | Polish |
+| --- | --- | --- |
+| Named days | `today`, `tomorrow`, `(the) day after tomorrow` | `dziś`/`dzisiaj`, `jutro`, `pojutrze` |
+| Counted ahead | `in three days`, `in a week`, `in two weeks` | `za trzy dni`, `za tydzień`, `za dwa tygodnie` |
+| Next period | `next week`, `next month` | `w przyszłym tygodniu`, `w przyszłym miesiącu` |
+| Weekday | `on monday`, `by friday`, `this saturday`, `Monday standup` | `w poniedziałek`, `we wtorek`, `na poniedziałek`, `w przyszły poniedziałek` |
+| Day of month | `on the fifteenth`, `on the twenty first`, `on the 30th` | `piętnastego`, `dwudziestego pierwszego` |
+| With a month | `on the third of september`, `on march fifteenth` | `trzeciego września`, `piętnastego marca` |
+
+A weekday resolves to the **next one strictly ahead** — "Monday" said on a
+Monday means the coming Monday, since someone who means today has a shorter
+word for it. A day of the month walks forward to the next month (or year) that
+actually has that day, so "the 31st" never lands on the 1st.
+
 Polish diacritics are **folded away** before matching (ą→a, ł→l, ś→s …), so one
 spelling in the tables covers a model — or a keyboard — that drops them. It
 also collapses the accusative "piątą" onto the nominative "piąta" for free,
@@ -74,6 +108,16 @@ Four rules worth knowing before changing any of it:
   of the day; anything still trailing means it was modifying a noun. `o` is left
   permissive, because "o piątej z Anią" is normal and the locative ordinal is
   almost never anything but a clock.
+- **A weekday mid-sentence is describing, not scheduling.** "review Monday
+  notes" must not move the task a week, so a bare weekday counts only at the
+  start or end of the transcript, or after `on`/`by`/`this`/`next`/`for` (`w`,
+  `we`, `na` in Polish). Both edges are allowed because "Monday standup" and
+  "call Mark by Friday" are equally natural.
+- **Never read the tail of a compound as a number.** The scan tries every
+  starting word, so without a guard "the thirty first of September" — a day
+  September hasn't got — falls through to matching "first of September" and
+  books the wrong date. It now declines the whole phrase instead, which is the
+  right answer for an impossible date.
 - **"Night" is not a synonym for pm.** "eleven at night" is 23:00 but "two at
   night" is 02:00, and `w nocy` behaves the same way — hence the three-way
   `DayPart` rather than a boolean.
@@ -88,9 +132,10 @@ inventing a time nobody said produces a reminder at the wrong hour, so the
 matcher declines anything ambiguous.
 
 There is no test suite in this repo; the matcher was checked by importing
-`/src/lib/voice-time.ts` in the dev server and asserting against a table of
-phrasings per language (including the ones that must *not* match — "kupić pięć
-jabłek", "przejść na drugą stronę", "za pięć minut wyjść").
+`/src/lib/voice-time.ts` in the dev server, passing a fixed `now`, and
+asserting against a table of phrasings per language — including the ones that
+must *not* match ("kupić pięć jabłek", "przejść na drugą stronę", "za pięć minut
+wyjść", "review Monday notes", "the thirty first of September").
 
 ## Why the model is not bundled
 

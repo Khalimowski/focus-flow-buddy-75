@@ -33,17 +33,24 @@ const ERROR_KEYS: Record<
  *
  * `onTranscript` fires repeatedly with the running transcript while listening
  * (isFinal false) and once at the end (isFinal true), so the caller can show
- * words as they land. It never fires with an empty final — "heard nothing"
- * leaves the field exactly as it was.
+ * words as they land. It never fires with an empty final.
+ *
+ * `onEmpty` fires instead when a session ends having produced no transcript at
+ * all — nothing was said, the mic was refused, the model wouldn't download, or
+ * it was cancelled before it started listening. Callers that clear the field on
+ * `onStart` use it to put back what was there, so a failed dictation costs
+ * nothing. Exactly one of the two runs per session.
  */
 export function MicButton({
   onStart,
   onTranscript,
+  onEmpty,
   disabled,
   className,
 }: {
   onStart?: () => void;
   onTranscript: (text: string, isFinal: boolean) => void;
+  onEmpty?: () => void;
   disabled?: boolean;
   className?: string;
 }) {
@@ -54,6 +61,8 @@ export function MicButton({
   const [needsDownload, setNeedsDownload] = useState(false);
   const [error, setError] = useState<DictationErrorKind | null>(null);
   const session = useRef<Dictation | null>(null);
+  /** Whether this session ever put words in the caller's hands. */
+  const heardAnything = useRef(false);
 
   // Touches navigator/AudioContext, so it can't run during render.
   useEffect(() => setAvailable(isDictationAvailable(language)), [language]);
@@ -71,10 +80,12 @@ export function MicButton({
     session.current?.stop();
     session.current = null;
     // Cancelling mid-download resolves through neither onFinal nor onError, so
-    // the button has to let itself go. Stopping while listening still delivers
-    // its transcript afterwards — onFinal just finds the status already idle.
+    // the button has to let itself go — and since nothing was ever heard, this
+    // is the only chance to say so. Stopping while listening still delivers its
+    // transcript afterwards, so onFinal owns that ending instead.
+    if (status === "preparing" && !heardAnything.current) onEmpty?.();
     setStatus("idle");
-  }, []);
+  }, [onEmpty, status]);
 
   const toggle = useCallback(async () => {
     if (status !== "idle") {
@@ -85,25 +96,35 @@ export function MicButton({
     setError(null);
     setPercent(0);
     setStatus("preparing");
+    heardAnything.current = false;
     setNeedsDownload(!(await isModelCached(language)));
     onStart?.();
 
     session.current = startDictation(language, {
       onProgress: (fraction) => setPercent(Math.round(fraction * 100)),
       onListening: () => setStatus("listening"),
-      onPartial: (text) => onTranscript(text, false),
+      onPartial: (text) => {
+        heardAnything.current = true;
+        onTranscript(text, false);
+      },
       onFinal: (text) => {
         session.current = null;
         setStatus("idle");
-        if (text) onTranscript(text, true);
+        if (text) {
+          heardAnything.current = true;
+          onTranscript(text, true);
+        } else if (!heardAnything.current) {
+          onEmpty?.();
+        }
       },
       onError: (err) => {
         session.current = null;
         setStatus("idle");
         setError(err.kind);
+        if (!heardAnything.current) onEmpty?.();
       },
     });
-  }, [language, onStart, onTranscript, status, stop]);
+  }, [language, onEmpty, onStart, onTranscript, status, stop]);
 
   if (!available) return null;
 

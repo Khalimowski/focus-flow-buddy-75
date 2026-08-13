@@ -241,26 +241,30 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     setNewTaskDate(selectedDate);
   };
 
-  // Dictation writes on top of whatever was already typed rather than replacing
-  // it, so a half-typed title survives and a second take appends. The base is
-  // frozen when the mic opens because every interim result rewrites the tail.
-  const dictationBase = useRef("");
+  // Each dictation starts from an empty field: tapping the mic wipes whatever
+  // was there, so a second take replaces the first rather than piling onto it.
+  // The old text is held on to until the session produces something, because a
+  // dictation that hears nothing — mic refused, model missing, or just silence
+  // — must not cost the user what they had already typed.
+  const dictationUndo = useRef("");
   const startDictation = () => {
-    dictationBase.current = title.trim();
+    dictationUndo.current = title;
+    setTitle("");
   };
+  const restoreDictation = useCallback(() => {
+    setTitle(dictationUndo.current);
+  }, []);
   const applyDictation = useCallback((text: string, isFinal: boolean) => {
-    const base = dictationBase.current;
     // Vosk returns lowercase and unpunctuated; a leading capital is all a task
     // title needs to stop looking like a transcript.
-    const compose = (body: string) =>
-      base ? `${base} ${body}` : body.charAt(0).toUpperCase() + body.slice(1);
+    const capitalize = (body: string) => body.charAt(0).toUpperCase() + body.slice(1);
 
     // Only the settled sentence gets searched: an interim result rewrites its
     // own tail every word or two, so "at four" would set 16:00 a moment before
     // "at four thirty" arrives.
     const spoken = isFinal ? extractSchedule(text, language) : null;
     if (!spoken) {
-      setTitle(compose(text));
+      setTitle(capitalize(text));
       return;
     }
 
@@ -269,10 +273,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     // alone, and vice versa.
     if (spoken.time) setTime(spoken.time);
     if (spoken.date) setNewTaskDate(spoken.date);
-    // "tomorrow at half past four" with nothing around it is all schedule and
-    // no title, so leave the field as it was instead of blanking what was
-    // already typed.
-    setTitle(spoken.title ? compose(spoken.title) : base);
+    // "tomorrow at half past four" is all schedule and no title, which leaves
+    // the field empty for the user to fill in.
+    setTitle(capitalize(spoken.title));
   }, [language]);
 
   // Gmail import: subject becomes the task title on the selected day (no time)
@@ -596,7 +599,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <MicButton onStart={startDictation} onTranscript={applyDictation} />
+              <MicButton
+                onStart={startDictation}
+                onTranscript={applyDictation}
+                onEmpty={restoreDictation}
+              />
               <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft">
                 <Plus className="size-4" />
               </Button>
