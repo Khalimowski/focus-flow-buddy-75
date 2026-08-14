@@ -6,6 +6,16 @@ const root = process.cwd();
 // The worker the live domains actually point at: flowday.day and
 // focus-flow-buddy-75.kacper-szymanski1990.workers.dev.
 const WORKER_NAME = 'focus-flow-buddy-75';
+
+// Pinned, not "today". Nitro stamps the compatibility date from the build
+// machine's *local* clock, so any builder east of UTC generates tomorrow's date
+// after local midnight and Cloudflare rejects the upload outright:
+//   Can't set compatibility date in the future [code: 10021]
+// A compatibility date is a deliberate choice about runtime semantics anyway —
+// it should not drift every time someone rebuilds. This is the value already
+// running in production, so pinning it changes no behaviour. Raise it on
+// purpose, having read the Workers compatibility-date changelog.
+const COMPATIBILITY_DATE = '2026-08-13';
 const shell = resolve(root, 'dist/client/_shell.html');
 const index = resolve(root, 'dist/client/index.html');
 
@@ -35,12 +45,25 @@ const wranglerConfig = resolve(root, 'dist/server/wrangler.json');
 if (existsSync(wranglerConfig)) {
   try {
     const config = JSON.parse(readFileSync(wranglerConfig, 'utf8'));
+    let changed = false;
+
     if (config.name !== WORKER_NAME) {
       console.log(`🔧 Postbuild: worker name "${config.name}" -> "${WORKER_NAME}"`);
       config.name = WORKER_NAME;
+      changed = true;
+    }
+    if (config.compatibility_date !== COMPATIBILITY_DATE) {
+      console.log(
+        `🔧 Postbuild: compatibility_date "${config.compatibility_date}" -> "${COMPATIBILITY_DATE}"`,
+      );
+      config.compatibility_date = COMPATIBILITY_DATE;
+      changed = true;
+    }
+
+    if (changed) {
       writeFileSync(wranglerConfig, JSON.stringify(config, null, 2));
     } else {
-      console.log(`✅ Postbuild: worker name already "${WORKER_NAME}"`);
+      console.log(`✅ Postbuild: worker config already pinned`);
     }
   } catch (err) {
     // Never fail the build over this — a wrong name is recoverable, a build
