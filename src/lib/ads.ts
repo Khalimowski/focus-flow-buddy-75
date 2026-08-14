@@ -4,12 +4,13 @@ import { REMOTE_UPDATE_EVENT } from "./sync";
 
 // AdMob banner (Android only — no-ops on web, where AdMob can't serve).
 //
-// Currently running on Google's public TEST ids so ads work before the app is
-// live. To go live: create the app + a banner ad unit in the AdMob console,
-// then (1) replace BANNER_AD_ID below, (2) replace the APPLICATION_ID
-// meta-data in android/app/src/main/AndroidManifest.xml, (3) set isTesting to
-// false in showBanner below. Real ads only serve once AdMob approves the app
-// (usually needs the Play Store listing linked + app-ads.txt).
+// Still running on Google's public TEST ids, so the banner keeps serving test
+// creatives regardless of the isTesting flag below. Remaining go-live steps:
+// (1) create the app + a banner ad unit in the AdMob console and replace
+// BANNER_AD_ID below, (2) replace the APPLICATION_ID meta-data in
+// android/app/src/main/AndroidManifest.xml. Real ads only serve once AdMob
+// approves the app (usually needs the Play Store listing linked +
+// app-ads.txt).
 const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
 
 // Master switch: flip to false to pull the banner (everything below —
@@ -100,7 +101,7 @@ export async function initAds() {
 
     await AdMob.showBanner({
       adId: BANNER_AD_ID,
-      isTesting: true,
+      isTesting: false,
       adSize: BannerAdSize.ADAPTIVE_BANNER,
       position: BannerAdPosition.BOTTOM_CENTER,
       margin: 0,
