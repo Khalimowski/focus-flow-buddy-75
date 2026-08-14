@@ -20,6 +20,18 @@ const BANNER_AD_ID = "ca-app-pub-4324430922370171/5044191074";
 // consent flow, layout padding, banner request — stays wired up and dormant).
 const ADS_ENABLED = true;
 
+// TEMPORARY (testing): show the banner to everyone, including people who
+// actually bought premium to remove it. Set back to false before the app goes
+// to Play production — shipping this on would take ad removal away from paying
+// customers. Only affects Android; the isNative() guard still keeps ads off
+// the web build either way.
+const ADS_IGNORE_PREMIUM = true;
+
+/** Whether a real purchase should suppress the banner right now. */
+function premiumSuppressesAds(): boolean {
+  return !ADS_IGNORE_PREMIUM && hasPurchasedPremium();
+}
+
 let started = false;
 let watching = false;
 
@@ -46,11 +58,11 @@ async function removeBanner() {
  * Premium removes ads; anything that can flip the entitlement re-checks here.
  * Only a real purchase counts — the early-access unlock (PREMIUM_FREE_FOR_ALL)
  * opens the features but leaves the free tier ad-supported, so the banner keeps
- * getting exercised by testers.
+ * getting exercised by testers. Dormant while ADS_IGNORE_PREMIUM is on.
  */
 function watchEntitlement() {
   const check = () => {
-    if (hasPurchasedPremium()) void removeBanner();
+    if (premiumSuppressesAds()) void removeBanner();
   };
   window.addEventListener(PREMIUM_CHANGED_EVENT, check);
   window.addEventListener(REMOTE_UPDATE_EVENT, check);
@@ -64,7 +76,7 @@ export async function initAds() {
     watching = true;
     watchEntitlement();
   }
-  if (hasPurchasedPremium()) {
+  if (premiumSuppressesAds()) {
     console.log("[Ads] Skipped — premium entitlement active");
     return;
   }
