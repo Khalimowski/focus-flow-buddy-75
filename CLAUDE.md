@@ -73,6 +73,13 @@ banner on Android. Android stays free/ad-supported — it's also the only place
 Play Billing runs, via the custom `BillingPlugin.java` (same pattern as
 `WidgetBridgePlugin`).
 
+**Currently switched off**: `PREMIUM_FREE_FOR_ALL` in `premium.ts` is on while
+the app is not on Play production, so `isPremium()`/`usePremium()` answer yes for
+everyone (browser access and dictation are open) without writing anything to
+storage or sync. Ads are exempt — `ads.ts` uses `hasPurchasedPremium()`, which
+only a real purchase satisfies. Turn it off with `VITE_PREMIUM_FREE_FOR_ALL=false`
+or by changing the default.
+
 The entitlement is just another synced localStorage key (`ff.premium.v1` in
 SYNC_KEYS), so a phone purchase reaches the browser through the existing sync —
 no new server on that path. **Never write a "false" entitlement**: sync is

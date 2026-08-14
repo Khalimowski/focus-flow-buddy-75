@@ -1,5 +1,5 @@
 import { isNative } from "./native";
-import { PREMIUM_CHANGED_EVENT, isPremium } from "./premium";
+import { PREMIUM_CHANGED_EVENT, hasPurchasedPremium } from "./premium";
 import { REMOTE_UPDATE_EVENT } from "./sync";
 
 // AdMob banner (Android only — no-ops on web, where AdMob can't serve).
@@ -38,10 +38,15 @@ async function removeBanner() {
   console.log("[Ads] Banner removed (premium)");
 }
 
-/** Premium removes ads; anything that can flip the entitlement re-checks here. */
+/**
+ * Premium removes ads; anything that can flip the entitlement re-checks here.
+ * Only a real purchase counts — the early-access unlock (PREMIUM_FREE_FOR_ALL)
+ * opens the features but leaves the free tier ad-supported, so the banner keeps
+ * getting exercised by testers.
+ */
 function watchEntitlement() {
   const check = () => {
-    if (isPremium()) void removeBanner();
+    if (hasPurchasedPremium()) void removeBanner();
   };
   window.addEventListener(PREMIUM_CHANGED_EVENT, check);
   window.addEventListener(REMOTE_UPDATE_EVENT, check);
@@ -55,7 +60,7 @@ export async function initAds() {
     watching = true;
     watchEntitlement();
   }
-  if (isPremium()) {
+  if (hasPurchasedPremium()) {
     console.log("[Ads] Skipped — premium entitlement active");
     return;
   }

@@ -50,11 +50,30 @@ const UNLOCK_ENDPOINT = (import.meta.env.VITE_PREMIUM_UNLOCK_URL as string | und
 export const WEB_GATE_ENABLED =
   (import.meta.env.VITE_PREMIUM_WEB_GATE as string | undefined) !== "false";
 
+/**
+ * Early-access switch: treat everyone as Premium, with no purchase.
+ *
+ * On while the app isn't on Play production — testers have no way to buy the
+ * product, so gating features behind it would leave most of the app untestable.
+ * Every premium *feature* (browser access, dictation) is open; the AdMob banner
+ * is deliberately not affected, so the free Android tier still looks the way it
+ * will ship (see hasPurchasedPremium in ads.ts).
+ *
+ * Nothing is written to storage for this — no synthetic entitlement reaches
+ * sync — so flipping it back off returns every account to its real state, and
+ * genuine purchases made meanwhile are untouched.
+ *
+ * To end early access: set VITE_PREMIUM_FREE_FOR_ALL=false, or change the
+ * default below once the paid release is live.
+ */
+export const PREMIUM_FREE_FOR_ALL =
+  (import.meta.env.VITE_PREMIUM_FREE_FOR_ALL as string | undefined) !== "false";
+
 export function isUnlockServiceConfigured(): boolean {
   return UNLOCK_ENDPOINT.length > 0;
 }
 
-export type PremiumSource = "play" | "manual";
+export type PremiumSource = "play" | "manual" | "free";
 
 export type Entitlement = {
   active: true;
@@ -80,6 +99,22 @@ type RevokedRecord = { active: false; revokedAt: string; reason: string };
 
 type PremiumRecord = Entitlement | RevokedRecord;
 
+/**
+ * Stands in for a purchase while PREMIUM_FREE_FOR_ALL is on. `source: "free"`
+ * is how the UI tells it apart from a real one; verified/emailSent are true so
+ * no unlock-service call is ever made on its behalf.
+ */
+const FREE_ENTITLEMENT: Entitlement = Object.freeze({
+  active: true,
+  source: "free",
+  productId: PREMIUM_PRODUCT_ID,
+  orderId: null,
+  purchasedAt: new Date(0).toISOString(),
+  verified: true,
+  emailSent: true,
+});
+
+/** The real, purchased entitlement — never the free-for-all stand-in. */
 export function getEntitlement(): Entitlement | null {
   const stored = loadJSON<PremiumRecord | null>(STORAGE_KEYS.premium, null);
   // Defensive: a half-written or hand-edited record shouldn't unlock anything.
@@ -87,7 +122,21 @@ export function getEntitlement(): Entitlement | null {
   return stored;
 }
 
+/** What the feature gates ask: a purchase, or early access standing in for one. */
+export function getEffectiveEntitlement(): Entitlement | null {
+  return getEntitlement() ?? (PREMIUM_FREE_FOR_ALL ? FREE_ENTITLEMENT : null);
+}
+
 export function isPremium(): boolean {
+  return getEffectiveEntitlement() !== null;
+}
+
+/**
+ * True only for an entitlement someone actually paid for. Use this for perks
+ * that early access deliberately doesn't hand out (ad removal), never for
+ * feature gates — those go through isPremium/usePremium.
+ */
+export function hasPurchasedPremium(): boolean {
   return getEntitlement() !== null;
 }
 
@@ -234,10 +283,10 @@ export function usePremium(): Entitlement | null {
   // Seeded synchronously so an existing customer never sees a frame of the
   // locked screen. getEntitlement is SSR-safe (loadJSON returns the fallback
   // without a window), so prerender still yields null.
-  const [entitlement, setEntitlement] = useState<Entitlement | null>(getEntitlement);
+  const [entitlement, setEntitlement] = useState<Entitlement | null>(getEffectiveEntitlement);
 
   useEffect(() => {
-    const read = () => setEntitlement(getEntitlement());
+    const read = () => setEntitlement(getEffectiveEntitlement());
     read();
     window.addEventListener(PREMIUM_CHANGED_EVENT, read);
     window.addEventListener(REMOTE_UPDATE_EVENT, read);

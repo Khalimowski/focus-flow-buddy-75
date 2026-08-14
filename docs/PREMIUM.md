@@ -8,6 +8,31 @@ One-time Play purchase that unlocks two things:
 Android itself stays free and ad-supported. That's deliberate: the phone app is
 the shop window, and it's the only place Play Billing can run.
 
+## Early access: premium is currently free for everyone
+
+`PREMIUM_FREE_FOR_ALL` in `premium.ts` is **on**. The app is not on Play
+production yet, so nobody can buy the product — gating features behind it would
+leave most of the app untestable for testers.
+
+What the switch does:
+
+- `isPremium()` / `usePremium()` return a stand-in entitlement with
+  `source: "free"`, so the web `PremiumGate` never appears and dictation works
+  for everyone.
+- **Nothing is written to storage**, so no synthetic entitlement reaches sync.
+  Flipping the switch off returns every account to its real state, and real
+  purchases made meanwhile are untouched.
+- The AdMob banner is *not* affected: `ads.ts` asks `hasPurchasedPremium()`,
+  which only a real purchase satisfies. The free tier keeps looking the way it
+  will ship, and the banner keeps getting exercised.
+- Settings shows an "Everything is unlocked" card instead of a buy button —
+  offering to sell what's currently free would be misleading. Restore stays
+  available on Android.
+
+To end early access: set `VITE_PREMIUM_FREE_FOR_ALL=false` (build env) or change
+the default in `premium.ts`. Everything below describes the paid behaviour that
+returns when it's off.
+
 ## How an unlock travels
 
 ```

@@ -12,13 +12,17 @@ import {
   type PremiumProduct,
 } from "@/lib/billing";
 
-/** Perk list, shared by the settings section and the web lock screen. */
-export function PremiumPerks() {
+/**
+ * Perk list, shared by the settings section and the web lock screen.
+ * `withoutAds` drops the ad-free line for the early-access card, where the
+ * features are open but the banner still runs.
+ */
+export function PremiumPerks({ withoutAds = false }: { withoutAds?: boolean } = {}) {
   const { t } = useTranslation();
   const perks = [
     t("premium_perk_web"),
     t("premium_perk_voice"),
-    t("premium_perk_ads"),
+    ...(withoutAds ? [] : [t("premium_perk_ads")]),
     t("premium_perk_sync"),
   ];
   return (
@@ -114,6 +118,33 @@ export function PremiumSection() {
       setBusy(false);
     }
   };
+
+  // Early access: everyone has the features, nobody has a purchase. Say so
+  // plainly instead of showing "Premium is active" (which would claim a
+  // purchase that isn't there) or a buy button for something already free.
+  if (entitlement?.source === "free") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-mint" />
+          <span className="text-sm font-semibold">{t("premium_free_all_title")}</span>
+        </div>
+        <p className="text-xs text-muted-foreground">{t("premium_free_all_body")}</p>
+        <PremiumPerks withoutAds />
+        {isBillingSupported() && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-muted-foreground"
+            disabled={busy}
+            onClick={handleRestore}
+          >
+            <RotateCw className="mr-1.5 size-3.5" /> {t("premium_restore")}
+          </Button>
+        )}
+      </div>
+    );
+  }
 
   if (entitlement) {
     return (

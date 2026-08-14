@@ -453,6 +453,9 @@ export const translations = {
     premium_email_unavailable: "Email delivery isn't set up for this build.",
     premium_verified: "Purchase verified with Google Play",
     premium_unverified: "Waiting on verification from Google Play",
+    premium_free_all_title: "Everything is unlocked",
+    premium_free_all_body:
+      "While FlowDay is in early access, every Premium feature is free for everyone — no purchase needed. Try it all and tell us what breaks.",
     loading: "Loading…",
   },
   pl: {
@@ -776,6 +779,9 @@ export const translations = {
     premium_email_unavailable: "Wysyłka e-maili nie jest skonfigurowana w tej wersji.",
     premium_verified: "Zakup potwierdzony przez Google Play",
     premium_unverified: "Oczekiwanie na potwierdzenie z Google Play",
+    premium_free_all_title: "Wszystko jest odblokowane",
+    premium_free_all_body:
+      "Dopóki FlowDay jest we wczesnym dostępie, każda funkcja Premium jest darmowa dla wszystkich — bez żadnego zakupu. Przetestuj wszystko i daj znać, co nie działa.",
     loading: "Wczytywanie…",
   }
 };

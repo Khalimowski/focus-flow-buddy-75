@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.8";
+export const APP_VERSION = "1.7.9";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.7.9",
+    items: {
+      en: [
+        "Every Premium feature is free for everyone while FlowDay is in early access — the browser version and voice input included, with nothing to buy.",
+        "Open flowday.day in your browser, sign in with the same account, and everything's there.",
+      ],
+      pl: [
+        "Każda funkcja Premium jest teraz darmowa dla wszystkich, dopóki FlowDay jest we wczesnym dostępie — łącznie z wersją przeglądarkową i dodawaniem zadań głosem. Nic nie trzeba kupować.",
+        "Otwórz flowday.day w przeglądarce, zaloguj się tym samym kontem i wszystko tam jest.",
+      ],
+    },
+  },
   {
     version: "1.7.8",
     items: {

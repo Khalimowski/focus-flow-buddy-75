@@ -12,6 +12,10 @@ In practice this only bites on Android, which is otherwise free and
 ad-supported; the browser build is behind `PremiumGate` in its entirety, so
 anyone who can see the composer already has premium.
 
+While `PREMIUM_FREE_FOR_ALL` is on (see `docs/PREMIUM.md`), `usePremium()`
+answers yes for everyone, so the locked state above is unreachable — the mic
+just works. It comes back when early access ends.
+
 The mic next to the add button on the **Tasks** tab dictates a task title.
 Recognition is [Vosk](https://alphacephei.com/vosk/) — a WASM build of Kaldi via
 [`vosk-browser`](https://github.com/ccoreilly/vosk-browser) — running inside the
