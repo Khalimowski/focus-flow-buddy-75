@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.7.9";
+export const APP_VERSION = "1.8.0";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.0",
+    items: {
+      en: [
+        "The Polish translation now reads the way a native speaker would actually write it, rather than like a translation.",
+      ],
+      pl: [
+        "Polskie tłumaczenie brzmi teraz tak, jak napisałby je Polak, a nie jak tłumaczenie — mniej sztywnych zwrotów, więcej normalnego języka.",
+      ],
+    },
+  },
   {
     version: "1.7.9",
     items: {
