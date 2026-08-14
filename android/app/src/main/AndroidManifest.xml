@@ -39,12 +39,12 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <!-- AdMob app id — Google's public TEST id. Replace with the real
-             ca-app-pub-…~… id from the AdMob console before release
-             (see src/lib/ads.ts for the full go-live checklist). -->
+        <!-- AdMob app id for FlowDay (real, not the test id). Must stay in
+             sync with the publisher id in public/app-ads.txt and with
+             BANNER_AD_ID in src/lib/ads.ts. -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
+            android:value="ca-app-pub-4324430922370171~3399791129" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

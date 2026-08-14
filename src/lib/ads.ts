@@ -4,14 +4,17 @@ import { REMOTE_UPDATE_EVENT } from "./sync";
 
 // AdMob banner (Android only — no-ops on web, where AdMob can't serve).
 //
-// Still running on Google's public TEST ids, so the banner keeps serving test
-// creatives regardless of the isTesting flag below. Remaining go-live steps:
-// (1) create the app + a banner ad unit in the AdMob console and replace
-// BANNER_AD_ID below, (2) replace the APPLICATION_ID meta-data in
-// android/app/src/main/AndroidManifest.xml. Real ads only serve once AdMob
-// approves the app (usually needs the Play Store listing linked +
-// app-ads.txt).
-const BANNER_AD_ID = "ca-app-pub-3940256099942544/6300978111";
+// Live AdMob ids (no longer Google's public test ids). Three things have to
+// agree, or the banner silently stops filling: this ad unit, the
+// APPLICATION_ID meta-data in android/app/src/main/AndroidManifest.xml, and
+// the publisher id in public/app-ads.txt — all under publisher
+// pub-4324430922370171.
+//
+// Expect no-fill until AdMob approves the app: that needs the Play listing
+// linked and app-ads.txt crawled at https://flowday.day/app-ads.txt. A
+// FailedToLoad with "no ad config"/no-fill during that window is normal, not
+// a wiring bug.
+const BANNER_AD_ID = "ca-app-pub-4324430922370171/5044191074";
 
 // Master switch: flip to false to pull the banner (everything below —
 // consent flow, layout padding, banner request — stays wired up and dormant).
