@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.3";
+export const APP_VERSION = "1.8.4";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.4",
+    items: {
+      en: [
+        "New in the browser version: Insights — see how much of what you planned actually got done, day by day, week by week and month by month.",
+        "It also shows what happens to everything else: how much you reschedule, postpone at the end of the day, or delete — and which day of the week you finish the most on.",
+        "Your phone keeps the tally, so the browser shows what you did on either device.",
+      ],
+      pl: [
+        "Nowość w wersji przeglądarkowej: Podsumowania — zobacz, ile z tego, co zaplanowane, naprawdę udało się zrobić: dzień po dniu, tydzień po tygodniu, miesiąc po miesiącu.",
+        "Widać tam też, co dzieje się z resztą: ile zadań przenosisz, odkładasz wieczorem albo usuwasz — i w który dzień tygodnia kończysz najwięcej.",
+        "Telefon zlicza wszystko po cichu, więc w przeglądarce widzisz to, co robisz na obu urządzeniach.",
+      ],
+    },
+  },
   {
     version: "1.8.3",
     items: {

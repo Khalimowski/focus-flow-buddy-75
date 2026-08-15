@@ -5,6 +5,7 @@ import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle } from "@capacit
 import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
+import { recordStat } from "./stats";
 import { dateKey } from "./utils";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
@@ -658,10 +659,14 @@ export async function initNative() {
           saveJSON(STORAGE_KEYS.tasks, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
+          // Ticked off from the notification shade — same completion as
+          // tapping the circle in the app, and Insights must see both.
+          if (tasks.some(t => t.id === taskId && !t.done)) recordStat('taskCompleted');
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
           const id = hashId("task:" + taskId + Date.now()); // New ID to avoid conflicts
           void scheduleNativeAt(id, extra.title, "Postponed reminder", nextAt, false, taskId);
+          recordStat('taskSnoozed');
         }
       } else if (extra.type === 'nudge') {
         const nudgeId = extra.nudgeId;
@@ -674,10 +679,14 @@ export async function initNative() {
           );
           saveJSON(STORAGE_KEYS.reminders, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
+          if (reminders.some(r => r.id === nudgeId && r.lastFired?.[time] !== dateStr)) {
+            recordStat('nudgeCompleted', 1, dateStr);
+          }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
           const id = hashId("nudge:" + nudgeId + Date.now());
           void scheduleNativeAt(id, extra.title, "Postponed nudge", nextAt, false);
+          recordStat('nudgeSnoozed');
         }
       }
     });

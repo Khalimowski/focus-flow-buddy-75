@@ -21,6 +21,7 @@ export function PremiumPerks({ withoutAds = false }: { withoutAds?: boolean } = 
   const { t } = useTranslation();
   const perks = [
     t("premium_perk_web"),
+    t("premium_perk_insights"),
     t("premium_perk_voice"),
     ...(withoutAds ? [] : [t("premium_perk_ads")]),
     t("premium_perk_sync"),

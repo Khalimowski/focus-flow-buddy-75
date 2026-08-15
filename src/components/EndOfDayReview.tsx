@@ -17,6 +17,7 @@ import { dateKey, generateId, shiftDateKey } from "@/lib/utils";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { unseenEntries } from "@/lib/changelog";
 import { useHistoryStore } from "@/lib/history";
+import { recordStat } from "@/lib/stats";
 import { cancelNative, deleteFromCalendar, hashId, isNative, scheduleNativeAt } from "@/lib/native";
 import { pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 
@@ -219,6 +220,9 @@ export function EndOfDayReview() {
         void removeTaskFromGoogleCalendar(task.id);
       }
       addEvent("task_edited", { id: task.id, newTitle: task.title, movedTo: targetKey, source: "end_of_day" });
+      // Distinct from a plain reschedule: this is the day running out, which is
+      // the pattern the Insights screen is there to make visible.
+      recordStat("taskPostponed");
     }
 
     consume(
@@ -252,6 +256,8 @@ export function EndOfDayReview() {
       }
       void removeTaskFromGoogleCalendar(task.id);
       addEvent("task_edited", { id: task.id, newTitle: task.title, source: "end_of_day", movedTo: "todo" });
+      recordStat("taskToTodo");
+      recordStat("todoCreated");
     }
 
     consume(ids, t("moved_to_todo"));

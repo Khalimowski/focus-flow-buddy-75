@@ -11,6 +11,7 @@ import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar
 import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
 import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { recordStat } from "@/lib/stats";
 import { TimePicker } from "@/components/TimePicker";
 
 type Reminder = {
@@ -141,6 +142,7 @@ export function Reminders() {
     };
     scheduleAll(r);
     addEvent('nudge_created', { label: p.label, preset: true });
+    recordStat('nudgeCreated');
     setItems([...items, r]);
   };
 
@@ -170,6 +172,7 @@ export function Reminders() {
     };
     scheduleAll(r);
     addEvent('nudge_created', { label: label.trim(), preset: false });
+    recordStat('nudgeCreated');
     setItems([...items, r]);
     setLabel("");
     setCustomTimes([""]);
@@ -190,6 +193,7 @@ export function Reminders() {
     if (r) {
       cancelAll(r);
       addEvent('nudge_deleted', { label: r.label });
+      recordStat('nudgeDeleted');
     }
     setItems(items.filter((r) => r.id !== id));
   };

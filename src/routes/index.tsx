@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat, CheckSquare } from "lucide-react";
+import { Bell, BellOff, ListTodo, Repeat, CheckSquare, BarChart3 } from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
@@ -16,6 +16,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { PremiumGate } from "@/components/PremiumGate";
 import { WEB_GATE_ENABLED, usePremium } from "@/lib/premium";
 import { AICoach } from "@/components/AICoach";
+import { Analytics } from "@/components/Analytics";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { WidgetPrompt } from "@/components/WidgetPrompt";
 import { EndOfDayReview } from "@/components/EndOfDayReview";
@@ -42,7 +43,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Tab = "tasks" | "reminders" | "todo";
+type Tab = "tasks" | "reminders" | "todo" | "insights";
 
 // Radix layers (dialogs, sheets, popovers, menus) all dismiss on Escape and
 // mark themselves open in the DOM, so the hardware back button can close the
@@ -164,6 +165,17 @@ function Home() {
     setPerm(p);
   };
 
+  // Insights is the browser version's own premium feature: the phone records
+  // the activity (see lib/stats.ts), the browser is where you sit down and
+  // read it. Deliberately absent on Android, which is the free tier.
+  const showInsights = !isNative() && !!premium;
+  const tabs: { id: Tab; label: string; icon: typeof ListTodo }[] = [
+    { id: "tasks", label: t('tasks'), icon: ListTodo },
+    { id: "todo", label: t('todo'), icon: CheckSquare },
+    { id: "reminders", label: t('nudges'), icon: Repeat },
+    ...(showInsights ? [{ id: "insights" as const, label: t('insights'), icon: BarChart3 }] : []),
+  ];
+
   if (oauthPopup) {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6 text-center text-sm text-muted-foreground">
@@ -225,13 +237,7 @@ function Home() {
       </div>
 
       <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur" data-tour="tabs">
-        {(
-          [
-            { id: "tasks", label: t('tasks'), icon: ListTodo },
-            { id: "todo", label: t('todo'), icon: CheckSquare },
-            { id: "reminders", label: t('nudges'), icon: Repeat },
-          ] as const
-        ).map((t) => {
+        {tabs.map((t) => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
@@ -270,6 +276,7 @@ function Home() {
         {tab === "tasks" && <TaskList onComplete={markToday} />}
         {tab === "todo" && <SimpleToDo />}
         {tab === "reminders" && <Reminders />}
+        {tab === "insights" && showInsights && <Analytics />}
       </motion.section>
 
       <footer className="mt-12 text-center text-[11px] text-muted-foreground">

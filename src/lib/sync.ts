@@ -11,6 +11,7 @@
 // - When the app regains focus: pull again (throttled).
 import { getNeonClient } from "./neon";
 import { STORAGE_KEYS, registerSaveListener } from "./storage";
+import { mergeRemoteStats } from "./stats";
 
 const SYNC_KEYS: string[] = [
   STORAGE_KEYS.tasks,
@@ -25,7 +26,25 @@ const SYNC_KEYS: string[] = [
   // Whether Gmail import / Calendar push are wanted — an account-level choice,
   // unlike the Google OAuth token, which stays on the device that granted it.
   STORAGE_KEYS.googlePrefs,
+  // The Insights counters. Recorded on every device, read on the web — see the
+  // merge exemption below, which is why this one key doesn't obey LWW.
+  STORAGE_KEYS.stats,
 ];
+
+/**
+ * Keys that are *merged* with the local value on pull instead of replacing it.
+ *
+ * Last-writer-wins is right for the lists — one of the two edits genuinely is
+ * the newer one. It is not right for counters: whichever device pushed last
+ * would erase the other's tally for the same day. Each merger folds the pulled
+ * row into local state and reports which side ended up out of date.
+ */
+const MERGE_ON_PULL: Record<
+  string,
+  (remoteValue: unknown) => { merged: unknown; changedLocal: boolean; changedRemote: boolean }
+> = {
+  [STORAGE_KEYS.stats]: mergeRemoteStats,
+};
 
 const META_KEY = "ff.sync.meta.v1";
 
@@ -130,6 +149,25 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
       continue;
     }
     serverKeys.add(row.key);
+
+    const merge = MERGE_ON_PULL[row.key];
+    if (merge) {
+      // Unlike the LWW path this runs even with unpushed local edits — that's
+      // the whole point: both sides' counts have to survive.
+      if (meta[row.key] === row.updated_at && !dirty.has(row.key)) continue;
+      const { merged, changedLocal, changedRemote } = merge(row.value);
+      if (changedLocal) {
+        window.localStorage.setItem(row.key, JSON.stringify(merged));
+        changed = true;
+      }
+      meta[row.key] = row.updated_at;
+      // Anything the server's copy was missing goes straight back up; after
+      // that round trip both sides agree and this stops firing.
+      if (changedRemote) dirty.add(row.key);
+      else dirty.delete(row.key);
+      continue;
+    }
+
     // Skip keys with unpushed local edits — our push below wins (LWW).
     if (meta[row.key] === row.updated_at || dirty.has(row.key)) continue;
     window.localStorage.setItem(row.key, JSON.stringify(row.value));

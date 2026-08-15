@@ -16,6 +16,7 @@ import { MicButton } from "@/components/MicButton";
 import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { recordStat } from "@/lib/stats";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -228,6 +229,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       void pushTaskToGoogleCalendar(newTask);
 
       addEvent('task_created', { title: cleanTitle, hasReminder: !!remindAt, date: dueDate });
+      recordStat('taskCreated');
     } catch (e) {
       console.error("Task add failed", e);
     }
@@ -290,6 +292,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     };
     setTasks(prev => sortTasks([newTask, ...prev]));
     addEvent('task_created', { title: newTask.title, hasReminder: false, date: newTask.dueDate });
+    recordStat('taskCreated');
   };
 
   const startEdit = (task: Task) => {
@@ -354,6 +357,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       });
 
       addEvent('task_edited', { id: idToSync, newTitle: titleToSync });
+      // Only a change of *day* counts as a reschedule — renaming a task, or
+      // nudging its time within the same day, isn't the thing Insights is
+      // asking about.
+      if (oldTask && oldTask.dueDate !== dueDate) recordStat('taskRescheduled');
       cancelEdit();
 
       // 3. Background native sync (don't block the UI)
@@ -440,6 +447,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (!becoming) return;
     onComplete?.();
     addEvent('task_completed', { title: task.title });
+    recordStat('taskCompleted');
 
     // Remove from native notifications and calendar when done
     if (isNative()) {
@@ -466,11 +474,14 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
     void removeTaskFromGoogleCalendar(id);
 
+    recordStat('taskToTodo');
+    recordStat('todoCreated');
     notify({ title: t('moved_to_todo'), body: task.title, kind: "info" });
   };
 
   const toggleNudge = (reminderId: string, time: string) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    let ticked = false;
     const updated = reminders.map(r => {
       if (r.id !== reminderId) return r;
       const lastFired = { ...r.lastFired };
@@ -478,11 +489,15 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         delete lastFired[time];
       } else {
         lastFired[time] = dateStr;
+        ticked = true;
       }
       return { ...r, lastFired };
     });
     setReminders(updated);
     saveJSON(STORAGE_KEYS.reminders, updated);
+    // Counted against the day being ticked off, not the moment of the click —
+    // catching up on yesterday's nudge belongs to yesterday.
+    if (ticked) recordStat('nudgeCompleted', 1, dateStr);
   };
 
   const remove = async (id: string) => {
@@ -501,6 +516,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       void removeTaskFromGoogleCalendar(id);
 
       addEvent('task_deleted', { title: taskToDelete.title });
+      recordStat('taskDeleted');
     } catch (e) {
       console.error("Task remove failed", e);
       setTasks(prev => prev.filter((item) => item.id !== id));

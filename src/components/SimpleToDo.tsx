@@ -7,6 +7,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { generateId } from "@/lib/utils";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { recordStat } from "@/lib/stats";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeAt, hashId } from "@/lib/native";
 import { format, isSameDay, startOfDay } from "date-fns";
@@ -101,6 +102,7 @@ export function SimpleToDo() {
     setItems(prev => sortItems([newItem, ...prev]));
     setTitle("");
     addEvent('task_created', { title: newItem.title });
+    recordStat('todoCreated');
   };
 
   const startEdit = (item: ToDoItem) => {
@@ -123,6 +125,9 @@ export function SimpleToDo() {
   };
 
   const toggle = (id: string) => {
+    // Read the outcome outside the updater — React may re-run it, and a
+    // double-counted tick would quietly inflate the Insights numbers.
+    const becoming = items.some((item) => item.id === id && !item.done);
     setItems(prev => {
       const updated = prev.map((item) => {
         if (item.id !== id) return item;
@@ -130,10 +135,12 @@ export function SimpleToDo() {
       });
       return sortItems(updated);
     });
+    if (becoming) recordStat('todoCompleted');
   };
 
   const remove = (id: string) => {
     setItems(prev => prev.filter((item) => item.id !== id));
+    recordStat('todoDeleted');
   };
 
   const startScheduling = (item: ToDoItem) => {
@@ -166,6 +173,8 @@ export function SimpleToDo() {
     setItems(prev => prev.filter(x => x.id !== item.id));
     setSchedulingId(null);
     addEvent('task_created', { title: item.title, hasReminder: !!remindAt, date: dueDate, source: 'todo' });
+    recordStat('todoScheduled');
+    recordStat('taskCreated');
     notify({ title: t('moved_to_tasks'), body: item.title, kind: "info" });
   };
 

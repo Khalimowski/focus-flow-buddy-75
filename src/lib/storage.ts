@@ -65,10 +65,17 @@ export const STORAGE_KEYS = {
   // The Google integration toggles, mirrored out of the settings store so they
   // can sync (see i18n.ts). The rest of that store stays device-local.
   googlePrefs: "ff.googleprefs.v1",
+  // Per-day activity counters behind the Insights screen (see lib/stats.ts).
+  // Synced, but merged rather than overwritten on pull — see sync.ts.
+  stats: "ff.stats.v1",
   // Device-local on purpose (kept out of SYNC_KEYS): whether this phone has
   // been offered the home-screen widget, and until when it's snoozed. Another
   // device's answer means nothing.
   widgetPrompt: "ff.widgetprompt.v1",
+  // Also device-local, and deliberately so: the id this install writes its
+  // stats counters under, which is what lets two devices' counts be added up
+  // instead of overwriting each other (see lib/stats.ts).
+  deviceId: "ff.device.v1",
   // Also device-local: the last day whose end-of-day review was answered. The
   // *tasks* it moves sync; which screen you dismissed at 23:30 does not.
   endOfDay: "ff.eod.v1",
