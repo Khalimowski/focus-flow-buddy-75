@@ -39,7 +39,7 @@ const sortItems = (list: ToDoItem[]) => {
   });
 };
 
-export function SimpleToDo() {
+export function SimpleToDo({ onComplete }: { onComplete?: () => void }) {
   const [items, setItems] = useState<ToDoItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
@@ -123,13 +123,25 @@ export function SimpleToDo() {
   };
 
   const toggle = (id: string) => {
-    setItems(prev => {
-      const updated = prev.map((item) => {
-        if (item.id !== id) return item;
-        return { ...item, done: !item.done };
-      });
-      return sortItems(updated);
-    });
+    // Side effects stay OUT of the setItems updater — same reason as TaskList:
+    // React may run an updater twice, and notifying the streak/history stores
+    // from in there is a "setState while rendering" error.
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
+    const becoming = !item.done;
+
+    setItems(prev =>
+      sortItems(prev.map((x) => (x.id === id ? { ...x, done: becoming } : x))),
+    );
+
+    if (!becoming) return;
+    // A To-Do is a task as far as the streak is concerned. The strip's own
+    // copy says "complete one task to keep the chain alive", and this tab
+    // calls its items tasks throughout (same placeholder, same add button,
+    // same task_created event) — so ticking one off has to count, or the
+    // header sits at 0 while the user has visibly done what it asked.
+    onComplete?.();
+    addEvent('task_completed', { title: item.title });
   };
 
   const remove = (id: string) => {
@@ -173,15 +185,21 @@ export function SimpleToDo() {
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
         <div className="flex items-center gap-3">
-          <Input
-            name="todo-title"
-            autoComplete="off"
-            placeholder={t('task_input_placeholder')}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
-          />
+          {/* Same tap-target treatment as the Tasks composer: the label pulls
+              the card's padding into the field so the whole strip left of the
+              + button focuses it. flex-1 stays on the label — this container
+              is a row, so it sizes the width, which is what it should do. */}
+          <label className="-my-4 flex-1 cursor-text py-4">
+            <Input
+              name="todo-title"
+              autoComplete="off"
+              placeholder={t('task_input_placeholder')}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              className="w-full bg-transparent border-none text-base focus-visible:ring-0 px-0 h-11"
+            />
+          </label>
           <Button onClick={add} size="sm" aria-label={t('add_task')} className="size-8 rounded-full p-0 shadow-soft shrink-0">
             <Plus className="size-4" />
           </Button>

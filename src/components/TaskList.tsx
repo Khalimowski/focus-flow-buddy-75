@@ -559,15 +559,28 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm" data-tour="add-task">
         <div className="flex flex-col gap-3">
-          <Input
-            name="task-title"
-            autoComplete="off"
-            placeholder={t('task_input_placeholder')}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
-          />
+          {/* The label reclaims the card's top padding as part of the tap
+              target. This card is ~120px tall but the input was only 32px of
+              it, so a thumb aimed at "the field" mostly landed on padding — or
+              on the time/date row below, which opens a picker instead of the
+              keyboard, leaving the field looking like it refused the tap. The
+              To-Do composer never showed this because its card is half the
+              height, so the same aim hits.
+
+              h-11 (not flex-1/h-auto): in this *column* flex container flex-1
+              resolves to flex-basis:0% on the HEIGHT, and only the automatic
+              minimum size kept the field from collapsing to nothing. */}
+          <label className="-mx-4 -mt-4 block cursor-text px-4 pt-4">
+            <Input
+              name="task-title"
+              autoComplete="off"
+              placeholder={t('task_input_placeholder')}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && add()}
+              className="w-full bg-transparent border-none text-base focus-visible:ring-0 px-0 h-11"
+            />
+          </label>
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <div className="flex gap-2">
               <TimePicker

@@ -268,7 +268,7 @@ function Home() {
         transition={{ duration: 0.2 }}
       >
         {tab === "tasks" && <TaskList onComplete={markToday} />}
-        {tab === "todo" && <SimpleToDo />}
+        {tab === "todo" && <SimpleToDo onComplete={markToday} />}
         {tab === "reminders" && <Reminders />}
       </motion.section>
 

@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.2";
+export const APP_VERSION = "1.8.3";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.3",
+    items: {
+      en: [
+        "Ticking off a To-Do now keeps your streak alive, just like finishing a task does.",
+        "The \"What needs to be done?\" box on the Tasks tab is easier to hit — tapping anywhere along it opens the keyboard, instead of the tap sometimes landing on the time and date row below.",
+      ],
+      pl: [
+        "Odhaczenie pozycji z listy To-Do podtrzymuje teraz serię, tak samo jak ukończenie zadania.",
+        "W pole „Co trzeba zrobić?” na karcie Zadania łatwiej trafić — dotknięcie w dowolnym miejscu otwiera klawiaturę, zamiast czasem trafiać w rząd z godziną i datą poniżej.",
+      ],
+    },
+  },
   {
     version: "1.8.0",
     items: {
