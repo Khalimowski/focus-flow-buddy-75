@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.2";
+export const APP_VERSION = "1.8.3";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.3",
+    items: {
+      en: [
+        "AI Flow Coach now shows it's in testing so you know what to expect.",
+      ],
+      pl: [
+        "Asystent AI Flow Coach teraz wyraźnie pokazuje, że jest testowany.",
+      ],
+    },
+  },
   {
     version: "1.8.0",
     items: {

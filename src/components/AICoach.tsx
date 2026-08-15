@@ -416,7 +416,12 @@ export function AICoach() {
               <div className="flex-1 min-w-0 pr-6 text-left">
                 {step === "greeting" ? (
                   <>
-                    <h3 className="text-sm font-bold tracking-tight">AI Flow Coach</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold tracking-tight">AI Flow Coach</h3>
+                      <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[8px] font-bold uppercase text-primary">
+                        {t('ai_coach_beta')}
+                      </span>
+                    </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       {t('ai_coach_greeting')}
                     </p>
