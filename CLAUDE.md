@@ -115,6 +115,42 @@ for two days while deploys ran green every day:
   setting (Settings → Build → Branch control) is the real fix; this guard is
   what survives it being changed back. `ALLOW_BRANCH_DEPLOY=1` overrides.
 
+Two more traps, both found on 2026-08-16 after Workers Builds had failed on
+**15 consecutive commits** (last green build 2026-08-12) without anyone
+noticing — manual `wrangler deploy` runs kept production alive and masked it.
+Neither is guarded by a script; both are things to check:
+
+- **`bun.lock` and `package-lock.json` must be updated together.** The builder
+  installs with `bun install --frozen-lockfile`, which fails the build outright
+  rather than reconciling a stale lockfile:
+  `error: lockfile had changes, but lockfile is frozen`. Adding a dependency
+  with npm (or letting Lovable add one) updates only `package-lock.json`, and
+  every CI build dies in install ~18s in, before compile or deploy. After any
+  dependency change run `bun install` and commit `bun.lock` too.
+- **Browser-only packages must not reach `dist/server`.** Wrangler counts every
+  file there against the Worker size limit — **3 MiB gzipped on the free plan**
+  — and this account is on the free plan. `vosk-browser` (2.3 MiB gzipped) put
+  the bundle at 3.12 MiB and failed the deploy with
+  `Worker exceeded the size limit [code: 10027]`. A plain dynamic `import()` is
+  **not** enough: the SPA-shell build still emits a server copy. Guard the
+  import site so the server build can statically drop it —
+  `if (import.meta.env.SSR) throw ...` immediately before the `await import()`,
+  as in `src/lib/speech.ts`. That took `dist/server` from 3.12 MiB to 0.88 MiB.
+
+  **`vite.config.ts` `ssr.external` does not do this** (verified on a clean
+  build): nitro re-bundles `dist/server` after Vite and re-inlines whatever is
+  listed, so entries there shrink nothing. Check headroom with:
+
+  ```bash
+  node -e "const{readdirSync,readFileSync}=require('fs'),{gzipSync}=require('zlib'),{join}=require('path');let t=0;(function w(d){for(const f of readdirSync(d,{withFileTypes:true})){const p=join(d,f.name);f.isDirectory()?w(p):t+=gzipSync(readFileSync(p)).length}})('dist/server');console.log((t/1048576).toFixed(2)+' MiB / 3.00 MiB')"
+  ```
+
+Build failures are invisible from the git side — GitHub shows only a red check.
+The build log lives at Workers & Pages → focus-flow-buddy-75 → the failed build,
+and the dashboard's log pane is virtualized (scrolling/`innerText` won't reach
+the end); fetch it whole from the dashboard's own API instead:
+`/api/v4/accounts/<account>/builds/builds/<build-id>/logs`.
+
 To deploy by hand from a verified build, pass the name explicitly rather than
 trusting config discovery:
 
