@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.5";
+export const APP_VERSION = "1.8.6";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.6",
+    items: {
+      en: [
+        "Ticked-off to-dos now tuck themselves into a Done group at the bottom of the list, so what's left stays front and centre. Tap it to look back at what you've finished.",
+      ],
+      pl: [
+        "Odhaczone zadania z listy To-Do chowają się teraz w grupie „Zrobione” na dole, żeby na wierzchu zostało to, co jeszcze przed Tobą. Kliknij, żeby zobaczyć, co masz już za sobą.",
+      ],
+    },
+  },
   {
     version: "1.8.4",
     items: {

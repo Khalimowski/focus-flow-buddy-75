@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Edit2, X, Save, Calendar as CalendarIcon, ListTodo } from "lucide-react";
+import { Check, Plus, Trash2, Edit2, X, Save, Calendar as CalendarIcon, ListTodo, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -51,6 +51,9 @@ export function SimpleToDo() {
   const [schedulingId, setSchedulingId] = useState<string | null>(null);
   const [schedTime, setSchedTime] = useState("");
   const [schedDate, setSchedDate] = useState<Date>(startOfDay(new Date()));
+
+  // Ticked-off items live in their own collapsed group so the open list stays short.
+  const [showDone, setShowDone] = useState(false);
 
   const { t, language } = useTranslation();
   const { calendarSync } = useI18nStore();
@@ -178,6 +181,135 @@ export function SimpleToDo() {
     notify({ title: t('moved_to_tasks'), body: item.title, kind: "info" });
   };
 
+  const openItems = useMemo(() => items.filter((item) => !item.done), [items]);
+  const doneItems = useMemo(() => items.filter((item) => item.done), [items]);
+
+  const listClass = "flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3";
+
+  const renderItem = (item: ToDoItem) => (
+    <motion.li
+      key={item.id}
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -10 }}
+      className="flex items-center gap-3 rounded-2xl border bg-card/40 border-border p-3 backdrop-blur"
+    >
+      {schedulingId === item.id ? (
+        <div className="flex flex-col gap-3 w-full p-1">
+          <div className="text-sm font-medium break-words">{item.title}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1.5 shrink-0">
+              <TimePicker
+                value={schedTime}
+                onChange={setSchedTime}
+                clearable
+                size="sm"
+                className="w-[84px] justify-center"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
+                    <CalendarIcon className="size-2.5" />
+                    {isSameDay(schedDate, new Date()) ? t('today') : format(schedDate, shortDateFormat, { locale: dateLocale })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
+                  <Calendar
+                    mode="single"
+                    selected={schedDate}
+                    onSelect={(d) => d && setSchedDate(startOfDay(d))}
+                    initialFocus
+                    weekStartsOn={1}
+                    locale={dateLocale}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex gap-1 ml-auto shrink-0">
+              <Button size="sm" variant="ghost" onClick={() => setSchedulingId(null)} className="h-7 px-1.5 text-[10px]">
+                <X className="size-3 mr-1" /> {t('cancel')}
+              </Button>
+              <Button size="sm" onClick={() => moveToTasks(item)} className="h-7 px-2.5 text-[10px] shadow-sm">
+                <ListTodo className="size-3 mr-1" /> {t('move_to_tasks')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : editingId === item.id ? (
+        <div className="flex items-center gap-2 w-full">
+          <Input
+            name="todo-edit-title"
+            autoComplete="off"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+            className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
+            autoFocus
+          />
+          <div className="flex gap-1 shrink-0">
+            <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 w-8 p-0">
+              <X className="size-4" />
+            </Button>
+            <Button size="sm" onClick={saveEdit} className="h-8 w-8 p-0">
+              <Save className="size-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => toggle(item.id)}
+            aria-label={item.title}
+            aria-pressed={item.done}
+            className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
+              item.done
+                ? "border-mint bg-mint text-mint-foreground"
+                : "border-border hover:border-primary"
+            }`}
+          >
+            {item.done && <Check className="size-3.5" strokeWidth={3} />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className={`text-sm font-medium break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
+              {item.title}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => startScheduling(item)}
+              aria-label={t('move_to_tasks')}
+              title={t('move_to_tasks')}
+              className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
+            >
+              <ListTodo className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => startEdit(item)}
+              aria-label={t('edit')}
+              className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
+            >
+              <Edit2 className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => remove(item.id)}
+              aria-label={t('delete')}
+              className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        </>
+      )}
+    </motion.li>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
@@ -197,142 +329,57 @@ export function SimpleToDo() {
         </div>
       </div>
 
-      <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
+      <ul className={listClass}>
         <AnimatePresence initial={false} mode="popLayout">
-          {items.length === 0 && (
+          {openItems.length === 0 && (
             <motion.li
+              key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2 2xl:col-span-3"
             >
-              {t('tasks_empty')}
+              {items.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>
           )}
-          {items.map((item) => (
-            <motion.li
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="flex items-center gap-3 rounded-2xl border bg-card/40 border-border p-3 backdrop-blur"
-            >
-              {schedulingId === item.id ? (
-                <div className="flex flex-col gap-3 w-full p-1">
-                  <div className="text-sm font-medium break-words">{item.title}</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex gap-1.5 shrink-0">
-                      <TimePicker
-                        value={schedTime}
-                        onChange={setSchedTime}
-                        clearable
-                        size="sm"
-                        className="w-[84px] justify-center"
-                      />
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
-                            <CalendarIcon className="size-2.5" />
-                            {isSameDay(schedDate, new Date()) ? t('today') : format(schedDate, shortDateFormat, { locale: dateLocale })}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
-                          <Calendar
-                            mode="single"
-                            selected={schedDate}
-                            onSelect={(d) => d && setSchedDate(startOfDay(d))}
-                            initialFocus
-                            weekStartsOn={1}
-                            locale={dateLocale}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="flex gap-1 ml-auto shrink-0">
-                      <Button size="sm" variant="ghost" onClick={() => setSchedulingId(null)} className="h-7 px-1.5 text-[10px]">
-                        <X className="size-3 mr-1" /> {t('cancel')}
-                      </Button>
-                      <Button size="sm" onClick={() => moveToTasks(item)} className="h-7 px-2.5 text-[10px] shadow-sm">
-                        <ListTodo className="size-3 mr-1" /> {t('move_to_tasks')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : editingId === item.id ? (
-                <div className="flex items-center gap-2 w-full">
-                  <Input
-                    name="todo-edit-title"
-                    autoComplete="off"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                    className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
-                    autoFocus
-                  />
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-8 w-8 p-0">
-                      <X className="size-4" />
-                    </Button>
-                    <Button size="sm" onClick={saveEdit} className="h-8 w-8 p-0">
-                      <Save className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => toggle(item.id)}
-                    aria-label={item.title}
-                    aria-pressed={item.done}
-                    className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
-                      item.done
-                        ? "border-mint bg-mint text-mint-foreground"
-                        : "border-border hover:border-primary"
-                    }`}
-                  >
-                    {item.done && <Check className="size-3.5" strokeWidth={3} />}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
-                      {item.title}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => startScheduling(item)}
-                      aria-label={t('move_to_tasks')}
-                      title={t('move_to_tasks')}
-                      className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
-                    >
-                      <ListTodo className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => startEdit(item)}
-                      aria-label={t('edit')}
-                      className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
-                    >
-                      <Edit2 className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => remove(item.id)}
-                      aria-label={t('delete')}
-                      className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </motion.li>
-          ))}
+          {openItems.map(renderItem)}
         </AnimatePresence>
       </ul>
+
+      {doneItems.length > 0 && (
+        <div className="flex flex-col gap-2 lg:gap-3">
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            aria-expanded={showDone}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card/40 p-3 text-sm font-semibold text-muted-foreground backdrop-blur transition hover:bg-card/60 hover:text-foreground"
+          >
+            <span className="grid size-8 shrink-0 place-items-center">
+              <ChevronDown className={`size-5 transition-transform ${showDone ? "" : "-rotate-90"}`} />
+            </span>
+            <span className="flex-1 text-left">{t('todo_done_group')}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">{doneItems.length}</span>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showDone && (
+              <motion.div
+                key="done-list"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <ul className={listClass}>
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {doneItems.map(renderItem)}
+                  </AnimatePresence>
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
