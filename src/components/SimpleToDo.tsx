@@ -186,14 +186,20 @@ export function SimpleToDo() {
 
   const listClass = "flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3";
 
-  const renderItem = (item: ToDoItem) => (
+  // `nested` items sit inside the Done card, so they drop the standalone card
+  // treatment and read as rows within it.
+  const renderItem = (item: ToDoItem, nested = false) => (
     <motion.li
       key={item.id}
       layout
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -10 }}
-      className="flex items-center gap-3 rounded-2xl border bg-card/40 border-border p-3 backdrop-blur"
+      className={`flex items-center gap-3 p-3 ${
+        nested
+          ? "rounded-xl border border-border/60 bg-background/60"
+          : "rounded-2xl border bg-card/40 border-border backdrop-blur"
+      }`}
     >
       {schedulingId === item.id ? (
         <div className="flex flex-col gap-3 w-full p-1">
@@ -341,17 +347,17 @@ export function SimpleToDo() {
               {items.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>
           )}
-          {openItems.map(renderItem)}
+          {openItems.map((item) => renderItem(item))}
         </AnimatePresence>
       </ul>
 
       {doneItems.length > 0 && (
-        <div className="flex flex-col gap-2 lg:gap-3">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/40 backdrop-blur">
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
             aria-expanded={showDone}
-            className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card/40 p-3 text-sm font-semibold text-muted-foreground backdrop-blur transition hover:bg-card/60 hover:text-foreground"
+            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:bg-card/60 hover:text-foreground"
           >
             <span className="grid size-8 shrink-0 place-items-center">
               <ChevronDown className={`size-5 transition-transform ${showDone ? "" : "-rotate-90"}`} />
@@ -370,9 +376,9 @@ export function SimpleToDo() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <ul className={listClass}>
+                <ul className={`${listClass} border-t border-border/50 p-3`}>
                   <AnimatePresence initial={false} mode="popLayout">
-                    {doneItems.map(renderItem)}
+                    {doneItems.map((item) => renderItem(item, true))}
                   </AnimatePresence>
                 </ul>
               </motion.div>
