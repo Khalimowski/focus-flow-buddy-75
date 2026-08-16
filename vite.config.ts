@@ -167,6 +167,15 @@ export default defineConfig({
         "@capacitor/splash-screen",
         "@capacitor/local-notifications",
         "capacitor-calendar",
+        // NOTE: entries below this line do NOT shrink dist/server. Verified on
+        // a clean build 2026-08-16 — nitro re-bundles the server output after
+        // Vite, so it re-inlines anything listed here. Keeping browser-only
+        // code out of the Worker needs an `import.meta.env.SSR` guard at the
+        // import site instead (see the dynamic import in src/lib/speech.ts).
+        // recharts is still emitted into dist/server at ~99 KiB gzipped; that
+        // is affordable now the bundle is 0.88 MiB against a 3 MiB cap, but it
+        // is not this line that makes it affordable.
+        "recharts",
       ],
     },
   },

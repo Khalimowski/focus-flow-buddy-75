@@ -219,6 +219,14 @@ async function getModel(
   if (!spec) throw new DictationError("unsupported");
 
   const promise = (async () => {
+    // Dictation is browser-only, but the SPA-shell build still pulled
+    // vosk-browser's 5.6 MB WASM into dist/server, where wrangler counts it
+    // against the Worker's 3 MiB limit — it was 2.3 MiB of a 3.12 MiB bundle
+    // and broke the deploy outright. Vite substitutes a literal for
+    // import.meta.env.SSR, so on the server this reads `if (true) throw`,
+    // which makes the import below unreachable and drops the chunk. Note
+    // `ssr.external` does NOT achieve this: nitro re-bundles dist/server.
+    if (import.meta.env.SSR) throw new DictationError("unsupported");
     const { createModel } = await import("vosk-browser");
     const blob = await fetchModel(spec, onProgress);
     onProgress(1);
