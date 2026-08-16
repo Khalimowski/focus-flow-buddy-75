@@ -161,7 +161,10 @@ export function MicButton({
           : null;
 
   return (
-    <div className="relative shrink-0">
+    // The tour anchor lives here rather than around the caller's slot: it must
+    // only exist when dictation is actually offered, or the tour would
+    // spotlight an empty box.
+    <div className="relative shrink-0" data-tour="voice">
       {hint && (
         <div
           role="status"

@@ -18,7 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useI18nStore, useTranslation, publishGooglePrefs, type VibrationType } from "@/lib/i18n";
+import { useI18nStore, useTranslation, publishGooglePrefs, type TourId, type VibrationType } from "@/lib/i18n";
+import { usePremium } from "@/lib/premium";
 import { notify } from "@/lib/notifications";
 import { APP_VERSION } from "@/lib/changelog";
 import { WHATS_NEW_OPEN_EVENT } from "@/components/WhatsNew";
@@ -61,9 +62,20 @@ export function Settings() {
     googleGmail, setGoogleGmail,
     googleCalendarSync, setGoogleCalendarSync,
     googleNudgeSync, setGoogleNudgeSync,
-    setTutorialCompleted
+    setTutorialCompleted, resetTour
   } = useI18nStore();
   const { t } = useTranslation();
+  const entitlement = usePremium();
+  // Which follow-up tour this device can replay: the phone shows the one about
+  // what a purchase unlocked, the browser the one about its own screen. Neither
+  // is offered where it wouldn't have anything to point at.
+  const featureTour: TourId | null = isNative()
+    ? entitlement && entitlement.source !== "free"
+      ? "premium"
+      : null
+    : entitlement
+      ? "web"
+      : null;
   const [googleEmail, setGoogleEmail] = useState<string | null>(() => getGoogleConnection()?.email ?? null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [widgetPin, setWidgetPin] = useState<WidgetPinState>({ supported: false, added: false });
@@ -583,6 +595,19 @@ export function Settings() {
               <GraduationCap className="mr-2 size-4" />
               {t('replay_tutorial')}
             </Button>
+            {featureTour && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setOpen(false);
+                  setTimeout(() => resetTour(featureTour), 300);
+                }}
+              >
+                <Sparkles className="mr-2 size-4" />
+                {t('replay_feature_tour')}
+              </Button>
+            )}
             <Button
               variant="outline"
               className="w-full"

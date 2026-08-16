@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.6";
+export const APP_VERSION = "1.8.7";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,23 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.7",
+    items: {
+      en: [
+        "The tutorial now covers more of the app: dictating a task with the mic, the month calendar, and — in the browser — Insights.",
+        "Buy Premium and you get a short tour of what it just unlocked: the browser version, voice input, and no more ads.",
+        "Opening FlowDay in your browser for the first time now gets its own quick introduction, so Insights and dictation don't stay hidden.",
+        "Settings can replay either tour whenever you want.",
+      ],
+      pl: [
+        "Samouczek pokazuje teraz więcej: dyktowanie zadania mikrofonem, kalendarz miesiąca, a w przeglądarce także Podsumowania.",
+        "Po zakupie Premium zobaczysz krótki przewodnik po tym, co się właśnie otworzyło: wersja w przeglądarce, dyktowanie i koniec z reklamami.",
+        "Pierwsze otwarcie FlowDay w przeglądarce ma teraz własne krótkie wprowadzenie, żeby Podsumowania i dyktowanie nie zostały niezauważone.",
+        "W Ustawieniach powtórzysz każdy z przewodników, kiedy zechcesz.",
+      ],
+    },
+  },
   {
     version: "1.8.6",
     items: {

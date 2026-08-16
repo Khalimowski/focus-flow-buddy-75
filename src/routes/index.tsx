@@ -81,7 +81,7 @@ function Home() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const { streak, markToday } = useStreak();
   const { t } = useTranslation();
-  const { tutorialCompleted, theme, guestMode } = useI18nStore();
+  const { theme, guestMode } = useI18nStore();
   const premium = usePremium();
   // True when this window is the Google OAuth popup landing back on the app
   // URL: don't boot the app here — finish the token handshake and close.
@@ -197,7 +197,9 @@ function Home() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-24 xl:max-w-6xl 2xl:max-w-[1600px]">
-      {!tutorialCompleted && <Onboarding />}
+      {/* Decides for itself which tour is due — first run, or a follow-up once
+          Premium or the browser version brings new things into reach. */}
+      <Onboarding />
       <AICoach />
       <InAppToaster />
       <EndOfDayReview />
@@ -244,6 +246,8 @@ function Home() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              // Insights is the one tab the tours point at on its own.
+              data-tour={t.id === "insights" ? "insights" : undefined}
               // min-w-0 + truncate: the labels are translated, and Polish
               // "Przypominajki" ran off the right edge of a 375px screen.
               className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-sm font-medium transition sm:gap-2 sm:px-3 ${

@@ -1,43 +1,179 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Flame, Sparkles, ChevronRight, ListTodo, CalendarDays, CalendarClock, Settings as SettingsIcon } from "lucide-react";
+import {
+  BarChart3,
+  BadgeCheck,
+  Check,
+  Flame,
+  Globe,
+  Sparkles,
+  ChevronRight,
+  ListTodo,
+  CalendarDays,
+  CalendarClock,
+  Mic,
+  Settings as SettingsIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { useI18nStore, useTranslation, type TourId } from "@/lib/i18n";
+import { usePremium } from "@/lib/premium";
+import { isNative } from "@/lib/native";
 
 type Hole = { top: number; left: number; width: number; height: number };
+
+type Step = {
+  /** `data-tour` value to spotlight, or null for a centred card. */
+  target: string | null;
+  icon: LucideIcon;
+  color: string;
+  title: string;
+  desc: string;
+};
+
+/** The translator, with its keys still typed against the `en` dictionary. */
+type T = ReturnType<typeof useTranslation>["t"];
 
 const PAD = 8;
 const POPUP_W = 340;
 const POPUP_GAP = 14;
 
+/**
+ * How long to wait before a tour appears. Some anchors only exist after their
+ * own mount effect has run (the mic button asks whether dictation is possible
+ * first), and a step whose element is missing gets dropped — so measuring on
+ * the same tick as this component's mount would silently lose it.
+ */
+const SETTLE_MS = 400;
+
+/** Follow-up tours, in the order they'd be offered. 'main' is handled apart. */
+const FOLLOW_UPS: TourId[] = ["premium", "web"];
+
+/** An open sheet/dialog, which a tour has to wait out before it starts. */
+const OPEN_LAYER_SELECTOR = ['[role="dialog"]', '[role="alertdialog"]']
+  .map((role) => `${role}[data-state="open"]`)
+  .join(",");
+
+/**
+ * The first-run tour, built for the device it's running on: the mic step is
+ * dropped where dictation isn't offered (that anchor simply isn't rendered) and
+ * Insights only exists in the browser. Finishing it counts as having seen the
+ * follow-up tours too — it already covered their ground.
+ */
+function mainSteps(t: T, native: boolean): Step[] {
+  return [
+    { target: null, icon: Sparkles, color: "from-primary to-mint", title: t("onboarding_welcome"), desc: t("tagline") },
+    { target: "streak", icon: Flame, color: "from-orange-400 to-red-400", title: t("tour_streak_title"), desc: t("tour_streak_desc") },
+    { target: "tabs", icon: ListTodo, color: "from-blue-500 to-indigo-500", title: t("tour_tabs_title"), desc: t("tour_tabs_desc") },
+    { target: "days", icon: CalendarDays, color: "from-emerald-400 to-teal-500", title: t("tour_days_title"), desc: t("tour_days_desc") },
+    { target: "add-task", icon: Check, color: "from-primary to-mint", title: t("onboarding_tasks_title"), desc: t("onboarding_tasks_desc") },
+    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_voice_title"), desc: t("tour_voice_desc") },
+    { target: "view-toggle", icon: CalendarClock, color: "from-sky-400 to-cyan-500", title: t("tour_views_title"), desc: t("tour_views_desc") },
+    ...(native
+      ? []
+      : [{ target: "insights", icon: BarChart3, color: "from-amber-400 to-orange-500", title: t("tour_insights_title"), desc: t("tour_insights_desc") }]),
+    { target: "settings", icon: SettingsIcon, color: "from-violet-500 to-purple-500", title: t("tour_settings_title"), desc: t("tour_settings_desc") },
+  ];
+}
+
+/** Shown once, on the device where a Premium purchase landed. */
+function premiumSteps(t: T): Step[] {
+  return [
+    { target: null, icon: BadgeCheck, color: "from-primary to-mint", title: t("tour_premium_welcome_title"), desc: t("tour_premium_welcome_desc") },
+    { target: "settings", icon: Globe, color: "from-sky-400 to-cyan-500", title: t("tour_premium_web_title"), desc: t("tour_premium_web_desc") },
+    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_premium_voice_title"), desc: t("tour_premium_voice_desc") },
+    { target: null, icon: Sparkles, color: "from-amber-400 to-orange-500", title: t("tour_premium_extras_title"), desc: t("tour_premium_extras_desc") },
+  ];
+}
+
+/** Shown once per browser, for someone who already knows the phone app. */
+function webSteps(t: T): Step[] {
+  return [
+    { target: null, icon: Globe, color: "from-primary to-mint", title: t("tour_web_welcome_title"), desc: t("tour_web_welcome_desc") },
+    { target: "insights", icon: BarChart3, color: "from-amber-400 to-orange-500", title: t("tour_insights_title"), desc: t("tour_insights_desc") },
+    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_voice_title"), desc: t("tour_voice_desc") },
+  ];
+}
+
+/**
+ * The guided tours. Renders nothing unless one is due:
+ *
+ *  - **main** on first run, adapted to the device it's running on;
+ *  - **premium** the first time this device holds a real purchase;
+ *  - **web** the first time the app is opened in a browser.
+ *
+ * Which ones have been seen is device-local (see TourId in lib/i18n.ts), so a
+ * phone purchase teaches the phone, and the browser gets its own introduction
+ * when the same account opens it there.
+ */
 export function Onboarding() {
   const [step, setStep] = useState(0);
+  const [steps, setSteps] = useState<Step[]>([]);
   const [hole, setHole] = useState<Hole | null>(null);
-  const { setTutorialCompleted } = useI18nStore();
-  const { t } = useTranslation();
+  const { tutorialCompleted, toursSeen, setTutorialCompleted, markToursSeen } = useI18nStore();
+  const { t, language } = useTranslation();
+  const entitlement = usePremium();
+  const native = isNative();
+  // Early access hands everyone an entitlement with source "free" — nobody
+  // bought anything, so nobody gets thanked for it.
+  const purchased = !!entitlement && entitlement.source !== "free";
 
-  const steps = [
-    { target: null, icon: Sparkles, color: "from-primary to-mint", title: t('onboarding_welcome'), desc: t('tagline') },
-    { target: "streak", icon: Flame, color: "from-orange-400 to-red-400", title: t('tour_streak_title'), desc: t('tour_streak_desc') },
-    { target: "tabs", icon: ListTodo, color: "from-blue-500 to-indigo-500", title: t('tour_tabs_title'), desc: t('tour_tabs_desc') },
-    { target: "days", icon: CalendarDays, color: "from-emerald-400 to-teal-500", title: t('tour_days_title'), desc: t('tour_days_desc') },
-    { target: "add-task", icon: Check, color: "from-primary to-mint", title: t('onboarding_tasks_title'), desc: t('onboarding_tasks_desc') },
-    { target: "view-toggle", icon: CalendarClock, color: "from-sky-400 to-cyan-500", title: t('tour_views_title'), desc: t('tour_views_desc') },
-    { target: "settings", icon: SettingsIcon, color: "from-violet-500 to-purple-500", title: t('tour_settings_title'), desc: t('tour_settings_desc') },
-  ];
+  const pending = useMemo<TourId[]>(() => {
+    if (!tutorialCompleted) return ["main"];
+    return FOLLOW_UPS.filter((id) => {
+      if (toursSeen.includes(id)) return false;
+      if (id === "premium") return native && purchased;
+      return !native && !!entitlement;
+    });
+  }, [tutorialCompleted, toursSeen, native, purchased, entitlement]);
 
-  const current = steps[step] ?? steps[0];
-  const isLast = step === steps.length - 1;
+  const tour = pending[0] ?? null;
+
+  const allSteps = useMemo<Step[]>(() => {
+    if (tour === "main") return mainSteps(t, native);
+    if (tour === "premium") return premiumSteps(t);
+    if (tour === "web") return webSteps(t);
+    return [];
+    // `language` is what changes the strings `t` returns.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tour, native, language]);
+
+  // Drop steps whose anchor isn't on screen — a feature this build doesn't
+  // show (no mic, no Insights on Android) shouldn't leave a dangling card.
+  useEffect(() => {
+    setStep(0);
+    setSteps([]);
+    if (!tour) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const attempt = () => {
+      // Hold while a sheet or dialog owns the screen: the purchase that starts
+      // the Premium tour is made inside Settings, and the release notes can be
+      // up at launch — a spotlight can't point through either of them.
+      if (document.querySelector(OPEN_LAYER_SELECTOR)) {
+        timer = setTimeout(attempt, SETTLE_MS);
+        return;
+      }
+      setSteps(
+        allSteps.filter((s) => !s.target || document.querySelector(`[data-tour="${s.target}"]`)),
+      );
+    };
+    timer = setTimeout(attempt, SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [tour, allSteps]);
+
+  const current = steps[step] ?? steps[0] ?? null;
+  const isLast = steps.length > 0 && step === steps.length - 1;
 
   // Measure the highlighted element (after scrolling it into view) so the
   // spotlight cutout and the popup can be positioned around it.
   useEffect(() => {
+    const target = current?.target ?? null;
     const measure = () => {
-      if (!current.target) {
+      if (!target) {
         setHole(null);
         return;
       }
-      const el = document.querySelector(`[data-tour="${current.target}"]`);
+      const el = document.querySelector(`[data-tour="${target}"]`);
       if (!el) {
         setHole(null);
         return;
@@ -51,7 +187,7 @@ export function Onboarding() {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [step, current.target]);
+  }, [step, current?.target]);
 
   // Popup sits below the highlighted element when there's room, otherwise above.
   const popup = useMemo(() => {
@@ -67,8 +203,23 @@ export function Onboarding() {
     return { bottom: vh - hole.top + POPUP_GAP, left, width } as const;
   }, [hole]);
 
-  const finish = () => setTutorialCompleted(true);
-  const next = () => (step < steps.length - 1 ? setStep(step + 1) : finish());
+  if (!tour || !current) return null;
+
+  /**
+   * Close the tour. Skipping means "stop teaching me", so it retires everything
+   * still queued; finishing the first-run tour retires the follow-ups too,
+   * since it already showed what they would have.
+   */
+  const finish = (skipRest: boolean) => {
+    if (tour === "main") {
+      markToursSeen(FOLLOW_UPS);
+      setTutorialCompleted(true);
+      return;
+    }
+    markToursSeen(skipRest ? pending : [tour]);
+  };
+
+  const next = () => (step < steps.length - 1 ? setStep(step + 1) : finish(false));
 
   const Icon = current.icon;
 
@@ -93,7 +244,7 @@ export function Onboarding() {
       >
         <AnimatePresence mode="wait">
           <motion.div
-            key={step}
+            key={`${tour}-${step}`}
             initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
@@ -121,7 +272,7 @@ export function Onboarding() {
                 ))}
               </div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={finish} className="h-9 rounded-full px-3 text-xs">
+                <Button variant="ghost" size="sm" onClick={() => finish(true)} className="h-9 rounded-full px-3 text-xs">
                   {t('tour_skip')}
                 </Button>
                 <Button size="sm" onClick={next} className="h-9 rounded-full px-4 text-xs font-bold">

@@ -8,12 +8,23 @@ export type Theme = 'light' | 'dark';
 // channel (channels are immutable, so switching = using a different channel).
 export type VibrationType = 'long' | 'short' | 'double' | 'off';
 
+/**
+ * Guided tours (see components/Onboarding.tsx). 'main' is the first-run tour and
+ * has its own flag below for history's sake; the other two are the follow-ups
+ * that fire once a feature becomes reachable — after a Premium purchase, and on
+ * the first browser launch. Seen-ness is device-local on purpose: the browser
+ * has to teach its own screen even though the phone already toured the app.
+ */
+export type TourId = 'main' | 'premium' | 'web';
+
 interface I18nState {
   language: Language;
   theme: Theme;
   calendarSync: boolean;
   nudgeCalendarSync: boolean;
   tutorialCompleted: boolean;
+  /** Follow-up tours already shown on this device. */
+  toursSeen: TourId[];
   // User chose "continue as guest" on the auth gate — local-only, no sync.
   guestMode: boolean;
   vibrationType: VibrationType;
@@ -33,6 +44,8 @@ interface I18nState {
   setCalendarSync: (enabled: boolean) => void;
   setNudgeCalendarSync: (enabled: boolean) => void;
   setTutorialCompleted: (completed: boolean) => void;
+  markToursSeen: (ids: TourId[]) => void;
+  resetTour: (id: TourId) => void;
   setGuestMode: (guest: boolean) => void;
   setVibrationType: (type: VibrationType) => void;
   setEodReview: (enabled: boolean) => void;
@@ -50,6 +63,7 @@ export const useI18nStore = create<I18nState>()(
       calendarSync: false,
       nudgeCalendarSync: false,
       tutorialCompleted: false,
+      toursSeen: [],
       guestMode: false,
       vibrationType: 'long',
       eodReview: true,
@@ -62,6 +76,9 @@ export const useI18nStore = create<I18nState>()(
       setCalendarSync: (calendarSync) => set({ calendarSync }),
       setNudgeCalendarSync: (nudgeCalendarSync) => set({ nudgeCalendarSync }),
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
+      markToursSeen: (ids) =>
+        set((s) => ({ toursSeen: Array.from(new Set([...s.toursSeen, ...ids])) })),
+      resetTour: (id) => set((s) => ({ toursSeen: s.toursSeen.filter((t) => t !== id) })),
       setGuestMode: (guestMode) => set({ guestMode }),
       setVibrationType: (vibrationType) => set({ vibrationType }),
       setEodReview: (eodReview) => set({ eodReview }),
@@ -318,12 +335,27 @@ export const translations = {
     tour_tabs_desc: "Tasks are scheduled for a specific day, To-Do holds anything for later, and Nudges are gentle daily reminders.",
     tour_days_title: "Plan Your Week",
     tour_days_desc: "Pick a day to see or plan its tasks. Tap the calendar icon to jump to any date.",
-    tour_views_title: "List or Timeline",
-    tour_views_desc: "See your tasks as a simple List, or switch to Timeline to lay them out by hour — drag a task to a new time to reschedule it.",
+    tour_views_title: "List, Timeline or Calendar",
+    tour_views_desc: "See your tasks as a simple List, or switch to Timeline to lay them out by hour — drag a task to a new time to reschedule it. The calendar button opens the whole month.",
+    tour_voice_title: "Say It Instead of Typing",
+    tour_voice_desc: "Tap the mic and speak the task — the words land in the box as you talk. Recognition runs on your device, so nothing is sent anywhere.",
+    tour_insights_title: "Insights",
+    tour_insights_desc: "See how much of what you planned actually got done — by day, week and month — plus what you reschedule, postpone or drop along the way.",
     tour_settings_title: "Make It Yours",
-    tour_settings_desc: "Switch theme and language, sync to your calendar, and get AI task suggestions — all in Settings.",
+    tour_settings_desc: "Theme, language, calendar sync and the evening check-in live in Settings — along with your account, so your day follows you to every device.",
     tour_skip: "Skip",
+    tour_premium_welcome_title: "Premium is on",
+    tour_premium_welcome_desc: "Thanks for backing FlowDay. Here's what just opened up — it takes a few taps.",
+    tour_premium_web_title: "FlowDay in your browser",
+    tour_premium_web_desc: "Open flowday.day and sign in with the same account — your tasks, nudges and streak are already there. Settings can email you the link.",
+    tour_premium_voice_title: "Voice input unlocked",
+    tour_premium_voice_desc: "The mic next to Add is live now. Say the task out loud instead of typing it — the recognition happens on your device.",
+    tour_premium_extras_title: "Ad-free, plus Insights",
+    tour_premium_extras_desc: "The banner is gone for good. And the browser version adds Insights: how much of what you plan actually gets done, over days, weeks and months.",
+    tour_web_welcome_title: "FlowDay on the big screen",
+    tour_web_welcome_desc: "Same account, same day. Anything you add here shows up on your phone, and whatever you tick off there lands here.",
     replay_tutorial: "Replay Tutorial",
+    replay_feature_tour: "Premium Features Tour",
     delete: "Delete",
     close: "Close",
     add_task: "Add task",
@@ -691,12 +723,27 @@ export const translations = {
     tour_tabs_desc: "Zadania mają konkretny dzień, „Do zrobienia” to rzeczy na później, a Przypominajki to delikatne codzienne przypomnienia.",
     tour_days_title: "Planuj tydzień",
     tour_days_desc: "Wybierz dzień, żeby zobaczyć albo zaplanować zadania. Dotknij ikony kalendarza, żeby skoczyć do dowolnej daty.",
-    tour_views_title: "Lista albo oś czasu",
-    tour_views_desc: "Zobacz zadania jako prostą Listę albo przełącz się na Oś czasu, żeby rozłożyć je godzinowo — przeciągnij zadanie na inną godzinę, a samo się przeniesie.",
+    tour_views_title: "Lista, oś czasu albo kalendarz",
+    tour_views_desc: "Zobacz zadania jako prostą Listę albo przełącz się na Oś czasu, żeby rozłożyć je godzinowo — przeciągnij zadanie na inną godzinę, a samo się przeniesie. Przycisk kalendarza pokazuje cały miesiąc.",
+    tour_voice_title: "Powiedz zamiast pisać",
+    tour_voice_desc: "Dotknij mikrofonu i powiedz zadanie — słowa same wpadają do pola, kiedy mówisz. Rozpoznawanie działa na Twoim urządzeniu, więc nic nigdzie nie jest wysyłane.",
+    tour_insights_title: "Podsumowania",
+    tour_insights_desc: "Zobacz, ile z tego, co zaplanowane, naprawdę udało się zrobić — dzień po dniu, tydzień po tygodniu, miesiąc po miesiącu — a także ile zadań przenosisz, odkładasz albo usuwasz.",
     tour_settings_title: "Ustaw po swojemu",
-    tour_settings_desc: "Zmieniaj motyw i język, synchronizuj z kalendarzem i korzystaj z podpowiedzi AI — wszystko w Ustawieniach.",
+    tour_settings_desc: "Motyw, język, synchronizacja z kalendarzem i wieczorne podsumowanie są w Ustawieniach — razem z Twoim kontem, dzięki któremu dzień jest z Tobą na każdym urządzeniu.",
     tour_skip: "Pomiń",
+    tour_premium_welcome_title: "Premium włączone",
+    tour_premium_welcome_desc: "Dziękujemy za wsparcie FlowDay. Zobacz, co się właśnie otworzyło — to tylko kilka kliknięć.",
+    tour_premium_web_title: "FlowDay w przeglądarce",
+    tour_premium_web_desc: "Wejdź na flowday.day i zaloguj się na to samo konto — Twoje zadania, przypominajki i seria już tam są. W Ustawieniach wyślesz sobie link mailem.",
+    tour_premium_voice_title: "Dyktowanie odblokowane",
+    tour_premium_voice_desc: "Mikrofon obok przycisku dodawania już działa. Powiedz zadanie na głos zamiast je pisać — rozpoznawanie dzieje się na Twoim urządzeniu.",
+    tour_premium_extras_title: "Bez reklam i z Podsumowaniami",
+    tour_premium_extras_desc: "Baner znika na dobre. A wersja w przeglądarce dokłada Podsumowania: ile z tego, co planujesz, faktycznie robisz — w dniach, tygodniach i miesiącach.",
+    tour_web_welcome_title: "FlowDay na dużym ekranie",
+    tour_web_welcome_desc: "To samo konto, ten sam dzień. Co dodasz tutaj, pojawi się w telefonie, a co odhaczysz tam, trafi tutaj.",
     replay_tutorial: "Powtórz samouczek",
+    replay_feature_tour: "Przewodnik po funkcjach Premium",
     delete: "Usuń",
     close: "Zamknij",
     add_task: "Dodaj zadanie",
