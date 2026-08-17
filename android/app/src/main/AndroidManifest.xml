@@ -92,6 +92,18 @@
 
         <receiver android:name="com.capacitorjs.plugins.localnotifications.NotificationDismissReceiver" android:exported="false" />
 
+        <!-- FlowDay's own notifications (FlowNotifications.java). Shows them when
+             their alarm comes due, and handles the "Done"/"Postpone" buttons in
+             the background — Capacitor's local-notifications wires its buttons to
+             an Activity PendingIntent, which cold-starts the app just to tick one
+             task off. BOOT_COMPLETED re-arms the alarms, which a reboot clears. -->
+        <receiver android:name=".FlowNotificationReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 

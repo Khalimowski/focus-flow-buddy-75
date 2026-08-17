@@ -2,6 +2,7 @@ package app.lovable.focusflow;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioAttributes;
 import android.net.Uri;
@@ -31,6 +32,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
         registerPlugin(CapacitorCalendarPlugin.class);
         registerPlugin(WidgetBridgePlugin.class);
         registerPlugin(BillingPlugin.class);
+        registerPlugin(FlowNotificationsPlugin.class);
         super.onCreate(savedInstanceState);
 
         // Kill the Android 12+ overscroll stretch: it visually stretches the
@@ -42,7 +44,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     public void onResume() {
         super.onResume();
-        createNotificationChannel();
+        createNotificationChannels(this);
     }
 
     // Google sign-in with Gmail/Calendar scopes: the social-login plugin runs
@@ -72,29 +74,35 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     public void IHaveModifiedTheMainActivityForTheUseWithSocialLoginPlugin() {}
 
 
-    private void createNotificationChannel() {
+    /**
+     * Static and context-taking because notifications are now posted by
+     * FlowNotificationReceiver too, which can run in a process where this
+     * activity was never created (after a reboot, say). Cheap and idempotent —
+     * createNotificationChannel is a no-op for a channel that already exists.
+     */
+    static void createNotificationChannels(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
             if (notificationManager == null) return;
 
             // One channel per vibration style — channels are immutable after
             // creation, so the in-app vibration setting switches between these
             // ids at scheduling time (see VIBRATION_CHANNELS in src/lib/native.ts).
-            createChannel(notificationManager, "boink_channel_v8",
-                    getString(R.string.nudge_channel_name), new long[]{0, 2000});
-            createChannel(notificationManager, "boink_channel_v8_short",
-                    getString(R.string.channel_vib_short), new long[]{0, 300});
-            createChannel(notificationManager, "boink_channel_v8_double",
-                    getString(R.string.channel_vib_double), new long[]{0, 250, 150, 250});
-            createChannel(notificationManager, "boink_channel_v8_novib",
-                    getString(R.string.channel_vib_off), null);
+            createChannel(context, notificationManager, "boink_channel_v8",
+                    context.getString(R.string.nudge_channel_name), new long[]{0, 2000});
+            createChannel(context, notificationManager, "boink_channel_v8_short",
+                    context.getString(R.string.channel_vib_short), new long[]{0, 300});
+            createChannel(context, notificationManager, "boink_channel_v8_double",
+                    context.getString(R.string.channel_vib_double), new long[]{0, 250, 150, 250});
+            createChannel(context, notificationManager, "boink_channel_v8_novib",
+                    context.getString(R.string.channel_vib_off), null);
         }
     }
 
-    private void createChannel(NotificationManager notificationManager, String channelId,
-                               CharSequence name, long[] vibrationPattern) {
+    private static void createChannel(Context context, NotificationManager notificationManager,
+                                      String channelId, CharSequence name, long[] vibrationPattern) {
         NotificationChannel channel = new NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription(getString(R.string.nudge_channel_description));
+        channel.setDescription(context.getString(R.string.nudge_channel_description));
         if (vibrationPattern != null) {
             channel.enableVibration(true);
             channel.setVibrationPattern(vibrationPattern);
@@ -102,7 +110,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             channel.enableVibration(false);
         }
 
-        Uri soundUri = Uri.parse("android.resource://" + getPackageName() + "/raw/boink");
+        Uri soundUri = Uri.parse("android.resource://" + context.getPackageName() + "/raw/boink");
         AudioAttributes audioAttributes = new AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION)

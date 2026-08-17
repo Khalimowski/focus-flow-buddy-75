@@ -89,6 +89,24 @@ public class TaskWidgetProvider extends AppWidgetProvider {
     private static void markDone(Context context, String taskId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         try {
+            JSONArray pending = new JSONArray(prefs.getString(KEY_PENDING, "[]"));
+            pending.put(taskId);
+            prefs.edit().putString(KEY_PENDING, pending.toString()).apply();
+        } catch (Exception ignored) {
+            // Corrupt prefs JSON — leave state untouched rather than lose ticks
+        }
+        removeFromMirror(context, taskId);
+    }
+
+    /**
+     * Drop a task from the widget's copy of the list without queueing it as a
+     * tick. Used when the task was completed somewhere else the app can't see
+     * yet — a notification's "Done" button (FlowNotifications) records its own
+     * pending action, so queueing here as well would double-count it.
+     */
+    static void removeFromMirror(Context context, String taskId) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        try {
             JSONArray tasks = new JSONArray(prefs.getString(KEY_TASKS, "[]"));
             JSONArray remaining = new JSONArray();
             for (int i = 0; i < tasks.length(); i++) {
@@ -97,15 +115,11 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                     remaining.put(t);
                 }
             }
-            JSONArray pending = new JSONArray(prefs.getString(KEY_PENDING, "[]"));
-            pending.put(taskId);
-            prefs.edit()
-                    .putString(KEY_TASKS, remaining.toString())
-                    .putString(KEY_PENDING, pending.toString())
-                    .apply();
+            prefs.edit().putString(KEY_TASKS, remaining.toString()).apply();
         } catch (Exception ignored) {
-            // Corrupt prefs JSON — leave state untouched rather than lose ticks
+            // Corrupt prefs JSON — leave the mirror as it is
         }
+        updateAll(context);
     }
 
     private static RemoteViews buildViews(Context context, AppWidgetManager manager, int appWidgetId) {

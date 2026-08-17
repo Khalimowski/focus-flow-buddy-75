@@ -66,6 +66,25 @@ Cross-device sync mirrors whole localStorage values to one Postgres row per (use
 ### Notifications (src/lib/native.ts)
 All native APIs are guarded by `isNative()` and no-op on web. Notification id conventions: tasks `hashId("task:" + id)` (one-shot at `remindAt`), nudges `hashId("rem:" + id + ":" + timeIdx)` (daily repeating). Postponed notifications use throwaway ids and must not be cancelled by cleanup logic. `reconcileNotifications()` aligns pending notifications with storage after sync pulls and at boot. An Android home-screen widget mirrors open tasks via `WidgetBridge` (custom plugin in `android/`).
 
+**Scheduling does not go through `@capacitor/local-notifications`** — that plugin
+builds every action button as an *Activity* PendingIntent, so "Done"/"Got it"
+cold-starts the WebView just to tick one thing off, and it isn't configurable.
+Notifications are armed and posted by the custom `FlowNotifications` plugin
+(`android/…/FlowNotifications.java`, `FlowNotificationReceiver`,
+`FlowNotificationsPlugin`), whose buttons are broadcasts handled with the app
+closed. Capacitor is kept for permissions and as a fallback path if the custom
+plugin is missing (`flowNotifsAvailable === false`), and `initNative()` cancels
+anything an older build left armed through it.
+
+Native code can't reach localStorage, so a pressed button is queued in
+SharedPreferences (`ff_notifs`) and applied by `drainNotificationActions()` at
+launch, on resume, and on the plugin's `actionPerformed` event — the same
+deferred-write shape as the widget's ticks. Consequences to keep in mind:
+button labels are passed in from JS at schedule time (so they need i18n keys,
+not hardcoded English), a "Done" press only reaches Insights/sync when the app
+next runs, and anything the receiver posts must re-arm itself — a reboot clears
+alarms, hence `restoreAll()` on `BOOT_COMPLETED`.
+
 ### Premium (src/lib/premium.ts, src/lib/billing.ts)
 One-time Play purchase (`focus_flow_premium`) that unlocks the **browser
 version** (`PremiumGate` blocks the web build without it) and removes the AdMob

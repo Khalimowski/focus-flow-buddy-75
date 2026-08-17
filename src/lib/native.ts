@@ -22,6 +22,169 @@ export const isNative = (): boolean => {
 let channelEnsured = false;
 let calendarPermissionGranted = false;
 
+// --- FlowNotifications: the app's own scheduler (android/…/FlowNotifications.java)
+//
+// Notifications go through this rather than @capacitor/local-notifications for
+// one reason: Capacitor builds every action button as an Activity PendingIntent,
+// so "Done" / "Got it" cold-starts the whole app just to tick one thing off.
+// Ours are broadcasts, handled while the app stays closed — the press lands in
+// a queue that drainNotificationActions() applies to storage on next launch or
+// resume (the same shape the home-screen widget already uses for its ticks).
+//
+// Capacitor is kept for permissions, and as a fallback if the custom plugin
+// isn't there (a build where the native side didn't make it in).
+
+type FlowNotifPayload = {
+  id: number;
+  title: string;
+  body: string;
+  channelId: string;
+  /** One-shot: epoch ms. Ignored when repeatDaily is set. */
+  at?: number;
+  hour?: number;
+  minute?: number;
+  repeatDaily?: boolean;
+  /** Which pair of buttons to show, if any */
+  actions: "task" | "nudge" | "none";
+  snoozeMinutes?: number;
+  labels?: { done: string; snooze: string; snoozeBody: string };
+  extra: Record<string, unknown>;
+};
+
+type PendingNotification = { id: number; extra: Record<string, any> };
+
+type FlowNotificationsPlugin = {
+  schedule(options: { notifications: string }): Promise<void>;
+  cancel(options: { ids: number[] }): Promise<void>;
+  getPending(): Promise<{ notifications: string }>;
+  takePendingActions(): Promise<{ actions: string }>;
+  addListener(
+    eventName: "actionPerformed",
+    listenerFunc: () => void
+  ): Promise<{ remove: () => Promise<void> }>;
+};
+const FlowNotifs = registerPlugin<FlowNotificationsPlugin>("FlowNotifications");
+
+/** null = not probed yet, false = plugin missing, use the Capacitor path */
+let flowNotifsAvailable: boolean | null = null;
+
+/** Localized button labels, so the shade speaks the same language as the app. */
+function actionLabels(kind: "task" | "nudge") {
+  const lang = translations[useI18nStore.getState().language] || translations.en;
+  return kind === "task"
+    ? {
+        done: lang.notif_action_done,
+        snooze: lang.notif_action_postpone,
+        snoozeBody: lang.notif_postponed_reminder,
+      }
+    : {
+        done: lang.notif_action_got_it,
+        snooze: lang.notif_action_remind_later,
+        snoozeBody: lang.notif_postponed_nudge,
+      };
+}
+
+/** Returns false when the plugin isn't available — caller falls back to Capacitor. */
+async function scheduleFlowNotification(payload: FlowNotifPayload): Promise<boolean> {
+  if (!isNative() || flowNotifsAvailable === false) return false;
+  try {
+    await FlowNotifs.schedule({ notifications: JSON.stringify([payload]) });
+    flowNotifsAvailable = true;
+    return true;
+  } catch (e) {
+    flowNotifsAvailable = false;
+    console.warn("[Native] FlowNotifications unavailable — using Capacitor notifications", e);
+    return false;
+  }
+}
+
+async function getPendingNative(): Promise<PendingNotification[]> {
+  if (flowNotifsAvailable !== false) {
+    try {
+      const res = await FlowNotifs.getPending();
+      flowNotifsAvailable = true;
+      const list = JSON.parse(res?.notifications || "[]");
+      if (Array.isArray(list)) {
+        return list.map((n: any) => ({ id: n.id, extra: n.extra ?? {} }));
+      }
+      return [];
+    } catch (e) {
+      flowNotifsAvailable = false;
+    }
+  }
+  try {
+    const pending = await LocalNotifications.getPending();
+    return pending.notifications.map((n) => ({ id: n.id, extra: (n.extra ?? {}) as Record<string, any> }));
+  } catch (e) {
+    console.warn("[Native] getPending failed", e);
+    return [];
+  }
+}
+
+/**
+ * Apply notification buttons pressed while the app was closed. Native code
+ * can't reach localStorage, so each press was queued instead; this is where it
+ * finally becomes a ticked-off task or a nudge marked done for today.
+ */
+export async function drainNotificationActions() {
+  if (!isNative() || flowNotifsAvailable === false) return;
+  let actions: any[] = [];
+  try {
+    const res = await FlowNotifs.takePendingActions();
+    flowNotifsAvailable = true;
+    actions = JSON.parse(res?.actions || "[]");
+  } catch (e) {
+    flowNotifsAvailable = false;
+    return;
+  }
+  if (!Array.isArray(actions) || actions.length === 0) return;
+  console.log(`[Native] Applying ${actions.length} notification action(s)`);
+
+  const today = dateKey();
+  let tasks = loadJSON<any[]>(STORAGE_KEYS.tasks, []);
+  let reminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
+  let tasksChanged = false;
+  let remindersChanged = false;
+
+  for (const a of actions) {
+    // The day the button was actually pressed — the app may only be opening now
+    const day = typeof a?.day === "string" && a.day ? a.day : today;
+    if (a?.type === "task") {
+      if (a.action === "done") {
+        // Guarded so a press that raced with the same task being completed
+        // elsewhere doesn't count twice in Insights
+        if (tasks.some((t) => t.id === a.taskId && !t.done)) {
+          tasks = tasks.map((t) => (t.id === a.taskId ? { ...t, done: true } : t));
+          tasksChanged = true;
+          recordStat("taskCompleted", 1, day);
+          if (a.title) void deleteFromCalendar(a.title);
+        }
+      } else if (a.action === "snooze") {
+        // The replacement notification was armed natively at press time
+        recordStat("taskSnoozed", 1, day);
+      }
+    } else if (a?.type === "nudge") {
+      if (a.action === "done") {
+        if (reminders.some((r) => r.id === a.nudgeId && r.lastFired?.[a.time] !== day)) {
+          reminders = reminders.map((r) =>
+            r.id === a.nudgeId ? { ...r, lastFired: { ...r.lastFired, [a.time]: day } } : r
+          );
+          remindersChanged = true;
+          recordStat("nudgeCompleted", 1, day);
+        }
+      } else if (a.action === "snooze") {
+        recordStat("nudgeSnoozed", 1, day);
+      }
+    }
+  }
+
+  if (tasksChanged) saveJSON(STORAGE_KEYS.tasks, tasks);
+  if (remindersChanged) saveJSON(STORAGE_KEYS.reminders, reminders);
+  if (tasksChanged || remindersChanged) {
+    window.dispatchEvent(new CustomEvent("ff.data_updated"));
+  }
+}
+
 export async function ensureNativeNotifPermission(): Promise<boolean> {
   if (!isNative()) return false;
   try {
@@ -127,9 +290,9 @@ async function ensureChannel() {
 export async function applyVibrationSetting() {
   if (!isNative()) return;
   try {
-    const pending = await LocalNotifications.getPending();
+    const pending = await getPendingNative();
     const canonical: number[] = [];
-    for (const n of pending.notifications) {
+    for (const n of pending) {
       const extra = (n.extra ?? {}) as { type?: string; taskId?: string };
       if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
         canonical.push(n.id);
@@ -154,6 +317,18 @@ export async function nativeNotify(title: string, body?: string) {
     await ensureChannel();
     const notifId = hashId(title + Date.now());
     console.log(`Scheduling immediate notification: ${title} (id: ${notifId})`);
+    const sent = await scheduleFlowNotification({
+      id: notifId,
+      title,
+      body: body ?? "",
+      channelId: currentChannelId(),
+      at: Date.now() + 1000,
+      actions: "task",
+      snoozeMinutes: 15,
+      labels: actionLabels("task"),
+      extra: { type: "test", title },
+    });
+    if (sent) return;
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -181,21 +356,34 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
   try {
     await ensureChannel();
     console.log(`[Native] Scheduling notification at ${at.toISOString()}: ${title} (id: ${id})`);
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id,
-          title,
-          body,
-          schedule: { at, allowWhileIdle: true },
-          channelId: currentChannelId(),
-          smallIcon: "ic_stat_icon",
-          sound: "boink",
-          actionTypeId: "TASK_ACTIONS",
-          extra: { type: 'task', taskId, title }
-        }
-      ],
+    const sent = await scheduleFlowNotification({
+      id,
+      title,
+      body,
+      channelId: currentChannelId(),
+      at: at.getTime(),
+      actions: "task",
+      snoozeMinutes: 15,
+      labels: actionLabels("task"),
+      extra: { type: "task", taskId, title },
     });
+    if (!sent) {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id,
+            title,
+            body,
+            schedule: { at, allowWhileIdle: true },
+            channelId: currentChannelId(),
+            smallIcon: "ic_stat_icon",
+            sound: "boink",
+            actionTypeId: "TASK_ACTIONS",
+            extra: { type: 'task', taskId, title }
+          }
+        ],
+      });
+    }
 
     if (syncCalendar) {
       void addToCalendar(title, at);
@@ -214,21 +402,36 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
     await ensureChannel();
     const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
     console.log(`Scheduling daily notification at ${hour}:${minute}: ${title} (id: ${id})`);
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id,
-          title,
-          body,
-          schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
-          channelId: currentChannelId(),
-          smallIcon: "ic_stat_icon",
-          sound: "boink",
-          actionTypeId: "NUDGE_ACTIONS",
-          extra: { type: 'nudge', nudgeId, time: timeStr, title }
-        },
-      ],
+    const sent = await scheduleFlowNotification({
+      id,
+      title,
+      body,
+      channelId: currentChannelId(),
+      hour,
+      minute,
+      repeatDaily: true,
+      actions: "nudge",
+      snoozeMinutes: 15,
+      labels: actionLabels("nudge"),
+      extra: { type: "nudge", nudgeId, time: timeStr, title },
     });
+    if (!sent) {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id,
+            title,
+            body,
+            schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
+            channelId: currentChannelId(),
+            smallIcon: "ic_stat_icon",
+            sound: "boink",
+            actionTypeId: "NUDGE_ACTIONS",
+            extra: { type: 'nudge', nudgeId, time: timeStr, title }
+          },
+        ],
+      });
+    }
 
     if (syncCalendar) {
       const at = new Date();
@@ -282,6 +485,17 @@ export async function refreshEndOfDayPrompt() {
 
     await ensureChannel();
     const lang = translations[settings.language] || translations.en;
+    const sent = await scheduleFlowNotification({
+      id: EOD_NOTIF_ID,
+      title: lang.eod_notif_title,
+      body: lang.eod_notif_body,
+      channelId: currentChannelId(),
+      at: at.getTime(),
+      // No buttons: this one asks a question the app has to answer
+      actions: "none",
+      extra: { type: "eod" },
+    });
+    if (sent) return;
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -377,8 +591,17 @@ export async function deleteFromCalendar(title: string) {
 
 export async function cancelNative(ids: number[]) {
   if (!isNative() || ids.length === 0) return;
+  console.log("Cancelling notifications:", ids);
+  if (flowNotifsAvailable !== false) {
+    try {
+      await FlowNotifs.cancel({ ids });
+      flowNotifsAvailable = true;
+      return;
+    } catch (e) {
+      flowNotifsAvailable = false;
+    }
+  }
   try {
-    console.log("Cancelling notifications:", ids);
     await LocalNotifications.cancel({ notifications: ids.map((id) => ({ id })) });
   } catch (e) {
     console.error("cancelNative failed", e);
@@ -553,13 +776,13 @@ export async function reconcileNotifications() {
       });
     }
 
-    const pending = await LocalNotifications.getPending();
+    const pending = await getPendingNative();
     const pendingIds = new Set<number>();
     const stale: number[] = [];
     // Labels of reminders that were deleted/disabled remotely — their calendar
     // events should go the same way cancelAll() removes them locally.
     const staleNudgeLabels = new Set<string>();
-    for (const n of pending.notifications) {
+    for (const n of pending) {
       pendingIds.add(n.id);
       const extra = (n.extra ?? {}) as { type?: string; taskId?: string; nudgeId?: string; title?: string };
       // Only touch canonical ids — postponed reminders use throwaway ids and
@@ -623,22 +846,55 @@ export async function initNative() {
   if (!isNative()) return;
   console.log("[Native] Initializing features...");
 
-  // Register notification actions
+  // Buttons pressed while the app was closed are waiting in the native queue —
+  // apply them before anything reads or reconciles storage, or a task ticked off
+  // last night gets its reminder armed all over again.
+  await drainNotificationActions();
   try {
+    // Pressed while the app happens to be running: apply it there and then
+    void FlowNotifs.addListener("actionPerformed", () => {
+      void drainNotificationActions();
+    });
+  } catch (e) {
+    console.warn("[Native] Notification action listener unavailable", e);
+  }
+
+  // Anything armed by a build older than FlowNotifications still goes through
+  // Capacitor, whose buttons open the app. Retire those — reconcileNotifications
+  // below re-arms the same items through the new path.
+  if (flowNotifsAvailable) {
+    try {
+      const legacy = await LocalNotifications.getPending();
+      if (legacy.notifications.length > 0) {
+        console.log(`[Native] Retiring ${legacy.notifications.length} Capacitor-scheduled notification(s)`);
+        await LocalNotifications.cancel({
+          notifications: legacy.notifications.map((n) => ({ id: n.id })),
+        });
+      }
+    } catch (e) {
+      console.warn("[Native] Legacy notification cleanup failed", e);
+    }
+  }
+
+  // Register notification actions — the fallback path only (see
+  // scheduleFlowNotification); harmless to register when it's unused.
+  try {
+    const taskLabels = actionLabels("task");
+    const nudgeLabels = actionLabels("nudge");
     await LocalNotifications.registerActionTypes({
       types: [
         {
           id: 'TASK_ACTIONS',
           actions: [
-            { id: 'done', title: 'Done' },
-            { id: 'postpone', title: 'Postpone (15m)' }
+            { id: 'done', title: taskLabels.done },
+            { id: 'postpone', title: taskLabels.snooze }
           ]
         },
         {
           id: 'NUDGE_ACTIONS',
           actions: [
-            { id: 'done', title: 'Got it!' },
-            { id: 'postpone', title: 'Remind later' }
+            { id: 'done', title: nudgeLabels.done },
+            { id: 'postpone', title: nudgeLabels.snooze }
           ]
         }
       ]
@@ -746,6 +1002,8 @@ export async function initNative() {
     });
     void App.addListener("resume", () => {
       void syncWidgetTicks();
+      // Notification buttons pressed while we were in the background
+      void drainNotificationActions();
     });
     await syncWidgetTicks();
   } catch (e) {

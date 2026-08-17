@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.7";
+export const APP_VERSION = "1.8.8";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.8",
+    items: {
+      en: [
+        "Notification buttons no longer open FlowDay. Tap \"Done\" or \"Got it!\" and the task is ticked off where you are — the notification just goes away.",
+        "\"Postpone\" and \"Remind later\" work the same way: the new reminder is set without the app opening.",
+        "The buttons now speak Polish when the app is set to Polish.",
+      ],
+      pl: [
+        "Przyciski w powiadomieniu nie otwierają już FlowDay. Naciśnij „Zrobione” albo „Gotowe!”, a zadanie zostanie odhaczone na miejscu — powiadomienie po prostu znika.",
+        "„Odłóż” i „Przypomnij później” działają tak samo: nowe przypomnienie ustawia się bez otwierania aplikacji.",
+        "Przyciski mówią teraz po polsku, kiedy aplikacja jest po polsku.",
+      ],
+    },
+  },
   {
     version: "1.8.7",
     items: {
