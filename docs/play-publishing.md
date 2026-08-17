@@ -71,8 +71,43 @@ Three separate things, easy to confuse:
   says "Open". Play's In-App Updates API is the per-device-accurate
   replacement if that ever gets annoying.
 
+## Troubleshooting a failed run
+
+The workflow verifies the signing secrets before it builds anything, so a
+secrets problem fails in seconds with a named cause rather than four minutes
+in. What the messages mean:
+
+- **"Missing or empty repository secret(s): …"** — the named secret is unset or
+  blank. An empty `ANDROID_KEY_ALIAS` used to reach Gradle and surface as
+  `Failed to read key  from store` (note the doubled space where the alias
+  should be).
+- **"Could not read the keystore"** — either the base64 doesn't decode to a
+  valid keystore, or `ANDROID_KEYSTORE_PASSWORD` is wrong; `keytool`'s own
+  message follows. Unreadable keystore bytes used to surface from bundletool as
+  `Tag number over 30 is not supported`, which names neither cause.
+- **"Key alias '…' is not in the keystore"** — the run prints the aliases the
+  keystore actually contains, so you can copy the right one.
+
+Check a secret locally before pasting it — this is the same thing CI does:
+
+```bash
+base64 -w 0 upload-keystore.jks > ks.b64          # regenerate
+tr -d '[:space:]' < ks.b64 | base64 -d > check.jks
+keytool -list -keystore check.jks                 # must list your alias
+```
+
+The workflow strips whitespace before decoding, so wrapped base64 is fine; what
+is not fine is a truncated paste or the wrong file.
+
 ## Notes
 
+- `patches/` is applied by hand in CI. It's registered under bun's
+  `patchedDependencies`, which **npm ignores**, and CI installs with npm — so
+  the workflow runs `patch -p1` against `node_modules/@capacitor-community/admob`
+  itself. Without it the plugin still calls
+  `getDefaultProguardFile('proguard-android.txt')`, which AGP 9 rejects, and the
+  build dies while configuring `:capacitor-community-admob`. If you add or
+  change a patch, update that step too.
 - Local builds are unaffected: the CI signing config in
   `android/app/build.gradle` only activates when the keystore env vars are set.
 - Play rejects a `versionCode` it has already seen — forgetting the bump is the
