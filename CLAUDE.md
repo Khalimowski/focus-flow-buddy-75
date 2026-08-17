@@ -59,7 +59,7 @@ Cross-device sync mirrors whole localStorage values to one Postgres row per (use
 - **Ordering constraint**: in `signIn`/`signUp`, `fullSync()` must complete **before** `notifyAuthChanged()`. The app mounts on auth-changed; mounting mid-pull lets components save empty state over the user's cloud data (this bug shipped once).
 
 ### Auth flow
-`AuthGate.tsx` renders full-screen when there's no session and `guestMode` is false: sign in / sign up / forgot-password (email OTP: `forgetPassword.emailOtp` → `emailOtp.resetPassword`) / continue-as-guest. Settings (`AccountSync.tsx`) has change-password and sign-out. The neon-js client (`src/lib/neon.ts`) is a browser-only singleton; plugin methods not in its TS surface are accessed via typed casts in sync.ts.
+`AuthGate.tsx` renders full-screen when there's no session and `guestMode` is false: sign in / sign up / forgot-password (email OTP: `forgetPassword.emailOtp` → `emailOtp.resetPassword`) / continue-as-guest. **Guest mode is Android-only**: the continue-as-guest button renders only under `isNative()`, and the gate in `routes/index.tsx` ignores `guestMode` on web (`!(guestMode && isNative())`), so the browser build always requires an account — a stale `guestMode: true` in the persisted settings can't unlock it. Settings (`AccountSync.tsx`) has change-password and sign-out. The neon-js client (`src/lib/neon.ts`) is a browser-only singleton; plugin methods not in its TS surface are accessed via typed casts in sync.ts.
 
 **Any new domain serving the app must be added to Neon Auth trusted origins** (`neon_auth.project_config.trusted_origins`, updatable via SQL over `DATABASE_URL` or the Neon console) or sign-in fails with "Invalid origin". Capacitor's `https://localhost` is covered by `allow_localhost`.
 

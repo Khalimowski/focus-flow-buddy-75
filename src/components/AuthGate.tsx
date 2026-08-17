@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { isNative } from "@/lib/native";
 import {
   GoogleTokenSignInUnsupportedError,
   requestPasswordReset,
@@ -356,14 +357,19 @@ export function AuthGate() {
           )}
         </div>
 
-        <div className="mt-6 text-center">
-          <Button variant="ghost" className="text-muted-foreground" onClick={() => setGuestMode(true)} disabled={busy}>
-            <UserRound className="mr-2 size-4" /> {t("continue_guest")}
-          </Button>
-          <p className="mx-auto mt-2 max-w-xs text-[11px] leading-relaxed text-muted-foreground/80">
-            {t("guest_note")}
-          </p>
-        </div>
+        {/* Guest mode is Android-only: the browser version needs an account
+            (that's how the entitlement and the synced data get there), so the
+            web build offers no way past this screen. */}
+        {isNative() && (
+          <div className="mt-6 text-center">
+            <Button variant="ghost" className="text-muted-foreground" onClick={() => setGuestMode(true)} disabled={busy}>
+              <UserRound className="mr-2 size-4" /> {t("continue_guest")}
+            </Button>
+            <p className="mx-auto mt-2 max-w-xs text-[11px] leading-relaxed text-muted-foreground/80">
+              {t("guest_note")}
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );

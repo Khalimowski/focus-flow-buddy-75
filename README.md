@@ -24,7 +24,7 @@ finishing something feel like it counted.
 - **Analytics** — lightweight charts on what you actually completed.
 - **Android home-screen widget** — open tasks visible without opening the app.
 - **English & Polish** throughout, including native Android strings.
-- **Cross-device sync** — sign in and your data follows you; or stay in guest mode and keep everything local.
+- **Cross-device sync** — sign in and your data follows you; or stay in guest mode on Android and keep everything local.
 
 ## Tech
 
@@ -81,7 +81,8 @@ Admin credentials belong in `.env.local`, which is gitignored and never read by 
 
 ## Privacy
 
-Your data is yours. Guest mode keeps everything on the device and talks to nothing.
+Your data is yours. Guest mode (Android only — the browser version needs an
+account) keeps everything on the device and talks to nothing.
 If you sign in, data syncs to your own row in Postgres behind row-level security —
 no analytics pipeline, no profile-building, no third party reading your tasks.
 Speech recognition runs on-device; audio never leaves the phone.

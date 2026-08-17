@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Smartphone, RefreshCw, LogIn, LogOut } from "lucide-react";
+import { Sparkles, Smartphone, RefreshCw, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useI18nStore, useTranslation } from "@/lib/i18n";
+import { useTranslation } from "@/lib/i18n";
 import { PremiumPerks } from "@/components/Premium";
 import { getSyncUser, fullSync, signOut } from "@/lib/sync";
 
@@ -18,7 +18,6 @@ import { getSyncUser, fullSync, signOut } from "@/lib/sync";
  */
 export function PremiumGate() {
   const { t } = useTranslation();
-  const { guestMode, setGuestMode } = useI18nStore();
   const [checking, setChecking] = useState(false);
   const [checkedEmpty, setCheckedEmpty] = useState(false);
   const user = getSyncUser();
@@ -56,48 +55,40 @@ export function PremiumGate() {
           <PremiumPerks />
         </div>
 
-        {guestMode && !user ? (
-          <div className="space-y-3">
-            <p className="text-center text-xs text-muted-foreground">
-              {t("premium_web_locked_guest")}
+        {/* No guest branch here: the browser version has no guest mode, so
+            anyone seeing this screen is signed in and the entitlement can
+            only arrive through their account. */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Smartphone className="size-3.5" />
+            <span>{t("premium_only_on_android")}</span>
+          </div>
+          <Button className="w-full" disabled={checking} onClick={checkAgain}>
+            <RefreshCw className={`mr-2 size-4 ${checking ? "animate-spin" : ""}`} />
+            {checking ? t("premium_checking") : t("premium_check_again")}
+          </Button>
+          {checkedEmpty && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              {t("premium_still_locked")}
             </p>
-            <Button className="w-full" onClick={() => setGuestMode(false)}>
-              <LogIn className="mr-2 size-4" /> {t("sign_in_or_create")}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Smartphone className="size-3.5" />
-              <span>{t("premium_only_on_android")}</span>
-            </div>
-            <Button className="w-full" disabled={checking} onClick={checkAgain}>
-              <RefreshCw className={`mr-2 size-4 ${checking ? "animate-spin" : ""}`} />
-              {checking ? t("premium_checking") : t("premium_check_again")}
-            </Button>
-            {checkedEmpty && (
-              <p className="text-center text-[11px] text-muted-foreground">
-                {t("premium_still_locked")}
+          )}
+          {user && (
+            <div className="pt-2 text-center">
+              <p className="text-[11px] text-muted-foreground">
+                {t("signed_in_as")}{" "}
+                <span className="font-medium text-foreground">{user.email}</span>
               </p>
-            )}
-            {user && (
-              <div className="pt-2 text-center">
-                <p className="text-[11px] text-muted-foreground">
-                  {t("signed_in_as")}{" "}
-                  <span className="font-medium text-foreground">{user.email}</span>
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 text-muted-foreground"
-                  onClick={() => void signOut()}
-                >
-                  <LogOut className="mr-1.5 size-3.5" /> {t("sign_out")}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 text-muted-foreground"
+                onClick={() => void signOut()}
+              >
+                <LogOut className="mr-1.5 size-3.5" /> {t("sign_out")}
+              </Button>
+            </div>
+          )}
+        </div>
       </motion.div>
     </div>
   );

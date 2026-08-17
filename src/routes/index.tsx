@@ -188,8 +188,11 @@ function Home() {
 
   // Auth-first: until the session check finishes, render nothing; then show
   // the login page unless signed in or explicitly continuing as guest.
+  // Guest mode is Android-only — the browser version always requires an
+  // account, so a `guestMode` flag synced/persisted from the phone can't let
+  // anyone past this gate on web.
   if (signedIn === null) return null;
-  if (!signedIn && !guestMode) return <AuthGate />;
+  if (!signedIn && !(guestMode && isNative())) return <AuthGate />;
 
   // Browser access is the premium feature. Android is never gated — that's the
   // free, ad-supported tier, and where the purchase is made.

@@ -48,7 +48,8 @@ Browser:     sync.ts pulls it (15s poll / focus / "Check again")
 No new server is involved in that path — the entitlement rides the same
 last-writer-wins localStorage mirror as tasks and habits. Both devices must be
 signed in to the **same account**; a guest install has nowhere to sync to, which
-is why PremiumGate tells guests to sign in first.
+is why guest mode is Android-only — the browser build shows `AuthGate` with no
+way past it, so anyone reaching `PremiumGate` is already signed in.
 
 ### Why a stale local entitlement is never pushed
 
@@ -217,7 +218,8 @@ location.reload();
 
 Note that this is not purely local: if that browser is signed in, sync sees a
 key the server has never heard of and pushes it, so the grant propagates to the
-account anyway. Use a guest session if you want it to stay on one machine.
+account anyway. The browser has no guest mode to fall back on, so use a signed-out
+Android install if you want a grant to stay on one machine.
 
 ## Environment variables
 
@@ -238,5 +240,5 @@ of both the web bundle and the APK.
 - [ ] Browser, non-premium: `PremiumGate` blocks the app
 - [ ] Browser, same account after a phone purchase: unlocks within ~15s, or
       immediately via "Check again"
-- [ ] Browser, guest: gate points at signing in
+- [ ] Browser, signed out: `AuthGate` shows with no "continue as guest" option
 - [ ] Play refund → unlock service returns `revoked` → access is withdrawn

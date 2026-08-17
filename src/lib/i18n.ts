@@ -26,6 +26,8 @@ interface I18nState {
   /** Follow-up tours already shown on this device. */
   toursSeen: TourId[];
   // User chose "continue as guest" on the auth gate — local-only, no sync.
+  // Android only: the browser version never offers it and ignores the flag,
+  // so an account is always required there.
   guestMode: boolean;
   vibrationType: VibrationType;
   // End-of-day review: offer to reschedule whatever is still open, at eodTime
@@ -495,7 +497,6 @@ export const translations = {
     premium_only_on_android: "Premium is purchased in the FlowDay Android app.",
     premium_web_locked_title: "Premium unlocks the browser version",
     premium_web_locked_body: "Browser access is part of FlowDay Premium. Buy it once in the Android app and this page unlocks automatically on every device you sign in to.",
-    premium_web_locked_guest: "You're browsing as a guest. Sign in with the account you used on your phone to unlock the browser version.",
     premium_check_again: "I've purchased — check again",
     premium_checking: "Checking your purchase…",
     premium_still_locked: "We still can't see a purchase on this account. Open FlowDay on your phone, make sure you're signed in with the same email, then try again.",
@@ -883,7 +884,6 @@ export const translations = {
     premium_only_on_android: "Premium kupuje się w aplikacji FlowDay na Androida.",
     premium_web_locked_title: "Premium odblokowuje wersję przeglądarkową",
     premium_web_locked_body: "Dostęp z przeglądarki jest częścią FlowDay Premium. Kup go raz w aplikacji na Androida, a ta strona odblokuje się automatycznie na każdym urządzeniu, na którym się zalogujesz.",
-    premium_web_locked_guest: "Korzystasz z FlowDay jako gość. Zaloguj się kontem z telefonu, żeby odblokować wersję przeglądarkową.",
     premium_check_again: "Mam już zakup — sprawdź ponownie",
     premium_checking: "Sprawdzamy Twój zakup…",
     premium_still_locked: "Nadal nie widzimy zakupu na tym koncie. Otwórz FlowDay w telefonie, sprawdź, czy to ten sam e-mail, i spróbuj ponownie.",
