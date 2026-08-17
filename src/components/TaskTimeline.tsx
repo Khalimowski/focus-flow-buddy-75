@@ -13,8 +13,8 @@ export type TimelineTask = {
   notified?: boolean;
 };
 
-export type TimelineNudge = {
-  kind: "nudge";
+export type TimelineHabit = {
+  kind: "habit";
   id: string;
   title: string;
   done: boolean;
@@ -22,13 +22,13 @@ export type TimelineNudge = {
   originalId: string;
 };
 
-export type TimelineItem = TimelineTask | TimelineNudge;
+export type TimelineItem = TimelineTask | TimelineHabit;
 
 type Props = {
   items: TimelineItem[];
   isToday: boolean;
   onToggleTask: (id: string) => void;
-  onToggleNudge: (originalId: string, time: string) => void;
+  onToggleHabit: (originalId: string, time: string) => void;
   onSetTaskTime: (id: string, minutes: number | null) => void;
   onEditTask: (task: TimelineTask) => void;
   onDeleteTask: (id: string) => void;
@@ -41,7 +41,7 @@ const TOUCH_CANCEL_DIST = 10;
 const MOUSE_START_DIST = 4;
 
 const itemMinutes = (item: TimelineItem): number | null => {
-  if (item.kind === "nudge") {
+  if (item.kind === "habit") {
     const [h, m] = item.time.split(":").map(Number);
     return h * 60 + m;
   }
@@ -91,7 +91,7 @@ export function TaskTimeline({
   items,
   isToday,
   onToggleTask,
-  onToggleNudge,
+  onToggleHabit,
   onSetTaskTime,
   onEditTask,
   onDeleteTask,
@@ -326,16 +326,16 @@ export function TaskTimeline({
   const renderCheck = (item: TimelineItem) => (
     <button
       onClick={() =>
-        item.kind === "task" ? onToggleTask(item.id) : onToggleNudge(item.originalId, item.time)
+        item.kind === "task" ? onToggleTask(item.id) : onToggleHabit(item.originalId, item.time)
       }
       aria-label={item.title}
       aria-pressed={item.done}
       className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${
         item.done
-          ? item.kind === "nudge"
+          ? item.kind === "habit"
             ? "border-amber-500 bg-amber-500 text-white"
             : "border-mint bg-mint text-mint-foreground"
-          : item.kind === "nudge"
+          : item.kind === "habit"
             ? "border-border hover:border-amber-500"
             : "border-border hover:border-primary"
       }`}
@@ -435,7 +435,7 @@ export function TaskTimeline({
                   onContextMenu={(e) => e.preventDefault()}
                   onClickCapture={blockClick}
                   className={`absolute flex items-center gap-2 overflow-hidden rounded-xl border px-2 shadow-sm ${
-                    item.kind === "nudge"
+                    item.kind === "habit"
                       ? "bg-amber-500/10 border-amber-500/20"
                       : "bg-card border-border"
                   } ${draggable ? "cursor-grab active:cursor-grabbing touch-pan-y" : ""} ${
@@ -470,7 +470,7 @@ export function TaskTimeline({
                         : fmtMinutes(minutes)}
                     </div>
                   </div>
-                  {item.kind === "nudge" ? (
+                  {item.kind === "habit" ? (
                     <Sparkles className="size-3.5 shrink-0 text-amber-500/50" />
                   ) : (
                     <div className="flex shrink-0 items-center">

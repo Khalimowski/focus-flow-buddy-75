@@ -6,11 +6,11 @@
     <string name="custom_url_scheme">com.khalimowski.focusflow</string>
 
     <!-- Notification Channel Strings -->
-    <string name="nudge_channel_name">Przypominajki</string>
-    <string name="nudge_channel_description">Spokojne przypomnienia i podpowiedzi w ciągu dnia</string>
-    <string name="channel_vib_short">Przypominajki (krótkie wibracje)</string>
-    <string name="channel_vib_double">Przypominajki (podwójne wibracje)</string>
-    <string name="channel_vib_off">Przypominajki (bez wibracji)</string>
+    <string name="habit_channel_name">Powiadomienia o nawykach</string>
+    <string name="habit_channel_description">Spokojne przypomnienia o Twoich nawykach</string>
+    <string name="channel_vib_short">Nawyki (krótkie wibracje)</string>
+    <string name="channel_vib_double">Nawyki (podwójne wibracje)</string>
+    <string name="channel_vib_off">Nawyki (bez wibracji)</string>
 
     <!-- Home-screen Widget Strings -->
     <string name="widget_name">Zadania</string>

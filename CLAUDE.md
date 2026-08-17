@@ -64,7 +64,27 @@ Cross-device sync mirrors whole localStorage values to one Postgres row per (use
 **Any new domain serving the app must be added to Neon Auth trusted origins** (`neon_auth.project_config.trusted_origins`, updatable via SQL over `DATABASE_URL` or the Neon console) or sign-in fails with "Invalid origin". Capacitor's `https://localhost` is covered by `allow_localhost`.
 
 ### Notifications (src/lib/native.ts)
-All native APIs are guarded by `isNative()` and no-op on web. Notification id conventions: tasks `hashId("task:" + id)` (one-shot at `remindAt`), nudges `hashId("rem:" + id + ":" + timeIdx)` (daily repeating). Postponed notifications use throwaway ids and must not be cancelled by cleanup logic. `reconcileNotifications()` aligns pending notifications with storage after sync pulls and at boot. An Android home-screen widget mirrors open tasks via `WidgetBridge` (custom plugin in `android/`).
+All native APIs are guarded by `isNative()` and no-op on web. Notification id conventions: tasks `hashId("task:" + id)` (one-shot at `remindAt`), habits `hashId("rem:" + id + ":" + timeIdx)` (daily repeating). Postponed notifications use throwaway ids and must not be cancelled by cleanup logic. `reconcileNotifications()` aligns pending notifications with storage after sync pulls and at boot. An Android home-screen widget mirrors open tasks via `WidgetBridge` (custom plugin in `android/`).
+
+### "Habits" were called "nudges"
+The feature was renamed in the UI and throughout the code. What did **not**
+change is anything already written to a device, a synced row, or a pending
+notification — renaming those would strand existing data:
+
+- `STORAGE_KEYS.reminders` (`ff.reminders.v1`) and the Google map key
+  `ff.google.nudgemap.v1`.
+- The notification payload in `scheduleNativeDaily`: `actionTypeId:
+  "NUDGE_ACTIONS"`, `extra.type === "nudge"`, `extra.nudgeId`, and the
+  `hashId("rem:"…)` / `hashId("nudge:"…)` id prefixes. Notifications scheduled by
+  older builds are still pending on users' phones and are matched on these.
+- The two-character stat codes in `stats.ts` (`nc`/`nx`/`nd`/`ns`) — the
+  `StatMetric` names around them are `habit*`.
+- The `nudges` field in the synced `googlePrefs` blob, still written alongside
+  the new `habits` field so devices on older builds keep reading it.
+
+The settings store renamed `nudgeCalendarSync`/`googleNudgeSync` to
+`habitCalendarSync`/`googleHabitSync` and migrates them in the zustand `persist`
+v3 migration.
 
 ### Premium (src/lib/premium.ts, src/lib/billing.ts)
 One-time Play purchase (`focus_flow_premium`) that unlocks the **browser

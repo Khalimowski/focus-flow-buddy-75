@@ -39,11 +39,11 @@ export type StatMetric =
   | "todoCompleted"
   | "todoDeleted"
   | "todoScheduled"
-  // Nudges
-  | "nudgeCreated"
-  | "nudgeDeleted"
-  | "nudgeCompleted"
-  | "nudgeSnoozed";
+  // Habits
+  | "habitCreated"
+  | "habitDeleted"
+  | "habitCompleted"
+  | "habitSnoozed";
 
 /**
  * On-disk codes. The blob is pushed to the cloud on every change, so the keys
@@ -63,10 +63,10 @@ const CODES: Record<StatMetric, string> = {
   todoCompleted: "od",
   todoDeleted: "ox",
   todoScheduled: "os",
-  nudgeCreated: "nc",
-  nudgeDeleted: "nx",
-  nudgeCompleted: "nd",
-  nudgeSnoozed: "ns",
+  habitCreated: "nc",
+  habitDeleted: "nx",
+  habitCompleted: "nd",
+  habitSnoozed: "ns",
 };
 
 const METRICS = Object.keys(CODES) as StatMetric[];
@@ -135,7 +135,7 @@ function prune(log: StatsLog): StatsLog {
  * Count something the user just did.
  *
  * `day` defaults to today, and should be passed when the action is *about*
- * another day — ticking off yesterday's nudge belongs to yesterday, not to the
+ * another day — ticking off yesterday's habit belongs to yesterday, not to the
  * moment the box was clicked.
  */
 export function recordStat(metric: StatMetric, count = 1, day: string = dateKey()): void {

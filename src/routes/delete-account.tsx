@@ -71,13 +71,13 @@ function DeleteAccountPage() {
         <div className="space-y-4 text-sm leading-relaxed">
           <p>
             Deleting your account permanently removes your login (e-mail address and password) and
-            all data synced to our servers: tasks, to-do items, nudges and streak history. This
+            all data synced to our servers: tasks, to-do items, habits and streak history. This
             happens immediately and cannot be undone. Data stored only on your phone is removed by
             uninstalling the app.
           </p>
           <p className="text-muted-foreground">
             Usunięcie konta trwale kasuje Twój login (adres e-mail i hasło) oraz wszystkie dane
-            zsynchronizowane z naszymi serwerami: zadania, listę do zrobienia, przypominajki i
+            zsynchronizowane z naszymi serwerami: zadania, listę do zrobienia, nawyki i
             historię serii. Operacja jest natychmiastowa i nieodwracalna. Dane zapisane wyłącznie w
             telefonie usuniesz, odinstalowując aplikację.
           </p>

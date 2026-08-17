@@ -107,8 +107,8 @@ async function ensureChannel() {
     for (const [type, id] of Object.entries(VIBRATION_CHANNELS) as [VibrationType, string][]) {
       await LocalNotifications.createChannel({
         id,
-        name: "Nudge Notifications",
-        description: "Channel for your calm nudges and reminders",
+        name: "Habit Notifications",
+        description: "Channel for your calm habit reminders",
         importance: 5,
         visibility: 1,
         sound: "boink",
@@ -122,7 +122,7 @@ async function ensureChannel() {
 }
 
 // Re-issue pending notifications so they pick up the channel matching the
-// current vibration setting. Cancels canonical task/nudge ids only —
+// current vibration setting. Cancels canonical task/habit ids only —
 // postponed notifications use throwaway ids and are left to fire as-is.
 export async function applyVibrationSetting() {
   if (!isNative()) return;
@@ -207,8 +207,14 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
   }
 }
 
-// Schedule a daily-repeating notification at HH:mm
-export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number, syncCalendar = false, nudgeId?: string) {
+// Schedule a daily-repeating notification at HH:mm for one habit time.
+//
+// The payload below still says "nudge" — the action type id, the `type` tag and
+// the `nudgeId` field — because habits used to be called nudges and every
+// notification an older build already scheduled is sitting on the user's phone
+// with those exact values. Reconciliation and the action handlers match on them,
+// so renaming here would orphan every pending notification until it re-fired.
+export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number, syncCalendar = false, habitId?: string) {
   if (!isNative()) return;
   try {
     await ensureChannel();
@@ -225,7 +231,7 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
           smallIcon: "ic_stat_icon",
           sound: "boink",
           actionTypeId: "NUDGE_ACTIONS",
-          extra: { type: 'nudge', nudgeId, time: timeStr, title }
+          extra: { type: 'nudge', nudgeId: habitId, time: timeStr, title }
         },
       ],
     });
@@ -243,14 +249,14 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
   }
 }
 
-// --- End-of-day review nudge ---
+// --- End-of-day review reminder ---
 // One notification, re-armed from storage rather than left repeating: a daily
 // `repeats: true` schedule would fire on evenings with nothing left to move.
 // The id is fixed, so scheduling replaces any earlier arming.
 const EOD_NOTIF_ID = hashId("eod:review");
 
 /**
- * Arm (or clear) the "you still have open tasks" nudge for the next occurrence
+ * Arm (or clear) the "you still have open tasks" reminder for the next occurrence
  * of the user's check-in time. Cheap and idempotent — called at boot, on every
  * task save, and whenever the setting changes.
  */
@@ -269,7 +275,7 @@ export async function refreshEndOfDayPrompt() {
     // Past today's time already: the next check-in is tomorrow's.
     if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
 
-    // Only nudge about days that have actually arrived by then — a task planned
+    // Only remind about days that have actually arrived by then — a task planned
     // for next week isn't "unfinished" tonight.
     const dayKey = dateKey(at);
     type TaskLike = { done: boolean; dueDate?: string };
@@ -539,17 +545,17 @@ export async function reconcileNotifications() {
       }
     }
 
-    // Daily nudge slots that should exist at all (enabled reminders)…
-    const validNudgeIds = new Set<number>();
+    // Daily habit slots that should exist at all (enabled reminders)…
+    const validHabitIds = new Set<number>();
     // …and the subset to (re)schedule now (skip slots already fired today —
     // boot cleanup cancels those; the Reminders UI re-arms them next day)
-    const scheduleNudge = new Map<number, { r: ReminderLike; time: string }>();
+    const scheduleHabit = new Map<number, { r: ReminderLike; time: string }>();
     for (const r of reminders) {
       if (!r.enabled) continue;
       r.times.forEach((time, idx) => {
         const id = hashId(`rem:${r.id}:${idx}`);
-        validNudgeIds.add(id);
-        if (r.lastFired?.[time] !== today) scheduleNudge.set(id, { r, time });
+        validHabitIds.add(id);
+        if (r.lastFired?.[time] !== today) scheduleHabit.set(id, { r, time });
       });
     }
 
@@ -558,7 +564,7 @@ export async function reconcileNotifications() {
     const stale: number[] = [];
     // Labels of reminders that were deleted/disabled remotely — their calendar
     // events should go the same way cancelAll() removes them locally.
-    const staleNudgeLabels = new Set<string>();
+    const staleHabitLabels = new Set<string>();
     for (const n of pending.notifications) {
       pendingIds.add(n.id);
       const extra = (n.extra ?? {}) as { type?: string; taskId?: string; nudgeId?: string; title?: string };
@@ -567,20 +573,20 @@ export async function reconcileNotifications() {
       if (extra.type === "task" && extra.taskId && n.id === hashId("task:" + extra.taskId)) {
         if (!wantTask.has(n.id)) stale.push(n.id);
       } else if (extra.type === "nudge") {
-        if (!validNudgeIds.has(n.id)) {
+        if (!validHabitIds.has(n.id)) {
           stale.push(n.id);
           // Only wipe calendar events when the whole reminder is gone or
           // disabled — a reminder that merely lost one time slot keeps the
           // events of its remaining slots (delete is by title, not per slot).
           const owner = reminders.find((r) => r.id === extra.nudgeId);
-          if (settings.nudgeCalendarSync && (!owner || !owner.enabled) && extra.title) {
-            staleNudgeLabels.add(extra.title);
+          if (settings.habitCalendarSync && (!owner || !owner.enabled) && extra.title) {
+            staleHabitLabels.add(extra.title);
           }
         }
       }
     }
     if (stale.length > 0) await cancelNative(stale);
-    for (const label of staleNudgeLabels) await deleteFromCalendar(label);
+    for (const label of staleHabitLabels) await deleteFromCalendar(label);
 
     let added = 0;
     for (const [id, t] of wantTask) {
@@ -595,12 +601,12 @@ export async function reconcileNotifications() {
     // Reminders whose calendar events were already cleaned (or intentionally
     // kept) in this pass — delete-by-title must run at most once per reminder,
     // or the second slot's cleanup would erase the first slot's fresh event.
-    const cleanedNudges = new Set<string>();
-    for (const [id, { r, time }] of scheduleNudge) {
+    const cleanedHabits = new Set<string>();
+    for (const [id, { r, time }] of scheduleHabit) {
       if (!pendingIds.has(id)) {
         const [h, m] = time.split(":").map(Number);
-        if (settings.nudgeCalendarSync && !cleanedNudges.has(r.id)) {
-          cleanedNudges.add(r.id);
+        if (settings.habitCalendarSync && !cleanedHabits.has(r.id)) {
+          cleanedHabits.add(r.id);
           // Delete-first only when the reminder is wholly new to this device;
           // if sibling slots are still pending, their events must survive.
           const siblingIds = r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`));
@@ -608,7 +614,7 @@ export async function reconcileNotifications() {
             await deleteFromCalendar(r.label);
           }
         }
-        await scheduleNativeDaily(id, r.label, lang.gentle_nudge_emoji, h, m, settings.nudgeCalendarSync, r.id);
+        await scheduleNativeDaily(id, r.label, lang.gentle_habit_emoji, h, m, settings.habitCalendarSync, r.id);
         added++;
       }
     }
@@ -680,13 +686,13 @@ export async function initNative() {
           saveJSON(STORAGE_KEYS.reminders, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           if (reminders.some(r => r.id === nudgeId && r.lastFired?.[time] !== dateStr)) {
-            recordStat('nudgeCompleted', 1, dateStr);
+            recordStat('habitCompleted', 1, dateStr);
           }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
           const id = hashId("nudge:" + nudgeId + Date.now());
-          void scheduleNativeAt(id, extra.title, "Postponed nudge", nextAt, false);
-          recordStat('nudgeSnoozed');
+          void scheduleNativeAt(id, extra.title, "Postponed habit", nextAt, false);
+          recordStat('habitSnoozed');
         }
       }
     });
@@ -711,24 +717,24 @@ export async function initNative() {
   await ensureChannel();
 
   // Notification Cleanup: Cancel notifications for tasks that are already done
-  // or nudges that have already been fired today.
+  // or habits that have already been fired today.
   try {
     const tasks = loadJSON<any[]>(STORAGE_KEYS.tasks, []);
     const doneTaskIds = tasks.filter(t => t.done).map(t => hashId("task:" + t.id));
 
     const reminders = loadJSON<any[]>(STORAGE_KEYS.reminders, []);
     const dateStr = dateKey();
-    const firedNudgeIds: number[] = [];
+    const firedHabitIds: number[] = [];
 
     reminders.forEach(r => {
       r.times.forEach((time: string, idx: number) => {
         if (r.lastFired?.[time] === dateStr) {
-          firedNudgeIds.push(hashId(`rem:${r.id}:${idx}`));
+          firedHabitIds.push(hashId(`rem:${r.id}:${idx}`));
         }
       });
     });
 
-    const toCancel = [...doneTaskIds, ...firedNudgeIds];
+    const toCancel = [...doneTaskIds, ...firedHabitIds];
     if (toCancel.length > 0) {
       console.log(`[Native] Cleaning up ${toCancel.length} obsolete notifications`);
       await cancelNative(toCancel);

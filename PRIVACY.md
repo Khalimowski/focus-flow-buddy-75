@@ -12,7 +12,7 @@ FlowDay ("the app") is a task, reminder, and focus app designed for ADHD brains.
 
 The following is saved in the app's private storage on your device and never leaves it:
 
-- Tasks, to-do items, and nudges (reminders) you create
+- Tasks, to-do items, and habits (recurring reminders) you create
 - Your streak history and usage events (used only to power the on-device "AI coach" suggestions)
 - App preferences (theme, language, notification and sync settings)
 
@@ -20,9 +20,9 @@ Deleting the app deletes this data. You can inspect everything the app has recor
 
 ## Permissions the app requests and why
 
-- **Notifications** — to show the task reminders and daily nudges you schedule. Optional.
+- **Notifications** — to show the task reminders and daily habits you schedule. Optional.
 - **Exact alarms** — so reminders fire at the exact time you chose, even when the app is closed.
-- **Calendar (read/write)** — only if you enable "Sync to Calendar" in Settings. The app then adds/removes your own tasks and nudges in your device calendar. Calendar data is processed entirely on your device and is never transmitted anywhere. Optional; off by default.
+- **Calendar (read/write)** — only if you enable "Sync to Calendar" in Settings. The app then adds/removes your own tasks and habits in your device calendar. Calendar data is processed entirely on your device and is never transmitted anywhere. Optional; off by default.
 - **Run at startup** — to re-register your scheduled reminders after the phone reboots.
 - **Internet** — used solely to check a static version file for app updates (hosted on GitHub). No personal data is sent with this request.
 

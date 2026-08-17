@@ -120,13 +120,13 @@ export function AICoach() {
       tasks.filter((task) => task.dueDate === todayStr).map((task) => task.title.trim().toLowerCase())
     );
 
-    // Titles an active nudge already covers — no point suggesting them as tasks
-    const nudgeTitles = new Set(
+    // Titles an active habit already covers — no point suggesting them as tasks
+    const habitTitles = new Set(
       loadJSON<Reminder[]>(STORAGE_KEYS.reminders, [])
         .filter((r) => r.enabled)
         .map((r) => r.label.trim().toLowerCase())
     );
-    const isTaken = (key: string) => todayTitles.has(key) || nudgeTitles.has(key);
+    const isTaken = (key: string) => todayTitles.has(key) || habitTitles.has(key);
 
     const counts = new Map<string, { title: string; count: number }>();
     for (const ev of useHistoryStore.getState().events) {

@@ -8,7 +8,7 @@
 //    Insights existed. This is the headline metric.
 //  - **The counters in lib/stats.ts.** Rescheduling, postponing and deleting
 //    leave no trace in the task list (the task moves, or is simply gone), and
-//    to-dos and nudges carry no completion date at all. Those can only be
+//    to-dos and habits carry no completion date at all. Those can only be
 //    counted as they happen, so they start from the day tracking began, which
 //    is why `trackingSince` is reported alongside them.
 //
@@ -88,8 +88,8 @@ export type Insights = {
   /** First day anything was counted; "" when nothing has been yet. */
   trackingSince: string;
   todos: { open: number; done: number };
-  /** Enabled nudge times per day — what a "full" nudge day would be. */
-  nudgeSlots: number;
+  /** Enabled habit times per day — what a "full" habit day would be. */
+  habitSlots: number;
 };
 
 /** Percentage, rounded, with 0/0 reading as 0 rather than NaN. */
@@ -209,7 +209,7 @@ export function buildInsights(granularity: Granularity, now: Date = new Date()):
       open: todos.filter((item) => !item.done).length,
       done: todos.filter((item) => item.done).length,
     },
-    nudgeSlots: reminders.filter((r) => r.enabled).reduce((n, r) => n + r.times.length, 0),
+    habitSlots: reminders.filter((r) => r.enabled).reduce((n, r) => n + r.times.length, 0),
   };
 }
 

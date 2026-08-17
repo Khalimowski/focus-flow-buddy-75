@@ -21,7 +21,7 @@ interface I18nState {
   language: Language;
   theme: Theme;
   calendarSync: boolean;
-  nudgeCalendarSync: boolean;
+  habitCalendarSync: boolean;
   tutorialCompleted: boolean;
   /** Follow-up tours already shown on this device. */
   toursSeen: TourId[];
@@ -30,7 +30,7 @@ interface I18nState {
   vibrationType: VibrationType;
   // End-of-day review: offer to reschedule whatever is still open, at eodTime
   // ("HH:mm"). Device-local like the rest of the notification settings — the
-  // nudge is scheduled per device.
+  // reminder is scheduled per device.
   eodReview: boolean;
   eodTime: string;
   // Google integrations (need a connected Google account, see lib/google.ts).
@@ -38,11 +38,11 @@ interface I18nState {
   // publishGooglePrefs below.
   googleGmail: boolean;
   googleCalendarSync: boolean;
-  googleNudgeSync: boolean;
+  googleHabitSync: boolean;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: Theme) => void;
   setCalendarSync: (enabled: boolean) => void;
-  setNudgeCalendarSync: (enabled: boolean) => void;
+  setHabitCalendarSync: (enabled: boolean) => void;
   setTutorialCompleted: (completed: boolean) => void;
   markToursSeen: (ids: TourId[]) => void;
   resetTour: (id: TourId) => void;
@@ -52,7 +52,7 @@ interface I18nState {
   setEodTime: (time: string) => void;
   setGoogleGmail: (enabled: boolean) => void;
   setGoogleCalendarSync: (enabled: boolean) => void;
-  setGoogleNudgeSync: (enabled: boolean) => void;
+  setGoogleHabitSync: (enabled: boolean) => void;
 }
 
 export const useI18nStore = create<I18nState>()(
@@ -61,7 +61,7 @@ export const useI18nStore = create<I18nState>()(
       language: 'en',
       theme: 'dark',
       calendarSync: false,
-      nudgeCalendarSync: false,
+      habitCalendarSync: false,
       tutorialCompleted: false,
       toursSeen: [],
       guestMode: false,
@@ -70,11 +70,11 @@ export const useI18nStore = create<I18nState>()(
       eodTime: '23:30',
       googleGmail: false,
       googleCalendarSync: false,
-      googleNudgeSync: false,
+      googleHabitSync: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),
       setCalendarSync: (calendarSync) => set({ calendarSync }),
-      setNudgeCalendarSync: (nudgeCalendarSync) => set({ nudgeCalendarSync }),
+      setHabitCalendarSync: (habitCalendarSync) => set({ habitCalendarSync }),
       setTutorialCompleted: (tutorialCompleted) => set({ tutorialCompleted }),
       markToursSeen: (ids) =>
         set((s) => ({ toursSeen: Array.from(new Set([...s.toursSeen, ...ids])) })),
@@ -85,13 +85,26 @@ export const useI18nStore = create<I18nState>()(
       setEodTime: (eodTime) => set({ eodTime }),
       setGoogleGmail: (googleGmail) => set({ googleGmail }),
       setGoogleCalendarSync: (googleCalendarSync) => set({ googleCalendarSync }),
-      setGoogleNudgeSync: (googleNudgeSync) => set({ googleNudgeSync }),
+      setGoogleHabitSync: (googleHabitSync) => set({ googleHabitSync }),
     }),
     {
       name: 'focus-flow-settings',
       // v2: Polish re-enabled — the v1 pl->en migration no longer applies.
-      version: 2,
-      migrate: (persisted) => persisted as I18nState,
+      // v3: "nudges" became "habits". The two calendar-sync flags were renamed,
+      // and without this the rehydrate would drop them and silently switch a
+      // user's calendar syncing back off.
+      version: 3,
+      migrate: (persisted, version) => {
+        const s = persisted as I18nState & {
+          nudgeCalendarSync?: boolean;
+          googleNudgeSync?: boolean;
+        };
+        if (version < 3) {
+          if (s.nudgeCalendarSync !== undefined) s.habitCalendarSync = s.nudgeCalendarSync;
+          if (s.googleNudgeSync !== undefined) s.googleHabitSync = s.googleNudgeSync;
+        }
+        return s as I18nState;
+      },
     }
   )
 );
@@ -104,7 +117,10 @@ export const useI18nStore = create<I18nState>()(
 // update lands. The OAuth token is never synced (see lib/google.ts): a device
 // with the toggle on but no connection just no-ops until it connects.
 
-type GooglePrefs = { gmail: boolean; calendar: boolean; nudges: boolean };
+// `nudges` is the pre-rename name of `habits`. This blob is synced, so a device
+// still on an older build keeps writing (and reading) the old field — both are
+// written on publish and either is accepted on read until those builds are gone.
+type GooglePrefs = { gmail: boolean; calendar: boolean; habits: boolean; nudges?: boolean };
 
 /**
  * Store -> synced storage. Call this only for changes the user actually made.
@@ -113,11 +129,12 @@ type GooglePrefs = { gmail: boolean; calendar: boolean; nudges: boolean };
  * user's other devices — sync is last-writer-wins.
  */
 export function publishGooglePrefs() {
-  const { googleGmail, googleCalendarSync, googleNudgeSync } = useI18nStore.getState();
+  const { googleGmail, googleCalendarSync, googleHabitSync } = useI18nStore.getState();
   saveJSON<GooglePrefs>(STORAGE_KEYS.googlePrefs, {
     gmail: googleGmail,
     calendar: googleCalendarSync,
-    nudges: googleNudgeSync,
+    habits: googleHabitSync,
+    nudges: googleHabitSync,
   });
 }
 
@@ -128,7 +145,7 @@ function hydrateGooglePrefs() {
   useI18nStore.setState({
     googleGmail: !!prefs.gmail,
     googleCalendarSync: !!prefs.calendar,
-    googleNudgeSync: !!prefs.nudges,
+    googleHabitSync: !!(prefs.habits ?? prefs.nudges),
   });
 }
 
@@ -136,10 +153,10 @@ if (typeof window !== "undefined") {
   hydrateGooglePrefs();
   // Toggles switched on before this key existed have never been published, and
   // sync only pushes keys that are present locally — seed it once.
-  const { googleGmail, googleCalendarSync, googleNudgeSync } = useI18nStore.getState();
+  const { googleGmail, googleCalendarSync, googleHabitSync } = useI18nStore.getState();
   if (
     window.localStorage.getItem(STORAGE_KEYS.googlePrefs) === null &&
-    (googleGmail || googleCalendarSync || googleNudgeSync)
+    (googleGmail || googleCalendarSync || googleHabitSync)
   ) {
     publishGooglePrefs();
   }
@@ -154,8 +171,8 @@ export const translations = {
     tagline: "From Chaos to Flow.",
     tasks: "Tasks",
     todo: "To-Do",
-    nudges: "Nudges",
-    enable_nudges: "Enable nudges",
+    habits: "Habits",
+    enable_habits: "Enable habits",
     blocked: "Blocked",
     enable: "Enable",
     streak_current: "CURRENT STREAK",
@@ -182,22 +199,22 @@ export const translations = {
     widget_manual_hint: "Your launcher didn't open the dialog. Long-press your home screen, pick Widgets, and choose FlowDay.",
     sync_calendar: "Sync to Local Calendar",
     sync_calendar_desc: "Automatically add reminders to your phone calendar.",
-    sync_nudges_calendar: "Sync Nudges to Local Calendar",
+    sync_habits_calendar: "Sync Habits to Local Calendar",
     tasks_placeholder: "Add a task...",
-    reminders_title: "Gentle Nudges",
+    reminders_title: "Daily Habits",
     reminders_desc: "Daily reminders to keep you on track.",
-    boink_channel_name: "Nudge Notifications",
+    boink_channel_name: "Habit Notifications",
     quick_add: "Quick Add",
-    custom_reminder: "Custom Nudge",
-    your_daily_nudges: "Your Daily Nudges",
+    custom_reminder: "Custom Habit",
+    your_daily_habits: "Your Daily Habits",
     add_preset_or_own: "Add a preset or your own.",
-    nudge_placeholder: "What should I nudge you about?",
-    gentle_nudge_emoji: "Gentle nudge ✨",
+    habit_placeholder: "Which habit should I remind you about?",
+    gentle_habit_emoji: "Gentle reminder ✨",
     drink_water: "Drink water",
     take_meds: "Take meds",
     stand_stretch: "Stand & stretch",
     task_input_placeholder: "What needs to be done?",
-    nudge_at_time: "You'll be nudged at",
+    habit_at_time: "You'll be reminded at",
     tasks_empty: "Quiet for now. Add one task above.",
     todo_done_group: "Done",
     todo_all_done: "Nothing left. Everything's ticked off.",
@@ -243,7 +260,7 @@ export const translations = {
     time_clock_mode: "Use the clock instead",
     time_type_hint: "24-hour clock — for example 07:30 or 19:45.",
     add_time: "Add Time",
-    add_nudge: "Add Nudge",
+    add_habit: "Add Habit",
     edit: "Edit",
     save: "Save",
     cancel: "Cancel",
@@ -258,8 +275,8 @@ export const translations = {
     onboarding_welcome: "Welcome to FlowDay",
     onboarding_tasks_title: "Tiny Tasks",
     onboarding_tasks_desc: "Break your day into small, manageable wins. Set a time to get a gentle reminder.",
-    onboarding_nudges_title: "Daily Nudges",
-    onboarding_nudges_desc: "Build healthy habits with recurring reminders for water, meds, or stretching.",
+    onboarding_habits_title: "Daily Habits",
+    onboarding_habits_desc: "Build healthy habits with recurring reminders for water, meds, or stretching.",
     onboarding_sync_title: "Stay in Sync",
     onboarding_sync_desc: "Optionally sync your tasks to your phone's local calendar to see them everywhere.",
     next: "Next",
@@ -274,7 +291,7 @@ export const translations = {
     ai_coach_suggested_tag: "Suggested",
     ai_coach_keep_tag: "Keep",
     ai_coach_morning_hydration: "Morning Hydration",
-    ai_coach_wind_down: "Wind Down Nudge",
+    ai_coach_wind_down: "Wind Down Habit",
     ai_coach_accept: "ACCEPT & APPLY",
     ai_coach_reject: "REJECT",
     ai_coach_tasks_title: "Suggested Daily Tasks",
@@ -332,7 +349,7 @@ export const translations = {
     tour_streak_title: "Daily Streak",
     tour_streak_desc: "Complete at least one task a day to keep your streak alive. The dots show your recent days.",
     tour_tabs_title: "Three Lists",
-    tour_tabs_desc: "Tasks are scheduled for a specific day, To-Do holds anything for later, and Nudges are gentle daily reminders.",
+    tour_tabs_desc: "Tasks are scheduled for a specific day, To-Do holds anything for later, and Habits are gentle daily reminders.",
     tour_days_title: "Plan Your Week",
     tour_days_desc: "Pick a day to see or plan its tasks. Tap the calendar icon to jump to any date.",
     tour_views_title: "List, Timeline or Calendar",
@@ -347,7 +364,7 @@ export const translations = {
     tour_premium_welcome_title: "Premium is on",
     tour_premium_welcome_desc: "Thanks for backing FlowDay. Here's what just opened up — it takes a few taps.",
     tour_premium_web_title: "FlowDay in your browser",
-    tour_premium_web_desc: "Open flowday.day and sign in with the same account — your tasks, nudges and streak are already there. Settings can email you the link.",
+    tour_premium_web_desc: "Open flowday.day and sign in with the same account — your tasks, habits and streak are already there. Settings can email you the link.",
     tour_premium_voice_title: "Voice input unlocked",
     tour_premium_voice_desc: "The mic next to Add is live now. Say the task out loud instead of typing it — the recognition happens on your device.",
     tour_premium_extras_title: "Ad-free, plus Insights",
@@ -381,14 +398,14 @@ export const translations = {
     user_action: "User Action",
     permission_denied: "Permission Denied",
     calendar_permission_tasks_body: "FlowDay needs calendar access to sync your tasks. Please enable it in your phone settings.",
-    calendar_permission_nudges_body: "FlowDay needs calendar access to sync your nudges. Please enable it in your phone settings.",
+    calendar_permission_habits_body: "FlowDay needs calendar access to sync your habits. Please enable it in your phone settings.",
     calendar_sync_enabled: "Calendar Sync Enabled",
     calendar_sync_enabled_body: "Your tasks and reminders will now appear in your phone calendar.",
-    nudge_sync_enabled: "Nudge Sync Enabled",
-    nudge_sync_enabled_body: "Your recurring nudges will now appear in your phone calendar.",
+    habit_sync_enabled: "Habit Sync Enabled",
+    habit_sync_enabled_body: "Your recurring habits will now appear in your phone calendar.",
     sync_error: "Sync Error",
     calendar_sync_error_body: "Failed to enable calendar sync. Please check your phone settings.",
-    nudge_sync_error_body: "Failed to enable nudge sync. Please check your phone settings.",
+    habit_sync_error_body: "Failed to enable habit sync. Please check your phone settings.",
     save_error: "Error",
     save_error_body: "Could not save changes.",
     account_sync: "Account Sync",
@@ -450,9 +467,9 @@ export const translations = {
     google_calendar_toggle: "Sync tasks to Google Calendar",
     google_calendar_sync_enabled: "Google Calendar Sync Enabled",
     google_calendar_sync_enabled_body: "Tasks with reminders will now appear in your Google Calendar.",
-    google_nudge_toggle: "Sync nudges to Google Calendar",
-    google_nudge_sync_enabled: "Google Nudge Sync Enabled",
-    google_nudge_sync_enabled_body: "Your daily nudges will now appear in your Google Calendar.",
+    google_habit_toggle: "Sync habits to Google Calendar",
+    google_habit_sync_enabled: "Google Habit Sync Enabled",
+    google_habit_sync_enabled_body: "Your daily habits will now appear in your Google Calendar.",
     gmail_import: "Import from Gmail",
     gmail_import_desc: "Tap an email to turn it into a task.",
     gmail_empty: "No recent emails found.",
@@ -530,10 +547,10 @@ export const translations = {
     insights_todo_done: "Ticked off",
     insights_todo_open: "Still on the list",
     insights_todo_scheduled: "{n} given a day and time",
-    insights_nudges_title: "Nudges",
-    insights_nudges_done: "Ticked off",
-    insights_nudges_slots: "Set for each day",
-    insights_nudges_snoozed: "{n} pushed back for later",
+    insights_habits_title: "Habits",
+    insights_habits_done: "Ticked off",
+    insights_habits_slots: "Set for each day",
+    insights_habits_snoozed: "{n} pushed back for later",
     insights_empty: "Nothing to show yet — add a few tasks and come back.",
     loading: "Loading…",
   },
@@ -542,8 +559,8 @@ export const translations = {
     tagline: "Od chaosu do flow.",
     tasks: "Zadania",
     todo: "Do zrobienia",
-    nudges: "Przypominajki",
-    enable_nudges: "Włącz przypominajki",
+    habits: "Nawyki",
+    enable_habits: "Włącz nawyki",
     blocked: "Zablokowane",
     enable: "Włącz",
     streak_current: "AKTUALNA SERIA",
@@ -570,22 +587,22 @@ export const translations = {
     widget_manual_hint: "Launcher nie otworzył okna. Przytrzymaj palec na ekranie głównym, wybierz Widżety i znajdź FlowDay.",
     sync_calendar: "Synchronizuj z kalendarzem",
     sync_calendar_desc: "Przypomnienia trafią automatycznie do kalendarza w telefonie.",
-    sync_nudges_calendar: "Synchronizuj przypominajki z kalendarzem",
+    sync_habits_calendar: "Synchronizuj nawyki z kalendarzem",
     tasks_placeholder: "Dodaj zadanie...",
-    reminders_title: "Delikatne przypominajki",
+    reminders_title: "Codzienne nawyki",
     reminders_desc: "Codzienne przypomnienia, które pomogą Ci trzymać się planu.",
-    boink_channel_name: "Powiadomienia z przypominajkami",
+    boink_channel_name: "Powiadomienia o nawykach",
     quick_add: "Szybkie dodawanie",
-    custom_reminder: "Własna przypominajka",
-    your_daily_nudges: "Twoje codzienne przypominajki",
+    custom_reminder: "Własny nawyk",
+    your_daily_habits: "Twoje codzienne nawyki",
     add_preset_or_own: "Wybierz gotową lub dodaj własną.",
-    nudge_placeholder: "O czym Ci przypomnieć?",
-    gentle_nudge_emoji: "Delikatna przypominajka ✨",
+    habit_placeholder: "O czym Ci przypomnieć?",
+    gentle_habit_emoji: "Delikatne przypomnienie ✨",
     drink_water: "Pij wodę",
     take_meds: "Weź leki",
     stand_stretch: "Wstań i rozciągnij się",
     task_input_placeholder: "Co jest do zrobienia?",
-    nudge_at_time: "Przypomnimy Ci o",
+    habit_at_time: "Przypomnimy Ci o",
     tasks_empty: "Na razie spokój. Dodaj pierwsze zadanie u góry.",
     todo_done_group: "Zrobione",
     todo_all_done: "Nic nie zostało. Wszystko odhaczone.",
@@ -631,7 +648,7 @@ export const translations = {
     time_clock_mode: "Wybierz godzinę na zegarze",
     time_type_hint: "Zegar 24-godzinny — na przykład 07:30 lub 19:45.",
     add_time: "Dodaj godzinę",
-    add_nudge: "Dodaj przypominajkę",
+    add_habit: "Dodaj nawyk",
     edit: "Edytuj",
     save: "Zapisz",
     cancel: "Anuluj",
@@ -646,8 +663,8 @@ export const translations = {
     onboarding_welcome: "Witaj w FlowDay",
     onboarding_tasks_title: "Małe zadania",
     onboarding_tasks_desc: "Podziel dzień na małe kroki, które łatwo odhaczyć. Ustaw godzinę, a dostaniesz delikatne przypomnienie.",
-    onboarding_nudges_title: "Codzienne przypominajki",
-    onboarding_nudges_desc: "Buduj zdrowe nawyki dzięki cyklicznym przypomnieniom o wodzie, lekach czy rozciąganiu.",
+    onboarding_habits_title: "Codzienne nawyki",
+    onboarding_habits_desc: "Buduj zdrowe nawyki dzięki cyklicznym przypomnieniom o wodzie, lekach czy rozciąganiu.",
     onboarding_sync_title: "Pełna synchronizacja",
     onboarding_sync_desc: "Jeśli chcesz, zadania trafią też do kalendarza w telefonie — będziesz mieć je wszędzie pod ręką.",
     next: "Dalej",
@@ -720,7 +737,7 @@ export const translations = {
     tour_streak_title: "Codzienna seria",
     tour_streak_desc: "Ukończ co najmniej jedno zadanie dziennie, żeby nie przerwać serii. Kropki pokazują ostatnie dni.",
     tour_tabs_title: "Trzy listy",
-    tour_tabs_desc: "Zadania mają konkretny dzień, „Do zrobienia” to rzeczy na później, a Przypominajki to delikatne codzienne przypomnienia.",
+    tour_tabs_desc: "Zadania mają konkretny dzień, „Do zrobienia” to rzeczy na później, a Nawyki to delikatne codzienne przypomnienia.",
     tour_days_title: "Planuj tydzień",
     tour_days_desc: "Wybierz dzień, żeby zobaczyć albo zaplanować zadania. Dotknij ikony kalendarza, żeby skoczyć do dowolnej daty.",
     tour_views_title: "Lista, oś czasu albo kalendarz",
@@ -735,7 +752,7 @@ export const translations = {
     tour_premium_welcome_title: "Premium włączone",
     tour_premium_welcome_desc: "Dziękujemy za wsparcie FlowDay. Zobacz, co się właśnie otworzyło — to tylko kilka kliknięć.",
     tour_premium_web_title: "FlowDay w przeglądarce",
-    tour_premium_web_desc: "Wejdź na flowday.day i zaloguj się na to samo konto — Twoje zadania, przypominajki i seria już tam są. W Ustawieniach wyślesz sobie link mailem.",
+    tour_premium_web_desc: "Wejdź na flowday.day i zaloguj się na to samo konto — Twoje zadania, nawyki i seria już tam są. W Ustawieniach wyślesz sobie link mailem.",
     tour_premium_voice_title: "Dyktowanie odblokowane",
     tour_premium_voice_desc: "Mikrofon obok przycisku dodawania już działa. Powiedz zadanie na głos zamiast je pisać — rozpoznawanie dzieje się na Twoim urządzeniu.",
     tour_premium_extras_title: "Bez reklam i z Podsumowaniami",
@@ -769,14 +786,14 @@ export const translations = {
     user_action: "Działanie użytkownika",
     permission_denied: "Brak uprawnień",
     calendar_permission_tasks_body: "FlowDay potrzebuje dostępu do kalendarza, żeby synchronizować zadania. Przyznaj go w ustawieniach telefonu.",
-    calendar_permission_nudges_body: "FlowDay potrzebuje dostępu do kalendarza, żeby synchronizować przypominajki. Przyznaj go w ustawieniach telefonu.",
+    calendar_permission_habits_body: "FlowDay potrzebuje dostępu do kalendarza, żeby synchronizować nawyki. Przyznaj go w ustawieniach telefonu.",
     calendar_sync_enabled: "Synchronizacja z kalendarzem włączona",
     calendar_sync_enabled_body: "Twoje zadania i przypomnienia pojawią się teraz w kalendarzu telefonu.",
-    nudge_sync_enabled: "Synchronizacja przypominajek włączona",
-    nudge_sync_enabled_body: "Twoje cykliczne przypominajki pojawią się teraz w kalendarzu telefonu.",
+    habit_sync_enabled: "Synchronizacja nawyków włączona",
+    habit_sync_enabled_body: "Twoje cykliczne nawyki pojawią się teraz w kalendarzu telefonu.",
     sync_error: "Błąd synchronizacji",
     calendar_sync_error_body: "Nie udało się włączyć synchronizacji z kalendarzem. Sprawdź ustawienia telefonu.",
-    nudge_sync_error_body: "Nie udało się włączyć synchronizacji przypominajek. Sprawdź ustawienia telefonu.",
+    habit_sync_error_body: "Nie udało się włączyć synchronizacji nawyków. Sprawdź ustawienia telefonu.",
     save_error: "Błąd",
     save_error_body: "Nie udało się zapisać zmian.",
     account_sync: "Synchronizacja konta",
@@ -838,9 +855,9 @@ export const translations = {
     google_calendar_toggle: "Synchronizuj zadania z Kalendarzem Google",
     google_calendar_sync_enabled: "Synchronizacja z Kalendarzem Google włączona",
     google_calendar_sync_enabled_body: "Zadania z przypomnieniami pojawią się teraz w Twoim Kalendarzu Google.",
-    google_nudge_toggle: "Synchronizuj przypominajki z Kalendarzem Google",
-    google_nudge_sync_enabled: "Synchronizacja przypominajek z Google włączona",
-    google_nudge_sync_enabled_body: "Twoje codzienne przypominajki pojawią się teraz w Twoim Kalendarzu Google.",
+    google_habit_toggle: "Synchronizuj nawyki z Kalendarzem Google",
+    google_habit_sync_enabled: "Synchronizacja nawyków z Google włączona",
+    google_habit_sync_enabled_body: "Twoje codzienne nawyki pojawią się teraz w Twoim Kalendarzu Google.",
     gmail_import: "Importuj z Gmaila",
     gmail_import_desc: "Dotknij e-maila, żeby zamienić go w zadanie.",
     gmail_empty: "Brak ostatnich e-maili.",
@@ -921,10 +938,10 @@ export const translations = {
     insights_todo_done: "Odhaczone",
     insights_todo_open: "Wciąż na liście",
     insights_todo_scheduled: "{n} dostało dzień i godzinę",
-    insights_nudges_title: "Przypominajki",
-    insights_nudges_done: "Odhaczone",
-    insights_nudges_slots: "Ustawione na każdy dzień",
-    insights_nudges_snoozed: "{n} odłożonych na później",
+    insights_habits_title: "Nawyki",
+    insights_habits_done: "Odhaczone",
+    insights_habits_slots: "Ustawione na każdy dzień",
+    insights_habits_snoozed: "{n} odłożonych na później",
     insights_empty: "Nie ma jeszcze czego pokazać — dodaj kilka zadań i wróć tutaj.",
     loading: "Wczytywanie…",
   }

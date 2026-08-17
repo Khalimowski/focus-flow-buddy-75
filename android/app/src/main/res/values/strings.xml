@@ -6,11 +6,11 @@
     <string name="custom_url_scheme">com.khalimowski.focusflow</string>
 
     <!-- Notification Channel Strings -->
-    <string name="nudge_channel_name">Nudge Notifications</string>
-    <string name="nudge_channel_description">Channel for your calm nudges and reminders</string>
-    <string name="channel_vib_short">Nudge Notifications (short vibration)</string>
-    <string name="channel_vib_double">Nudge Notifications (double vibration)</string>
-    <string name="channel_vib_off">Nudge Notifications (no vibration)</string>
+    <string name="habit_channel_name">Habit Notifications</string>
+    <string name="habit_channel_description">Channel for your calm habit reminders</string>
+    <string name="channel_vib_short">Habit Notifications (short vibration)</string>
+    <string name="channel_vib_double">Habit Notifications (double vibration)</string>
+    <string name="channel_vib_off">Habit Notifications (no vibration)</string>
 
     <!-- Home-screen Widget Strings -->
     <string name="widget_name">Tasks</string>

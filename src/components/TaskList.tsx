@@ -150,23 +150,23 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const filteredTasks = tasks.filter(t => t.dueDate === dateStr).map(t => ({ ...t, kind: 'task' as const }));
 
-    const nudgeItems = reminders
+    const habitItems = reminders
       .filter(r => r.enabled)
       .flatMap(r => r.times.map(time => ({
         id: `${r.id}-${time}`,
         title: r.label,
         done: r.lastFired[time] === dateStr,
         remindAt: time,
-        kind: 'nudge' as const,
+        kind: 'habit' as const,
         originalId: r.id,
         time: time
       })));
 
-    return [...filteredTasks, ...nudgeItems].sort((a, b) => {
+    return [...filteredTasks, ...habitItems].sort((a, b) => {
       // Sort logic: Done items at bottom
       if (a.done !== b.done) return a.done ? 1 : -1;
 
-      const getMinutes = (item: (typeof filteredTasks)[number] | (typeof nudgeItems)[number]) => {
+      const getMinutes = (item: (typeof filteredTasks)[number] | (typeof habitItems)[number]) => {
         if (item.kind === 'task') {
           if (!item.remindAt) return 9999;
           const d = new Date(item.remindAt);
@@ -479,7 +479,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     notify({ title: t('moved_to_todo'), body: task.title, kind: "info" });
   };
 
-  const toggleNudge = (reminderId: string, time: string) => {
+  const toggleHabit = (reminderId: string, time: string) => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     let ticked = false;
     const updated = reminders.map(r => {
@@ -496,8 +496,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     setReminders(updated);
     saveJSON(STORAGE_KEYS.reminders, updated);
     // Counted against the day being ticked off, not the moment of the click —
-    // catching up on yesterday's nudge belongs to yesterday.
-    if (ticked) recordStat('nudgeCompleted', 1, dateStr);
+    // catching up on yesterday's habit belongs to yesterday.
+    if (ticked) recordStat('habitCompleted', 1, dateStr);
   };
 
   const remove = async (id: string) => {
@@ -692,7 +692,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             items={displayItems}
             isToday={isSameDay(selectedDate, new Date())}
             onToggleTask={toggle}
-            onToggleNudge={toggleNudge}
+            onToggleHabit={toggleHabit}
             onSetTaskTime={setTaskTime}
             onEditTask={(task: TimelineTask) => {
               switchView('list');
@@ -721,7 +721,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -10 }}
               className={`flex items-center gap-3 rounded-2xl border p-3 backdrop-blur ${
-                item.kind === 'nudge'
+                item.kind === 'habit'
                   ? "bg-amber-500/5 border-amber-500/10 shadow-sm"
                   : "bg-card/40 border-border"
               }`}
@@ -778,13 +778,13 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               ) : (
                 <>
                   <button
-                    onClick={() => item.kind === 'task' ? toggle(item.id) : toggleNudge(item.originalId, item.time)}
+                    onClick={() => item.kind === 'task' ? toggle(item.id) : toggleHabit(item.originalId, item.time)}
                     aria-label={item.title}
                     aria-pressed={item.done}
                     className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
                       item.done
-                        ? item.kind === 'nudge' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
-                        : item.kind === 'nudge' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
+                        ? item.kind === 'habit' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
+                        : item.kind === 'habit' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
                     }`}
                   >
                     {item.done && <Check className="size-3.5" strokeWidth={3} />}
@@ -796,9 +796,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                       >
                         {item.title}
                       </div>
-                      {item.kind === 'nudge' && (
+                      {item.kind === 'habit' && (
                         <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
-                          {t('nudges')}
+                          {t('habits')}
                         </span>
                       )}
                     </div>
@@ -810,7 +810,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                           minute: "2-digit",
                         })
                       ) : (
-                        item.kind === 'nudge' ? item.time : ""
+                        item.kind === 'habit' ? item.time : ""
                       )}
                     </div>
                   </div>
@@ -846,7 +846,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                       </Button>
                     </div>
                   )}
-                  {item.kind === 'nudge' && (
+                  {item.kind === 'habit' && (
                     <div className="flex items-center justify-center size-8 text-amber-500/40">
                       <Sparkles className="size-4" />
                     </div>

@@ -46,7 +46,7 @@ Browser:     sync.ts pulls it (15s poll / focus / "Check again")
 ```
 
 No new server is involved in that path — the entitlement rides the same
-last-writer-wins localStorage mirror as tasks and nudges. Both devices must be
+last-writer-wins localStorage mirror as tasks and habits. Both devices must be
 signed in to the **same account**; a guest install has nowhere to sync to, which
 is why PremiumGate tells guests to sign in first.
 

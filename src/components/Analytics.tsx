@@ -112,7 +112,7 @@ export function Analytics() {
 
   if (!data) return null;
 
-  const { current, previous, lifetime, rangeStats, weekdays, todos, nudgeSlots } = data;
+  const { current, previous, lifetime, rangeStats, weekdays, todos, habitSlots } = data;
   const currentRate = rate(current.completed, current.planned);
   const previousRate = previous ? rate(previous.completed, previous.planned) : null;
   // Only compare against a period that actually had something planned —
@@ -455,26 +455,26 @@ export function Analytics() {
               </p>
             </Card>
 
-            {/* Nudges */}
-            <Card title={t("insights_nudges_title")}>
+            {/* Habits */}
+            <Card title={t("insights_habits_title")}>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <div className="font-mono text-2xl font-semibold">
-                    {rangeStats.nudgeCompleted}
+                    {rangeStats.habitCompleted}
                   </div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {t("insights_nudges_done")}
+                    {t("insights_habits_done")}
                   </p>
                 </div>
                 <div>
-                  <div className="font-mono text-2xl font-semibold">{nudgeSlots}</div>
+                  <div className="font-mono text-2xl font-semibold">{habitSlots}</div>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {t("insights_nudges_slots")}
+                    {t("insights_habits_slots")}
                   </p>
                 </div>
               </div>
               <p className="mt-3 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
-                {t("insights_nudges_snoozed").replace("{n}", String(rangeStats.nudgeSnoozed))}
+                {t("insights_habits_snoozed").replace("{n}", String(rangeStats.habitSnoozed))}
               </p>
             </Card>
           </div>

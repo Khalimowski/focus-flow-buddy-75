@@ -8,7 +8,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { dateKey, generateId } from "@/lib/utils";
 import { isNative, scheduleNativeDaily, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
-import { pushNudgeToGoogleCalendar, removeNudgeFromGoogleCalendar } from "@/lib/google";
+import { pushHabitToGoogleCalendar, removeHabitFromGoogleCalendar } from "@/lib/google";
 import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
@@ -37,7 +37,7 @@ export function Reminders() {
   const [label, setLabel] = useState("");
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
   const { t } = useTranslation();
-  const { nudgeCalendarSync } = useI18nStore();
+  const { habitCalendarSync } = useI18nStore();
   const { addEvent } = useHistoryStore();
 
   const PRESETS = [
@@ -46,7 +46,7 @@ export function Reminders() {
     { id: 'stretch', tKey: 'stand_stretch', label: t('stand_stretch'), icon: StretchHorizontal, times: ["10:30", "14:30"] },
   ] as const;
 
-  // A preset counts as added when its id matches, or — for nudges saved before
+  // A preset counts as added when its id matches, or — for habits saved before
   // presetId existed — when the label matches its wording in ANY language.
   // Comparing against the current language only was the whole bug: after a
   // switch to Polish, "Drink water" stopped matching "Pij wodę" and the button
@@ -90,7 +90,7 @@ export function Reminders() {
 
   const ref = useRef(items);
   ref.current = items;
-  // The tick loop is mounted once, so it would otherwise keep firing nudges
+  // The tick loop is mounted once, so it would otherwise keep firing habit reminders
   // with whatever language was active at mount.
   const tRef = useRef(t);
   tRef.current = t;
@@ -102,7 +102,7 @@ export function Reminders() {
       const next = ref.current.map((r) => {
         if (!r.enabled) return r;
         if (r.times.includes(hm) && r.lastFired[hm] !== d) {
-          notify({ title: r.label, body: tRef.current('gentle_nudge_emoji'), kind: "reminder" });
+          notify({ title: r.label, body: tRef.current('gentle_habit_emoji'), kind: "reminder" });
           changed = true;
           return { ...r, lastFired: { ...r.lastFired, [hm]: d } };
         }
@@ -116,15 +116,15 @@ export function Reminders() {
   }, []);
 
   const scheduleAll = (r: Reminder) => {
-    void pushNudgeToGoogleCalendar(r);
+    void pushHabitToGoogleCalendar(r);
     if (!isNative()) return;
     r.times.forEach((t_val, idx) => {
       const [h, m] = t_val.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_nudge_emoji'), h, m, nudgeCalendarSync, r.id);
+      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_habit_emoji'), h, m, habitCalendarSync, r.id);
     });
   };
   const cancelAll = (r: Reminder) => {
-    void removeNudgeFromGoogleCalendar(r.id);
+    void removeHabitFromGoogleCalendar(r.id);
     if (!isNative()) return;
     void cancelNative(r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`)));
     void deleteFromCalendar(r.label);
@@ -141,8 +141,8 @@ export function Reminders() {
       presetId: p.id,
     };
     scheduleAll(r);
-    addEvent('nudge_created', { label: p.label, preset: true });
-    recordStat('nudgeCreated');
+    addEvent('habit_created', { label: p.label, preset: true });
+    recordStat('habitCreated');
     setItems([...items, r]);
   };
 
@@ -171,8 +171,8 @@ export function Reminders() {
       lastFired: {},
     };
     scheduleAll(r);
-    addEvent('nudge_created', { label: label.trim(), preset: false });
-    recordStat('nudgeCreated');
+    addEvent('habit_created', { label: label.trim(), preset: false });
+    recordStat('habitCreated');
     setItems([...items, r]);
     setLabel("");
     setCustomTimes([""]);
@@ -192,8 +192,8 @@ export function Reminders() {
     const r = items.find((x) => x.id === id);
     if (r) {
       cancelAll(r);
-      addEvent('nudge_deleted', { label: r.label });
-      recordStat('nudgeDeleted');
+      addEvent('habit_deleted', { label: r.label });
+      recordStat('habitDeleted');
     }
     setItems(items.filter((r) => r.id !== id));
   };
@@ -232,9 +232,9 @@ export function Reminders() {
         </h3>
         <div className="flex flex-col gap-3 rounded-2xl border bg-card/50 p-4">
           <Input
-            name="nudge-label"
+            name="habit-label"
             autoComplete="off"
-            placeholder={t('nudge_placeholder')}
+            placeholder={t('habit_placeholder')}
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className="flex-1"
@@ -283,14 +283,14 @@ export function Reminders() {
           </div>
 
           <Button onClick={addCustom} className="w-full sm:w-auto self-end">
-            {t('add_nudge')}
+            {t('add_habit')}
           </Button>
         </div>
       </section>
 
       <section>
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          {t('your_daily_nudges')}
+          {t('your_daily_habits')}
         </h3>
         <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
           <AnimatePresence initial={false}>

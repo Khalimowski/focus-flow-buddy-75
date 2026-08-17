@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.7";
+export const APP_VERSION = "1.8.8";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.8",
+    items: {
+      en: [
+        "Nudges are now called Habits — same daily reminders, a name that says what they're for. Everything you already set up carries over untouched.",
+      ],
+      pl: [
+        "Przypominajki nazywają się teraz Nawyki — te same codzienne przypomnienia, nazwa lepiej mówi, po co są. Wszystko, co masz już ustawione, zostaje bez zmian.",
+      ],
+    },
+  },
   {
     version: "1.8.7",
     items: {

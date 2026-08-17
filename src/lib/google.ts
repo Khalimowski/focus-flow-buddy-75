@@ -26,8 +26,10 @@ export const GOOGLE_SCOPES = {
 const CONN_KEY = "ff.google.v1";
 // taskId -> Google Calendar event id, so edits/completions clean up after themselves
 const CALMAP_KEY = "ff.google.calmap.v1";
-// reminderId -> event ids (one recurring event per nudge time)
-const NUDGEMAP_KEY = "ff.google.nudgemap.v1";
+// reminderId -> event ids (one recurring event per habit time). The storage key
+// still says "nudgemap" — habits were called nudges when it was written, and
+// renaming it would strand the event ids already mapped on every install.
+const HABITMAP_KEY = "ff.google.nudgemap.v1";
 
 type GoogleConnection = {
   email: string | null;
@@ -150,7 +152,7 @@ export async function disconnectGoogle() {
   }
   window.localStorage.removeItem(CONN_KEY);
   window.localStorage.removeItem(CALMAP_KEY);
-  window.localStorage.removeItem(NUDGEMAP_KEY);
+  window.localStorage.removeItem(HABITMAP_KEY);
   window.dispatchEvent(new CustomEvent("ff.google-changed"));
 }
 
@@ -338,13 +340,13 @@ export async function removeTaskFromGoogleCalendar(taskId: string) {
 // Brings Google Calendar back in line with local storage, in both directions:
 //
 //   - deletes events with no live owner — the task was deleted (here or on
-//     another device), completed, or lost its reminder time; the nudge was
+//     another device), completed, or lost its reminder time; the habit was
 //     deleted or disabled. Also the retry path for deletes that silently
 //     failed earlier (stale token, offline, app killed mid-request).
-//   - creates events for tasks/nudges that have none. Items created on another
+//   - creates events for tasks/habits that have none. Items created on another
 //     device arrive through sync, which goes nowhere near Google, so this is
 //     the only thing that ever pushes them.
-//   - rebuilds events whose task/nudge was edited somewhere that couldn't
+//   - rebuilds events whose task/habit was edited somewhere that couldn't
 //     push — a moved reminder would otherwise sit in the calendar at its old
 //     time forever.
 //
@@ -393,25 +395,25 @@ export async function reconcileGoogleCalendar() {
       }
     }
 
-    const nudgeOn = nudgeSyncEnabled();
-    const reminders = loadJSON<CalNudge[]>(STORAGE_KEYS.reminders, []);
-    const liveNudges = new Map(
+    const habitOn = habitSyncEnabled();
+    const reminders = loadJSON<CalHabit[]>(STORAGE_KEYS.reminders, []);
+    const liveHabits = new Map(
       reminders.filter((r) => r.enabled && r.times.length > 0).map((r) => [r.id, r]),
     );
-    for (const [reminderId, entry] of Object.entries(loadNudgeMap())) {
-      const nudge = liveNudges.get(reminderId);
-      if (nudge) {
-        if (!nudgeOn) continue;
-        if (entry.sig === nudgeSig(nudge)) continue;
+    for (const [reminderId, entry] of Object.entries(loadHabitMap())) {
+      const habit = liveHabits.get(reminderId);
+      if (habit) {
+        if (!habitOn) continue;
+        if (entry.sig === habitSig(habit)) continue;
       }
-      await deleteNudgeEvents(token, reminderId);
+      await deleteHabitEvents(token, reminderId);
     }
 
-    if (nudgeOn) {
-      const nudgeMap = loadNudgeMap();
-      for (const nudge of liveNudges.values()) {
-        if (nudgeMap[nudge.id]?.eventIds.length) continue;
-        await pushNudgeToGoogleCalendar(nudge);
+    if (habitOn) {
+      const habitMap = loadHabitMap();
+      for (const habit of liveHabits.values()) {
+        if (habitMap[habit.id]?.eventIds.length) continue;
+        await pushHabitToGoogleCalendar(habit);
       }
     }
   } catch (e) {
@@ -435,24 +437,24 @@ export async function syncAllTasksToGoogleCalendar(tasks: CalTask[]) {
   }
 }
 
-// --- Nudges -> Google Calendar ---
-// A nudge repeats daily at fixed times, so each time becomes one recurring
+// --- Habits -> Google Calendar ---
+// A habit repeats daily at fixed times, so each time becomes one recurring
 // event (RRULE:FREQ=DAILY). Recurrence requires an explicit timeZone.
 
-type CalNudge = { id: string; label: string; times: string[]; enabled: boolean };
+type CalHabit = { id: string; label: string; times: string[]; enabled: boolean };
 
-// One entry per nudge: the recurring events created for it, and a signature of
+// One entry per habit: the recurring events created for it, and a signature of
 // what they were built from (same purpose as CalEntry's fields — spotting an
 // edit made on a device that couldn't push it).
-type NudgeEntry = { eventIds: string[]; sig: string };
+type HabitEntry = { eventIds: string[]; sig: string };
 
-function nudgeSig(nudge: CalNudge): string {
-  return `${nudge.label}|${nudge.times.join(",")}`;
+function habitSig(habit: CalHabit): string {
+  return `${habit.label}|${habit.times.join(",")}`;
 }
 
-function loadNudgeMap(): Record<string, NudgeEntry> {
-  const raw = loadJSON<Record<string, string[] | NudgeEntry>>(NUDGEMAP_KEY, {});
-  const map: Record<string, NudgeEntry> = {};
+function loadHabitMap(): Record<string, HabitEntry> {
+  const raw = loadJSON<Record<string, string[] | HabitEntry>>(HABITMAP_KEY, {});
+  const map: Record<string, HabitEntry> = {};
   for (const [reminderId, entry] of Object.entries(raw)) {
     // Legacy entries were a bare id array; an empty signature never matches, so
     // the first reconcile rebuilds them once at the same times.
@@ -461,35 +463,35 @@ function loadNudgeMap(): Record<string, NudgeEntry> {
   return map;
 }
 
-function nudgeSyncEnabled(): boolean {
-  return useI18nStore.getState().googleNudgeSync;
+function habitSyncEnabled(): boolean {
+  return useI18nStore.getState().googleHabitSync;
 }
 
-async function deleteNudgeEvents(token: string, reminderId: string) {
-  const entry = loadNudgeMap()[reminderId];
+async function deleteHabitEvents(token: string, reminderId: string) {
+  const entry = loadHabitMap()[reminderId];
   if (!entry?.eventIds.length) return;
   // Keep ids whose delete didn't go through, so a later reconcile retries them
   const failed: string[] = [];
   for (const eventId of entry.eventIds) {
     if (!(await deleteEvent(token, eventId))) failed.push(eventId);
   }
-  const fresh = loadNudgeMap();
-  // Leftovers are orphans awaiting deletion, not a live copy of the nudge —
+  const fresh = loadHabitMap();
+  // Leftovers are orphans awaiting deletion, not a live copy of the habit —
   // clearing the signature is what makes reconcile come back for them.
   if (failed.length > 0) fresh[reminderId] = { eventIds: failed, sig: "" };
   else delete fresh[reminderId];
-  saveJSON(NUDGEMAP_KEY, fresh);
+  saveJSON(HABITMAP_KEY, fresh);
 }
 
-export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
-  if (!nudgeSyncEnabled() || !nudge.enabled || nudge.times.length === 0) return;
+export async function pushHabitToGoogleCalendar(habit: CalHabit) {
+  if (!habitSyncEnabled() || !habit.enabled || habit.times.length === 0) return;
   const token = getValidToken();
   if (!token) return;
   try {
-    await deleteNudgeEvents(token, nudge.id);
+    await deleteHabitEvents(token, habit.id);
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const eventIds: string[] = [];
-    for (const time of nudge.times) {
+    for (const time of habit.times) {
       const [h, m] = time.split(":").map(Number);
       const start = new Date();
       start.setHours(h, m, 0, 0);
@@ -500,7 +502,7 @@ export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
         {
           method: "POST",
           body: JSON.stringify({
-            summary: nudge.label,
+            summary: habit.label,
             start: { dateTime: start.toISOString(), timeZone },
             end: { dateTime: end.toISOString(), timeZone },
             recurrence: ["RRULE:FREQ=DAILY"],
@@ -508,44 +510,44 @@ export async function pushNudgeToGoogleCalendar(nudge: CalNudge) {
         },
       );
       if (!res.ok) {
-        console.warn(`[Google] Nudge event insert failed: ${res.status}`);
+        console.warn(`[Google] Habit event insert failed: ${res.status}`);
         continue;
       }
       const event = (await res.json()) as { id: string };
       eventIds.push(event.id);
     }
     if (eventIds.length > 0) {
-      const map = loadNudgeMap();
-      // Merge instead of overwrite: entries that survived deleteNudgeEvents
+      const map = loadHabitMap();
+      // Merge instead of overwrite: entries that survived deleteHabitEvents
       // are stale events still awaiting deletion, don't lose track of them
-      map[nudge.id] = {
-        eventIds: [...(map[nudge.id]?.eventIds ?? []), ...eventIds],
-        sig: nudgeSig(nudge),
+      map[habit.id] = {
+        eventIds: [...(map[habit.id]?.eventIds ?? []), ...eventIds],
+        sig: habitSig(habit),
       };
-      saveJSON(NUDGEMAP_KEY, map);
-      console.log(`[Google] ${eventIds.length} calendar event(s) created for nudge ${nudge.id}`);
+      saveJSON(HABITMAP_KEY, map);
+      console.log(`[Google] ${eventIds.length} calendar event(s) created for habit ${habit.id}`);
     }
   } catch (e) {
-    console.warn("[Google] pushNudgeToGoogleCalendar failed", e);
+    console.warn("[Google] pushHabitToGoogleCalendar failed", e);
   }
 }
 
-export async function removeNudgeFromGoogleCalendar(reminderId: string) {
-  if (!loadNudgeMap()[reminderId]?.eventIds.length) return;
+export async function removeHabitFromGoogleCalendar(reminderId: string) {
+  if (!loadHabitMap()[reminderId]?.eventIds.length) return;
   const token = getValidToken();
   if (!token) return;
   try {
-    await deleteNudgeEvents(token, reminderId);
+    await deleteHabitEvents(token, reminderId);
   } catch (e) {
-    console.warn("[Google] removeNudgeFromGoogleCalendar failed", e);
+    console.warn("[Google] removeHabitFromGoogleCalendar failed", e);
   }
 }
 
-// Called when the Settings toggle turns on — pushes every enabled nudge.
-export async function syncAllNudgesToGoogleCalendar(nudges: CalNudge[]) {
-  for (const nudge of nudges) {
-    if (nudge.enabled) {
-      await pushNudgeToGoogleCalendar(nudge);
+// Called when the Settings toggle turns on — pushes every enabled habit.
+export async function syncAllHabitsToGoogleCalendar(habits: CalHabit[]) {
+  for (const habit of habits) {
+    if (habit.enabled) {
+      await pushHabitToGoogleCalendar(habit);
     }
   }
 }

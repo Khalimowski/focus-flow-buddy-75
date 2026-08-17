@@ -81,7 +81,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
             // creation, so the in-app vibration setting switches between these
             // ids at scheduling time (see VIBRATION_CHANNELS in src/lib/native.ts).
             createChannel(notificationManager, "boink_channel_v8",
-                    getString(R.string.nudge_channel_name), new long[]{0, 2000});
+                    getString(R.string.habit_channel_name), new long[]{0, 2000});
             createChannel(notificationManager, "boink_channel_v8_short",
                     getString(R.string.channel_vib_short), new long[]{0, 300});
             createChannel(notificationManager, "boink_channel_v8_double",
@@ -94,7 +94,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     private void createChannel(NotificationManager notificationManager, String channelId,
                                CharSequence name, long[] vibrationPattern) {
         NotificationChannel channel = new NotificationChannel(channelId, name, NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription(getString(R.string.nudge_channel_description));
+        channel.setDescription(getString(R.string.habit_channel_description));
         if (vibrationPattern != null) {
             channel.enableVibration(true);
             channel.setVibrationPattern(vibrationPattern);

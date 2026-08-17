@@ -41,7 +41,7 @@ import {
   disconnectGoogle,
   ensureGoogleToken,
   syncAllTasksToGoogleCalendar,
-  syncAllNudgesToGoogleCalendar,
+  syncAllHabitsToGoogleCalendar,
 } from "@/lib/google";
 import { loadJSON, STORAGE_KEYS } from "@/lib/storage";
 import { AI_COACH_OPEN_EVENT } from "@/components/AICoach";
@@ -55,13 +55,13 @@ export function Settings() {
     language, setLanguage,
     theme, setTheme,
     calendarSync, setCalendarSync,
-    nudgeCalendarSync, setNudgeCalendarSync,
+    habitCalendarSync, setHabitCalendarSync,
     vibrationType, setVibrationType,
     eodReview, setEodReview,
     eodTime, setEodTime,
     googleGmail, setGoogleGmail,
     googleCalendarSync, setGoogleCalendarSync,
-    googleNudgeSync, setGoogleNudgeSync,
+    googleHabitSync, setGoogleHabitSync,
     setTutorialCompleted, resetTour
   } = useI18nStore();
   const { t } = useTranslation();
@@ -145,7 +145,7 @@ export function Settings() {
     void applyVibrationSetting();
   };
 
-  // Both the in-app prompt and the nudge that brings the user to it read these,
+  // Both the in-app prompt and the habit that brings the user to it read these,
   // so re-arm the notification as soon as either changes (no-op on web).
   const handleEodReviewChange = (enabled: boolean) => {
     setEodReview(enabled);
@@ -197,19 +197,19 @@ export function Settings() {
     }
   };
 
-  const handleNudgeCalendarSyncChange = async (enabled: boolean) => {
+  const handleHabitCalendarSyncChange = async (enabled: boolean) => {
     // Optimistically update so the toggle moves immediately
-    setNudgeCalendarSync(enabled);
+    setHabitCalendarSync(enabled);
 
     if (!enabled) return;
 
     try {
       const granted = await ensureCalendarPermission();
       if (!granted) {
-        setNudgeCalendarSync(false); // revert
+        setHabitCalendarSync(false); // revert
         notify({
           title: t('permission_denied'),
-          body: t('calendar_permission_nudges_body'),
+          body: t('calendar_permission_habits_body'),
           kind: "info"
         });
         return;
@@ -217,19 +217,19 @@ export function Settings() {
 
       const tasks = loadJSON(STORAGE_KEYS.tasks, []);
       const reminders = loadJSON(STORAGE_KEYS.reminders, []);
-      syncAllToCalendar(tasks, reminders).catch(e => console.error("[Settings] Nudge sync failed", e));
+      syncAllToCalendar(tasks, reminders).catch(e => console.error("[Settings] Habit sync failed", e));
 
       notify({
-        title: t('nudge_sync_enabled'),
-        body: t('nudge_sync_enabled_body'),
+        title: t('habit_sync_enabled'),
+        body: t('habit_sync_enabled_body'),
         kind: "info"
       });
     } catch (err) {
-      console.error("[Settings] Nudge sync enable failed", err);
-      setNudgeCalendarSync(false); // revert
+      console.error("[Settings] Habit sync enable failed", err);
+      setHabitCalendarSync(false); // revert
       notify({
         title: t('sync_error'),
-        body: t('nudge_sync_error_body'),
+        body: t('habit_sync_error_body'),
         kind: "info"
       });
     }
@@ -258,7 +258,7 @@ export function Settings() {
       // so the user's other devices keep syncing with their own.
       setGoogleGmail(false);
       setGoogleCalendarSync(false);
-      setGoogleNudgeSync(false);
+      setGoogleHabitSync(false);
       setGoogleBusy(false);
     }
   };
@@ -293,9 +293,9 @@ export function Settings() {
     }
   };
 
-  const handleGoogleNudgeSyncChange = async (enabled: boolean) => {
+  const handleGoogleHabitSyncChange = async (enabled: boolean) => {
     // Optimistically update so the toggle moves immediately
-    setGoogleNudgeSync(enabled);
+    setGoogleHabitSync(enabled);
     if (!enabled) {
       publishGooglePrefs();
       return;
@@ -305,15 +305,15 @@ export function Settings() {
       await ensureGoogleToken();
       publishGooglePrefs(); // only once we know this device can honour it
       const reminders = loadJSON(STORAGE_KEYS.reminders, []);
-      syncAllNudgesToGoogleCalendar(reminders).catch(e => console.error("[Settings] Google nudge sync failed", e));
+      syncAllHabitsToGoogleCalendar(reminders).catch(e => console.error("[Settings] Google habit sync failed", e));
       notify({
-        title: t('google_nudge_sync_enabled'),
-        body: t('google_nudge_sync_enabled_body'),
+        title: t('google_habit_sync_enabled'),
+        body: t('google_habit_sync_enabled_body'),
         kind: "info"
       });
     } catch (err) {
-      console.error("[Settings] Google nudge sync enable failed", err);
-      setGoogleNudgeSync(false); // revert, unpublished — a failure here is local
+      console.error("[Settings] Google habit sync enable failed", err);
+      setGoogleHabitSync(false); // revert, unpublished — a failure here is local
       notify({ title: t('sync_error'), body: t('google_connect_failed'), kind: "info" });
     }
   };
@@ -376,15 +376,15 @@ export function Settings() {
                 <div className="flex items-center gap-3">
                   <Calendar className="size-4 opacity-70" />
                   <div className="flex flex-col">
-                    <Label htmlFor="nudge-calendar-sync" className="text-sm font-medium">
-                      {t('sync_nudges_calendar')}
+                    <Label htmlFor="habit-calendar-sync" className="text-sm font-medium">
+                      {t('sync_habits_calendar')}
                     </Label>
                   </div>
                 </div>
                 <Switch
-                  id="nudge-calendar-sync"
-                  checked={nudgeCalendarSync}
-                  onCheckedChange={handleNudgeCalendarSyncChange}
+                  id="habit-calendar-sync"
+                  checked={habitCalendarSync}
+                  onCheckedChange={handleHabitCalendarSyncChange}
                 />
               </div>
             </>
@@ -539,14 +539,14 @@ export function Settings() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <CalendarCheck className="size-4 opacity-70" />
-                      <Label htmlFor="google-nudge-sync" className="text-sm font-medium">
-                        {t('google_nudge_toggle')}
+                      <Label htmlFor="google-habit-sync" className="text-sm font-medium">
+                        {t('google_habit_toggle')}
                       </Label>
                     </div>
                     <Switch
-                      id="google-nudge-sync"
-                      checked={googleNudgeSync}
-                      onCheckedChange={handleGoogleNudgeSyncChange}
+                      id="google-habit-sync"
+                      checked={googleHabitSync}
+                      onCheckedChange={handleGoogleHabitSyncChange}
                     />
                   </div>
 

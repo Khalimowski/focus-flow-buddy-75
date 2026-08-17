@@ -13,7 +13,7 @@ finishing something feel like it counted.
 ## Features
 
 - **Tasks with real reminders** — one-shot notifications at the time you set, not a badge you'll ignore.
-- **Recurring nudges** — daily repeating prompts for the things that keep slipping.
+- **Recurring habits** — daily repeating prompts for the things that keep slipping.
 - **A dead-simple to-do list** — quick capture, no projects, no tags, no ceremony. Finished items collapse into a Done section so the list stays short.
 - **Timeline & calendar views** — see the day laid out, or drop tasks straight into your native calendar.
 - **Streaks** — a gentle "don't break the chain" counter for showing up.

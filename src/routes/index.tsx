@@ -33,7 +33,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "A gentle focus timer, daily nudges, and tiny tasks — designed for ADHD brains. Install to your phone, get reminders, build streaks.",
+          "A gentle focus timer, daily habits, and tiny tasks — designed for ADHD brains. Install to your phone, get reminders, build streaks.",
       },
       { property: "og:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus, gentle reminders, tiny wins." },
@@ -172,7 +172,7 @@ function Home() {
   const tabs: { id: Tab; label: string; icon: typeof ListTodo }[] = [
     { id: "tasks", label: t('tasks'), icon: ListTodo },
     { id: "todo", label: t('todo'), icon: CheckSquare },
-    { id: "reminders", label: t('nudges'), icon: Repeat },
+    { id: "reminders", label: t('habits'), icon: Repeat },
     ...(showInsights ? [{ id: "insights" as const, label: t('insights'), icon: BarChart3 }] : []),
   ];
 
@@ -224,7 +224,7 @@ function Home() {
             {perm !== "granted" && perm !== "unsupported" && (
               <Button size="sm" variant="secondary" onClick={askPerm} className="rounded-full h-8 w-8 p-0 sm:w-auto sm:px-3">
                 {perm === "denied" ? <BellOff className="size-3.5 sm:mr-1.5" /> : <Bell className="size-3.5 sm:mr-1.5" />}
-                <span className="hidden sm:inline text-xs">{perm === "denied" ? t('blocked') : t('enable_nudges')}</span>
+                <span className="hidden sm:inline text-xs">{perm === "denied" ? t('blocked') : t('enable_habits')}</span>
               </Button>
             )}
             <Settings />
@@ -248,8 +248,8 @@ function Home() {
               onClick={() => setTab(t.id)}
               // Insights is the one tab the tours point at on its own.
               data-tour={t.id === "insights" ? "insights" : undefined}
-              // min-w-0 + truncate: the labels are translated, and Polish
-              // "Przypominajki" ran off the right edge of a 375px screen.
+              // min-w-0 + truncate: the labels are translated, and a long
+              // translation used to run off the right edge of a 375px screen.
               className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-sm font-medium transition sm:gap-2 sm:px-3 ${
                 active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               }`}

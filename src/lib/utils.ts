@@ -8,11 +8,11 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * A calendar day key ("YYYY-MM-DD") in the **device's local** timezone.
  *
- * The whole app keys days locally (task dueDate, the day strip, nudge ticks in
+ * The whole app keys days locally (task dueDate, the day strip, habit ticks in
  * the task list), so anything that stores or compares a day must use this.
  * `toISOString().slice(0,10)` is the UTC day and drifts by one for most of the
  * world — east of UTC after midnight, west of UTC in the evening — which made
- * nudges re-fire and streaks land on the wrong day.
+ * habits re-fire and streaks land on the wrong day.
  */
 export function dateKey(date: Date = new Date()): string {
   const y = date.getFullYear();

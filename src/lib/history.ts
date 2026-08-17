@@ -7,8 +7,8 @@ export type UserAction =
   | 'task_completed'
   | 'task_deleted'
   | 'task_edited'
-  | 'nudge_created'
-  | 'nudge_deleted'
+  | 'habit_created'
+  | 'habit_deleted'
   | 'ai_suggestion_accepted'
   | 'ai_suggestion_refused'
   | 'profile_updated';
