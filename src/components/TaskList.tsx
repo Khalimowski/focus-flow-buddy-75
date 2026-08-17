@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
@@ -84,6 +84,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     try { localStorage.setItem("ff.tasks_view", mode); } catch { /* private mode */ }
   };
   const [calendarOpen, setCalendarOpen] = useState(false);
+
+  // Ticked-off items live in their own collapsed group so the open list stays short.
+  const [showDone, setShowDone] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -183,6 +186,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       return 0;
     });
   }, [tasks, reminders, selectedDate]);
+
+  const openItems = useMemo(() => displayItems.filter((item) => !item.done), [displayItems]);
+  const doneItems = useMemo(() => displayItems.filter((item) => item.done), [displayItems]);
 
   // Daily Strip dates (Monday to Sunday of current week)
   const dayStrip = useMemo(() => {
@@ -523,6 +529,157 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
   };
 
+  const listClass = "flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3";
+
+  // `nested` items sit inside the Done card, so they drop the standalone card
+  // treatment and read as rows within it.
+  const renderItem = (item: (typeof displayItems)[number], nested = false) => (
+    <motion.li
+      key={item.id}
+      layout
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -10 }}
+      className={`flex items-center gap-3 border p-3 ${
+        nested
+          ? item.kind === 'habit'
+            ? "rounded-xl bg-amber-500/5 border-amber-500/20"
+            : "rounded-xl border-border/60 bg-background/60"
+          : item.kind === 'habit'
+            ? "rounded-2xl bg-amber-500/5 border-amber-500/10 shadow-sm backdrop-blur"
+            : "rounded-2xl bg-card/40 border-border backdrop-blur"
+      }`}
+    >
+      {item.kind === 'task' && editingId === item.id ? (
+        <div className="flex flex-col gap-3 w-full p-1">
+          <Input
+            name="task-edit-title"
+            autoComplete="off"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && saveEdit()}
+            className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
+            autoFocus
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1.5 shrink-0">
+              <TimePicker
+                value={editTime}
+                onChange={setEditTime}
+                clearable
+                size="sm"
+                className="w-[84px] justify-center"
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
+                    <CalendarIcon className="size-2.5" />
+                    {format(editDate, shortDateFormat, { locale: dateLocale })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
+                  <Calendar
+                    mode="single"
+                    selected={editDate}
+                    onSelect={(d) => d && setEditDate(startOfDay(d))}
+                    initialFocus
+                    weekStartsOn={1}
+                    locale={dateLocale}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex gap-1 ml-auto shrink-0">
+              <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-1.5 text-[10px]">
+                <X className="size-3 mr-1" /> {t('cancel')}
+              </Button>
+              <Button size="sm" onClick={saveEdit} className="h-7 px-2.5 text-[10px] shadow-sm">
+                <Save className="size-3 mr-1" /> {t('save')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={() => item.kind === 'task' ? toggle(item.id) : toggleHabit(item.originalId, item.time)}
+            aria-label={item.title}
+            aria-pressed={item.done}
+            className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
+              item.done
+                ? item.kind === 'habit' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
+                : item.kind === 'habit' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
+            }`}
+          >
+            {item.done && <Check className="size-3.5" strokeWidth={3} />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <div
+                className={`text-sm font-medium break-words min-w-0 ${item.done ? "text-muted-foreground line-through" : ""}`}
+              >
+                {item.title}
+              </div>
+              {item.kind === 'habit' && (
+                <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
+                  {t('habits')}
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
+              <Clock className="size-3" />
+              {item.kind === 'task' && item.remindAt ? (
+                new Date(item.remindAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              ) : (
+                item.kind === 'habit' ? item.time : ""
+              )}
+            </div>
+          </div>
+          {item.kind === 'task' && (
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => moveToTodo(item.id)}
+                aria-label={t('move_to_todo')}
+                title={t('move_to_todo')}
+                className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
+              >
+                <CheckSquare className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => startEdit(item)}
+                aria-label={t('edit')}
+                className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
+              >
+                <Edit2 className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => remove(item.id)}
+                aria-label={t('delete')}
+                className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          )}
+          {item.kind === 'habit' && (
+            <div className="flex items-center justify-center size-8 text-amber-500/40">
+              <Sparkles className="size-4" />
+            </div>
+          )}
+        </>
+      )}
+    </motion.li>
+  );
+
   return (
     <div className="flex flex-col gap-5">
       {/* Daily Strip */}
@@ -702,161 +859,59 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           />
         )
       ) : (
-      <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
+      <>
+      <ul className={listClass}>
         <AnimatePresence initial={false} mode="popLayout">
-          {displayItems.length === 0 && (
+          {openItems.length === 0 && (
             <motion.li
+              key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2 2xl:col-span-3"
             >
-              {t('tasks_empty')}
+              {displayItems.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>
           )}
-          {displayItems.map((item) => (
-            <motion.li
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className={`flex items-center gap-3 rounded-2xl border p-3 backdrop-blur ${
-                item.kind === 'habit'
-                  ? "bg-amber-500/5 border-amber-500/10 shadow-sm"
-                  : "bg-card/40 border-border"
-              }`}
-            >
-              {item.kind === 'task' && editingId === item.id ? (
-                <div className="flex flex-col gap-3 w-full p-1">
-                  <Input
-                    name="task-edit-title"
-                    autoComplete="off"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                    className="flex-1 h-9 bg-transparent border-none px-0 text-sm focus-visible:ring-0"
-                    autoFocus
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex gap-1.5 shrink-0">
-                      <TimePicker
-                        value={editTime}
-                        onChange={setEditTime}
-                        clearable
-                        size="sm"
-                        className="w-[84px] justify-center"
-                      />
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
-                            <CalendarIcon className="size-2.5" />
-                            {format(editDate, shortDateFormat, { locale: dateLocale })}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-3xl" align="start" side="top" sideOffset={12} collisionPadding={16}>
-                          <Calendar
-                            mode="single"
-                            selected={editDate}
-                            onSelect={(d) => d && setEditDate(startOfDay(d))}
-                            initialFocus
-                            weekStartsOn={1}
-                            locale={dateLocale}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="flex gap-1 ml-auto shrink-0">
-                      <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-7 px-1.5 text-[10px]">
-                        <X className="size-3 mr-1" /> {t('cancel')}
-                      </Button>
-                      <Button size="sm" onClick={saveEdit} className="h-7 px-2.5 text-[10px] shadow-sm">
-                        <Save className="size-3 mr-1" /> {t('save')}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => item.kind === 'task' ? toggle(item.id) : toggleHabit(item.originalId, item.time)}
-                    aria-label={item.title}
-                    aria-pressed={item.done}
-                    className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
-                      item.done
-                        ? item.kind === 'habit' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
-                        : item.kind === 'habit' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
-                    }`}
-                  >
-                    {item.done && <Check className="size-3.5" strokeWidth={3} />}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`text-sm font-medium break-words min-w-0 ${item.done ? "text-muted-foreground line-through" : ""}`}
-                      >
-                        {item.title}
-                      </div>
-                      {item.kind === 'habit' && (
-                        <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-600">
-                          {t('habits')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
-                      <Clock className="size-3" />
-                      {item.kind === 'task' && item.remindAt ? (
-                        new Date(item.remindAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      ) : (
-                        item.kind === 'habit' ? item.time : ""
-                      )}
-                    </div>
-                  </div>
-                  {item.kind === 'task' && (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => moveToTodo(item.id)}
-                        aria-label={t('move_to_todo')}
-                        title={t('move_to_todo')}
-                        className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
-                      >
-                        <CheckSquare className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => startEdit(item)}
-                        aria-label={t('edit')}
-                        className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
-                      >
-                        <Edit2 className="size-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => remove(item.id)}
-                        aria-label={t('delete')}
-                        className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  )}
-                  {item.kind === 'habit' && (
-                    <div className="flex items-center justify-center size-8 text-amber-500/40">
-                      <Sparkles className="size-4" />
-                    </div>
-                  )}
-                </>
-              )}
-            </motion.li>
-          ))}
+          {openItems.map((item) => renderItem(item))}
         </AnimatePresence>
       </ul>
+
+      {doneItems.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card/40 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            aria-expanded={showDone}
+            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:bg-card/60 hover:text-foreground"
+          >
+            <span className="grid size-8 shrink-0 place-items-center">
+              <ChevronDown className={`size-5 transition-transform ${showDone ? "" : "-rotate-90"}`} />
+            </span>
+            <span className="flex-1 text-left">{t('todo_done_group')}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold">{doneItems.length}</span>
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showDone && (
+              <motion.div
+                key="done-list"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <ul className={`${listClass} border-t border-border/50 p-3`}>
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {doneItems.map((item) => renderItem(item, true))}
+                  </AnimatePresence>
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+      </>
       )}
     </div>
   );
