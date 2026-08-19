@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { Clock, Keyboard } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useTranslation } from "@/lib/i18n";
+import { useI18nStore, useTranslation } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,6 +15,10 @@ import { cn } from "@/lib/utils";
  *
  * Values are "HH:mm" strings, same as the inputs it replaces, and "" means
  * "no time set" wherever the caller allows it (`clearable`).
+ *
+ * Which of the two ways in — dial or keyboard — the user last switched to is
+ * remembered in the settings store, so people who always type aren't sent
+ * through the dial every time. It's device-local, like the rest of that store.
  */
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -88,6 +92,8 @@ export function TimePicker({
   "aria-label": ariaLabel,
 }: Props) {
   const { t } = useTranslation();
+  const timeInputMode = useI18nStore((s) => s.timeInputMode);
+  const setTimeInputMode = useI18nStore((s) => s.setTimeInputMode);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Clock24>(() => parseTime(value) ?? roundedNow());
   const [unit, setUnit] = useState<"hour" | "minute">("hour");
@@ -102,17 +108,33 @@ export function TimePicker({
   // Every opening starts from whatever the field holds now (an empty field
   // opens on the next round five minutes), so a cancelled edit leaves nothing
   // behind.
+  // The remembered mode is the one exception: it carries over from the last
+  // time the picker was used, here and in every other field.
   useEffect(() => {
     if (!open) return;
-    setDraft(parseTime(value) ?? roundedNow());
+    const next = parseTime(value) ?? roundedNow();
+    setDraft(next);
     setUnit("hour");
-    setTyping(false);
+    setTyping(timeInputMode === "keyboard");
+    if (timeInputMode === "keyboard") {
+      setHourText(pad(next.h));
+      setMinuteText(pad(next.m));
+    }
+    // `timeInputMode` is deliberately not a dependency: switching modes while
+    // the dialog is open must not re-run this and throw away the draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, value]);
 
   const startTyping = () => {
     setHourText(pad(draft.h));
     setMinuteText(pad(draft.m));
     setTyping(true);
+    setTimeInputMode("keyboard");
+  };
+
+  const stopTyping = () => {
+    setTyping(false);
+    setTimeInputMode("clock");
   };
 
   const editHourText = (raw: string) => {
@@ -246,7 +268,7 @@ export function TimePicker({
             <button
               type="button"
               aria-label={typing ? t("time_clock_mode") : t("time_keyboard_mode")}
-              onClick={() => (typing ? setTyping(false) : startTyping())}
+              onClick={() => (typing ? stopTyping() : startTyping())}
               className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors cursor-pointer hover:bg-secondary/60 hover:text-foreground"
             >
               {typing ? <Clock className="size-4" /> : <Keyboard className="size-4" />}

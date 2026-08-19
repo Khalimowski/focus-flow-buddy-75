@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.8";
+export const APP_VERSION = "1.8.9";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.8.9",
+    items: {
+      en: [
+        "The time picker now remembers how you like to set times — if you switch to typing the numbers, it opens that way next time.",
+      ],
+      pl: [
+        "Wybór godziny pamięta teraz, jak wolisz ją ustawiać — jeśli przełączysz się na wpisywanie liczb, następnym razem otworzy się tak samo.",
+      ],
+    },
+  },
   {
     version: "1.8.8",
     items: {
