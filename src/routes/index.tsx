@@ -37,7 +37,7 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus, gentle reminders, tiny wins." },
-      { name: "theme-color", content: "#0F1115" },
+      { name: "theme-color", content: "#100E0C" },
     ],
   }),
   component: Home,
@@ -92,19 +92,23 @@ function Home() {
       void import("@/lib/google").then((g) => g.completeOAuthPopup());
       return;
     }
-    // This branch is the "Classic Editorial" UI test build, which is only
-    // drawn in light. Pin the palette instead of following the setting so the
-    // phone always shows exactly what the Figma variation specifies — the
-    // Settings theme toggle is inert here by design.
+    // Sync theme on mount to prevent flashing. Both palettes are the
+    // "Classic Editorial" one now, so the toggle is live again — :root carries
+    // editorial dark and .light overrides it with editorial light.
     const root = window.document.documentElement;
-    root.classList.remove("dark");
-    root.classList.add("light");
+    if (theme === "dark") {
+      root.classList.remove("light");
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+      root.classList.add("light");
+    }
 
     setMounted(true);
     setPerm(getPermission());
     void import("@/lib/native").then((m) => {
       m.initNative();
-      m.updateStatusBar("light");
+      m.updateStatusBar(theme);
     });
     void import("@/lib/sync").then(async (m) => {
       const user = await m.initSync();

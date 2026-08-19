@@ -67,56 +67,68 @@
      Updated at runtime by src/lib/ads.ts; stays 0 on web. */
   --ad-banner-height: 0px;
 
-  /* Calm dark palette */
-  --background: oklch(0.18 0.013 260);
-  --foreground: oklch(0.96 0.005 250);
+  /*
+   * "Classic Editorial" — dark. The light theme is ink on warm paper, so this
+   * is the same page turned down rather than the app's old cool indigo dark:
+   * a warm near-black ground, cream text, and `primary` inverted to paper so
+   * the buttons and the active day pill read as cut-outs of the light theme.
+   * Lives on :root (not .dark) so the pre-hydration paint already matches.
+   */
+  --background: oklch(0.165 0.006 65);
+  --foreground: oklch(0.93 0.007 90);
 
-  --surface: oklch(0.22 0.014 260);
-  --surface-foreground: oklch(0.96 0.005 250);
+  --surface: oklch(0.205 0.007 65);
+  --surface-foreground: oklch(0.93 0.007 90);
 
-  --card: oklch(0.235 0.015 260);
-  --card-foreground: oklch(0.96 0.005 250);
+  --card: oklch(0.215 0.008 65);
+  --card-foreground: oklch(0.93 0.007 90);
 
-  --popover: oklch(0.23 0.015 260);
-  --popover-foreground: oklch(0.96 0.005 250);
+  --popover: oklch(0.215 0.008 65);
+  --popover-foreground: oklch(0.93 0.007 90);
 
-  --primary: oklch(0.78 0.11 270);          /* #7C9CFF soft indigo */
-  --primary-foreground: oklch(0.18 0.013 260);
+  /* Paper on ink — the exact inverse of the light theme's ink-on-paper. */
+  --primary: oklch(0.93 0.007 90);
+  --primary-foreground: oklch(0.18 0.006 65);
 
-  --secondary: oklch(0.28 0.018 260);
-  --secondary-foreground: oklch(0.96 0.005 250);
+  --secondary: oklch(0.26 0.009 65);
+  --secondary-foreground: oklch(0.9 0.006 90);
 
-  --muted: oklch(0.26 0.015 260);
-  --muted-foreground: oklch(0.72 0.012 260);
+  --muted: oklch(0.25 0.008 65);
+  --muted-foreground: oklch(0.69 0.009 78);
 
-  --accent: oklch(0.32 0.025 265);
-  --accent-foreground: oklch(0.96 0.005 250);
+  --accent: oklch(0.3 0.011 68);
+  --accent-foreground: oklch(0.93 0.007 90);
 
-  --mint: oklch(0.88 0.08 165);              /* #A8E6CF gentle mint */
-  --mint-foreground: oklch(0.18 0.013 260);
+  /* Sage lifts slightly off a dark ground to keep the streak dots legible. */
+  --mint: oklch(0.8 0.095 160);
+  --mint-foreground: oklch(0.2 0.02 160);
 
-  --destructive: oklch(0.68 0.18 22);
+  --destructive: oklch(0.62 0.18 25);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.3 0.015 260);
-  --input: oklch(0.3 0.015 260);
-  --ring: oklch(0.78 0.11 270);
+  --border: oklch(0.285 0.008 70);
+  --input: oklch(0.31 0.008 70);
+  --ring: oklch(0.9 0.007 90);
 
-  --gradient-focus: radial-gradient(
-    ellipse at top,
-    color-mix(in oklab, var(--primary) 22%, transparent),
-    transparent 60%
-  );
-  --gradient-mint: linear-gradient(135deg, var(--mint), color-mix(in oklab, var(--primary) 60%, var(--mint)));
-  --shadow-soft: 0 10px 40px -12px color-mix(in oklab, var(--primary) 30%, transparent);
-  --shadow-glow: 0 0 60px -10px color-mix(in oklab, var(--primary) 45%, transparent);
+  /* Flat, as in light: the old radial glow was tied to the indigo primary and
+     would now smear near-white across the top of the page. */
+  --gradient-focus: none;
+  --gradient-mint: linear-gradient(135deg, var(--mint), color-mix(in oklab, var(--mint) 70%, var(--foreground)));
+
+  /* Shadows go black here rather than tinting toward primary, which is now
+     almost white and would halo every card. */
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.35), 0 8px 24px -16px oklch(0 0 0 / 0.6);
+  --shadow-glow: 0 2px 12px -4px oklch(0 0 0 / 0.55);
+
+  /* Light text on a dark ground already reads heavier, so the stroke that
+     thickens Times on paper is dialled back here — at 0.3px the counters in
+     a/e/g start to close up. See the html, body rule below. */
+  --text-stroke: 0.16px;
 }
 
 /*
- * "Classic Editorial" — Variation 1 from the FlowDay Figma file.
- * Warm paper ground, pure-white cards, ink-black type and a hairline warm
- * border. This branch pins the app to it (see routes/index.tsx), so these are
- * the only colours the Android test build ever shows.
+ * "Classic Editorial" — light. Variation 1 as drawn in Figma: warm paper
+ * ground, pure-white cards, ink-black type, hairline warm borders.
  */
 .light {
   /* Paper, not white: a flat warm cream so the white cards lift off it. */
@@ -165,6 +177,10 @@
      and neutral instead of tinting toward the primary as the dark theme's do. */
   --shadow-soft: 0 1px 2px oklch(0.21 0.006 60 / 0.05), 0 8px 24px -16px oklch(0.21 0.006 60 / 0.18);
   --shadow-glow: 0 2px 10px -4px oklch(0.21 0.006 60 / 0.16);
+
+  /* Ink on paper needs the full stroke to hold weight; see :root for why dark
+     uses less. */
+  --text-stroke: 0.3px;
 }
 
 @layer base {
@@ -181,8 +197,9 @@
        to ask for. A hairline stroke in the current text colour lands between
        the two and thickens every glyph just enough that Times holds up against
        a light ground at phone sizes. Raise it toward 0.5px for more weight;
-       past that the counters start to fill in. */
-    -webkit-text-stroke: 0.3px currentColor;
+       past that the counters start to fill in. Dark mode sets a smaller value
+       on :root, since light-on-dark already reads heavier. */
+    -webkit-text-stroke: var(--text-stroke) currentColor;
     /* `antialiased` deliberately not set: it thins glyph stems, which is the
        opposite of what this palette needs. */
     text-rendering: optimizeLegibility;
