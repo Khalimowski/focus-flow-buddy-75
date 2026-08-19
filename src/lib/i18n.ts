@@ -218,6 +218,12 @@ export const translations = {
     task_input_placeholder: "What needs to be done?",
     habit_at_time: "You'll be reminded at",
     tasks_empty: "Quiet for now. Add one task above.",
+    // "Classic Editorial" section header above the task list. t() takes no
+    // interpolation, so the count line is composed from two fragments.
+    focus_title: "Today's Focus",
+    focus_of: "of",
+    focus_remaining: "tasks remaining",
+    focus_add: "Add Focus",
     todo_done_group: "Done",
     todo_all_done: "Nothing left. Everything's ticked off.",
     view_list: "List",
@@ -605,6 +611,10 @@ export const translations = {
     task_input_placeholder: "Co jest do zrobienia?",
     habit_at_time: "Przypomnimy Ci o",
     tasks_empty: "Na razie spokój. Dodaj pierwsze zadanie u góry.",
+    focus_title: "Plan na dziś",
+    focus_of: "z",
+    focus_remaining: "zadań pozostało",
+    focus_add: "Dodaj zadanie",
     todo_done_group: "Zrobione",
     todo_all_done: "Nic nie zostało. Wszystko odhaczone.",
     view_list: "Lista",

@@ -95,18 +95,15 @@ export function Settings() {
   };
 
   useEffect(() => {
-    // Sync with HTML class for tailwind dark mode
+    // The "Classic Editorial" test branch is light-only (see routes/index.tsx),
+    // so the theme setting is deliberately not applied here — flipping it would
+    // drop the app onto the dark palette the variation was never drawn for.
     const root = window.document.documentElement;
-    if (theme === "dark") {
-      root.classList.remove("light");
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-      root.classList.add("light");
-    }
+    root.classList.remove("dark");
+    root.classList.add("light");
 
     // Update native status bar icons
-    void updateStatusBar(theme);
+    void updateStatusBar("light");
   }, [theme]);
 
   // Handle Android Back Button via History API (most reliable for Capacitor)

@@ -64,50 +64,57 @@ export function useStreak() {
 
 export function StreakStrip({ streak }: { streak: Streak }) {
   const { t } = useTranslation();
-  // last 14 days
-  const cells = Array.from({ length: 14 }).map((_, i) => {
+  // Four weeks, drawn as two rows of 14. The mock shows a two-row dot grid
+  // rather than the single 14-day row of numbered squares this used to be, so
+  // the window widened to fill it — `days` retains 60 entries, well past 28.
+  const cells = Array.from({ length: 28 }).map((_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
+    d.setDate(d.getDate() - (27 - i));
     const key = dateKey(d);
     return { key, done: streak.days.includes(key), label: d.getDate() };
   });
 
   return (
-    <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             {t('streak_current')}
           </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-mono text-4xl font-semibold">{streak.current}</span>
-            <span className="text-sm text-muted-foreground">{t(streak.current === 1 ? 'day' : 'days')}</span>
+          <div className="mt-1.5 flex items-baseline gap-2">
+            <span className="font-serif text-5xl leading-none font-normal tabular-nums">
+              {streak.current}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {t(streak.current === 1 ? 'day' : 'days')}
+            </span>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 text-sm">
-          <Flame className="size-4 text-mint" />
-          <span className="font-mono">{t('streak_best')} {streak.best}</span>
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs">
+          <Flame className="size-3.5 text-mint" />
+          <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
         </div>
       </div>
+      {/* Plain dots, no day numbers: at 14 to a row the numerals were unreadable
+          on a 390px screen, and the mock reads the grid as a chain, not a
+          calendar. The date stays available as the title tooltip. */}
       <div
-        className="grid grid-cols-14 gap-1.5"
+        className="grid gap-1.5"
         style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}
       >
         {cells.map((c) => (
           <div
             key={c.key}
             title={c.key}
-            className={`aspect-square rounded-md border text-[10px] font-mono grid place-items-center transition ${
+            className={`aspect-square rounded-full border transition ${
               c.done
-                ? "bg-mint/80 border-mint text-mint-foreground shadow-soft"
-                : "border-border bg-surface text-muted-foreground"
+                ? "border-mint bg-mint"
+                : "border-border bg-transparent"
             }`}
-          >
-            {c.label}
-          </div>
+          />
         ))}
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="mt-4 font-serif text-[13px] italic text-muted-foreground">
         {t('streak_desc')}
       </p>
     </div>
