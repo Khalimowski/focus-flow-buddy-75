@@ -17,6 +17,12 @@ export type VibrationType = 'long' | 'short' | 'double' | 'off';
  */
 export type TourId = 'main' | 'premium' | 'web';
 
+/**
+ * How the time picker opens: on the clock face, or on the two typing fields.
+ * Whichever one the user last switched to is the one they get next time.
+ */
+export type TimeInputMode = 'clock' | 'keyboard';
+
 interface I18nState {
   language: Language;
   theme: Theme;
@@ -30,6 +36,8 @@ interface I18nState {
   // so an account is always required there.
   guestMode: boolean;
   vibrationType: VibrationType;
+  // Last mode the user picked in the time picker (components/TimePicker.tsx).
+  timeInputMode: TimeInputMode;
   // End-of-day review: offer to reschedule whatever is still open, at eodTime
   // ("HH:mm"). Device-local like the rest of the notification settings — the
   // reminder is scheduled per device.
@@ -50,6 +58,7 @@ interface I18nState {
   resetTour: (id: TourId) => void;
   setGuestMode: (guest: boolean) => void;
   setVibrationType: (type: VibrationType) => void;
+  setTimeInputMode: (mode: TimeInputMode) => void;
   setEodReview: (enabled: boolean) => void;
   setEodTime: (time: string) => void;
   setGoogleGmail: (enabled: boolean) => void;
@@ -68,6 +77,7 @@ export const useI18nStore = create<I18nState>()(
       toursSeen: [],
       guestMode: false,
       vibrationType: 'long',
+      timeInputMode: 'clock',
       eodReview: true,
       eodTime: '23:30',
       googleGmail: false,
@@ -83,6 +93,7 @@ export const useI18nStore = create<I18nState>()(
       resetTour: (id) => set((s) => ({ toursSeen: s.toursSeen.filter((t) => t !== id) })),
       setGuestMode: (guestMode) => set({ guestMode }),
       setVibrationType: (vibrationType) => set({ vibrationType }),
+      setTimeInputMode: (timeInputMode) => set({ timeInputMode }),
       setEodReview: (eodReview) => set({ eodReview }),
       setEodTime: (eodTime) => set({ eodTime }),
       setGoogleGmail: (googleGmail) => set({ googleGmail }),
