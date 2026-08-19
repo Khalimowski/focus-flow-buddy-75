@@ -176,7 +176,15 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
+    /* Tinos ships only 400 and 700, exactly as Times itself does, so CSS
+       weights 500 and 600 collapse straight back to 400 — there is no semibold
+       to ask for. A hairline stroke in the current text colour lands between
+       the two and thickens every glyph just enough that Times holds up against
+       a light ground at phone sizes. Raise it toward 0.5px for more weight;
+       past that the counters start to fill in. */
+    -webkit-text-stroke: 0.3px currentColor;
+    /* `antialiased` deliberately not set: it thins glyph stems, which is the
+       opposite of what this palette needs. */
     text-rendering: optimizeLegibility;
     /* Disable Android overscroll stretch (y) and swipe-to-navigate gestures (x) */
     overscroll-behavior: none;

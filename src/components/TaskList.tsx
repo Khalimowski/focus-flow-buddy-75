@@ -67,10 +67,6 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [loaded, setLoaded] = useState(false);
   // Set when the next setTasks comes from re-reading storage (see reload below)
   const skipNextSave = useRef(false);
-  // "Add Focus" in the section header is the mock's entry point for a new
-  // task. The composer it targets lives above the header, so focusing it also
-  // has to scroll it back into view.
-  const titleInputRef = useRef<HTMLInputElement>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
@@ -737,7 +733,6 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       <div className="rounded-2xl border border-border bg-card p-4 shadow-soft" data-tour="add-task">
         <div className="flex flex-col gap-3">
           <Input
-            ref={titleInputRef}
             name="task-title"
             autoComplete="off"
             placeholder={t('task_input_placeholder')}
@@ -788,28 +783,6 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* "Today's Focus" — the editorial section header. The count reads over
-          the items actually on screen for the selected day, so it tracks the
-          day strip rather than the whole task store. */}
-      <div className="flex items-end justify-between gap-3 pt-1">
-        <div className="min-w-0">
-          <h2 className="font-serif text-xl leading-tight">{t('focus_title')}</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-            {openItems.length} {t('focus_of')} {displayItems.length} {t('focus_remaining')}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            titleInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-            titleInputRef.current?.focus();
-          }}
-          className="h-8 shrink-0 rounded-full px-3.5 text-xs"
-        >
-          {t('focus_add')}
-        </Button>
       </div>
 
       <div className="flex items-center justify-end gap-1">
