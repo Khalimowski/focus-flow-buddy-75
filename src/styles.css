@@ -2,23 +2,32 @@
 @source "../src";
 @import "tw-animate-css";
 
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
+/* Tinos is metric-compatible with Times New Roman (same widths, near-identical
+   letterforms) and Apache-2.0, so it can actually ship. Times New Roman itself
+   is Monotype's and is not present on Android, where it silently falls back to
+   Noto Serif — much heavier and wider than Times. Only latin and latin-ext are
+   imported: latin-ext is what carries Polish diacritics, and the Cyrillic,
+   Greek, Hebrew and Vietnamese subsets @fontsource also ships would add ~490
+   KiB to the APK for languages this app does not offer. */
+@import "@fontsource/tinos/latin-400.css";
+@import "@fontsource/tinos/latin-ext-400.css";
+@import "@fontsource/tinos/latin-400-italic.css";
+@import "@fontsource/tinos/latin-ext-400-italic.css";
+@import "@fontsource/tinos/latin-700.css";
+@import "@fontsource/tinos/latin-ext-700.css";
 @import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* Named --font-sans because that is the token Tailwind's `font-sans` and the
+     base `html, body` rule read; the family it points at is a serif now. */
+  --font-sans: "Tinos", "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  /* "Classic Editorial" leans on a serif for headings and task titles.
-     Deliberately a system stack rather than a webfont: adding a
-     @fontsource package means touching bun.lock AND package-lock.json
-     together or every CI build dies on --frozen-lockfile. Android maps
-     `serif` to Noto Serif, which is what the mock approximates. */
-  --font-serif: ui-serif, "Noto Serif", Georgia, "Times New Roman", serif;
+  /* Same family as --font-sans; kept as its own token so the headings and task
+     titles that ask for `font-serif` still say what they mean, and so a future
+     sans/serif split only has to change one of the two. */
+  --font-serif: "Tinos", "Times New Roman", Times, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
