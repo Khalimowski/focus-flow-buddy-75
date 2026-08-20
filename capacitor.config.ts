@@ -6,17 +6,19 @@ const config: CapacitorConfig = {
   webDir: "dist/client",
   bundledWebRuntime: false,
   android: {
-    backgroundColor: "#0F1115",
+    // The app's dark --background; the splash sits the icon tile on the same
+    // colour so launch doesn't flash a different ground.
+    backgroundColor: "#100E0C",
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 600,
-      backgroundColor: "#0F1115",
+      backgroundColor: "#100E0C",
       androidSplashResourceName: "splash",
     },
     LocalNotifications: {
       smallIcon: "ic_stat_icon",
-      iconColor: "#7C9CFF",
+      iconColor: "#C9A46A",
       presentationOptions: ["badge", "sound", "banner", "list"],
     },
   },
