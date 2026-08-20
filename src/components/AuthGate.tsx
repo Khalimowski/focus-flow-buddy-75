@@ -190,15 +190,20 @@ export function AuthGate() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm"
       >
+        {/* Masthead. For most people on the web this is the whole first
+            impression of the app, so it gets the full editorial treatment:
+            mark, serif wordmark at display size, a hairline rule, then the
+            standfirst in italic. */}
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark className="mb-4 size-16" />
-          <h1 className="text-2xl font-bold tracking-tight">{t("app_name")}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="font-serif text-4xl leading-none">{t("app_name")}</h1>
+          <div className="mt-4 h-px w-16 bg-border" />
+          <p className="mt-4 font-serif text-sm italic leading-relaxed text-muted-foreground">
             {mode === "forgot" || mode === "reset" ? t("reset_password") : t("auth_gate_subtitle")}
           </p>
         </div>
 
-        <div className="space-y-3 rounded-2xl border bg-card/50 p-5 backdrop-blur">
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-soft">
           <Input
             type="email"
             autoComplete="email"

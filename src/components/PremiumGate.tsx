@@ -44,14 +44,21 @@ export function PremiumGate() {
         className="space-y-6"
       >
         <div className="flex flex-col items-center text-center">
-          <div className="grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-glow">
-            <Sparkles className="size-7 text-background/90" strokeWidth={2.25} />
+          {/* A flat ink plate, not the old indigo-to-mint gradient: the
+              editorial palette has no second hue to gradient towards, and
+              `primary` is near-white in the dark theme, which turned the chip
+              into a glowing blob. */}
+          <div className="grid size-14 place-items-center rounded-2xl bg-primary text-primary-foreground">
+            <Sparkles className="size-7" strokeWidth={1.75} />
           </div>
-          <h1 className="mt-4 text-xl font-bold tracking-tight">{t("premium_web_locked_title")}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{t("premium_web_locked_body")}</p>
+          <h1 className="mt-5 font-serif text-2xl leading-tight">{t("premium_web_locked_title")}</h1>
+          <div className="mt-4 h-px w-16 bg-border" />
+          <p className="mt-4 font-serif text-sm italic leading-relaxed text-muted-foreground">
+            {t("premium_web_locked_body")}
+          </p>
         </div>
 
-        <div className="rounded-2xl border bg-card/40 p-5 backdrop-blur">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <PremiumPerks />
         </div>
 

@@ -79,7 +79,7 @@ export function TaskCalendarDialog({
         </div>
 
         {/* Composer pinned below the scroll area so it stays reachable */}
-        <div className="rounded-2xl border bg-card/50 p-3 backdrop-blur">
+        <div className="rounded-2xl border border-border bg-card p-3">
           <div className="flex flex-col gap-2">
             <Input
               name="calendar-task-title"

@@ -26,7 +26,6 @@ type Step = {
   /** `data-tour` value to spotlight, or null for a centred card. */
   target: string | null;
   icon: LucideIcon;
-  color: string;
   title: string;
   desc: string;
 };
@@ -62,36 +61,36 @@ const OPEN_LAYER_SELECTOR = ['[role="dialog"]', '[role="alertdialog"]']
  */
 function mainSteps(t: T, native: boolean): Step[] {
   return [
-    { target: null, icon: Sparkles, color: "from-primary to-mint", title: t("onboarding_welcome"), desc: t("tagline") },
-    { target: "streak", icon: Flame, color: "from-orange-400 to-red-400", title: t("tour_streak_title"), desc: t("tour_streak_desc") },
-    { target: "tabs", icon: ListTodo, color: "from-blue-500 to-indigo-500", title: t("tour_tabs_title"), desc: t("tour_tabs_desc") },
-    { target: "days", icon: CalendarDays, color: "from-emerald-400 to-teal-500", title: t("tour_days_title"), desc: t("tour_days_desc") },
-    { target: "add-task", icon: Check, color: "from-primary to-mint", title: t("onboarding_tasks_title"), desc: t("onboarding_tasks_desc") },
-    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_voice_title"), desc: t("tour_voice_desc") },
-    { target: "view-toggle", icon: CalendarClock, color: "from-sky-400 to-cyan-500", title: t("tour_views_title"), desc: t("tour_views_desc") },
+    { target: null, icon: Sparkles, title: t("onboarding_welcome"), desc: t("tagline") },
+    { target: "streak", icon: Flame, title: t("tour_streak_title"), desc: t("tour_streak_desc") },
+    { target: "tabs", icon: ListTodo, title: t("tour_tabs_title"), desc: t("tour_tabs_desc") },
+    { target: "days", icon: CalendarDays, title: t("tour_days_title"), desc: t("tour_days_desc") },
+    { target: "add-task", icon: Check, title: t("onboarding_tasks_title"), desc: t("onboarding_tasks_desc") },
+    { target: "voice", icon: Mic, title: t("tour_voice_title"), desc: t("tour_voice_desc") },
+    { target: "view-toggle", icon: CalendarClock, title: t("tour_views_title"), desc: t("tour_views_desc") },
     ...(native
       ? []
-      : [{ target: "insights", icon: BarChart3, color: "from-amber-400 to-orange-500", title: t("tour_insights_title"), desc: t("tour_insights_desc") }]),
-    { target: "settings", icon: SettingsIcon, color: "from-violet-500 to-purple-500", title: t("tour_settings_title"), desc: t("tour_settings_desc") },
+      : [{ target: "insights", icon: BarChart3, title: t("tour_insights_title"), desc: t("tour_insights_desc") }]),
+    { target: "settings", icon: SettingsIcon, title: t("tour_settings_title"), desc: t("tour_settings_desc") },
   ];
 }
 
 /** Shown once, on the device where a Premium purchase landed. */
 function premiumSteps(t: T): Step[] {
   return [
-    { target: null, icon: BadgeCheck, color: "from-primary to-mint", title: t("tour_premium_welcome_title"), desc: t("tour_premium_welcome_desc") },
-    { target: "settings", icon: Globe, color: "from-sky-400 to-cyan-500", title: t("tour_premium_web_title"), desc: t("tour_premium_web_desc") },
-    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_premium_voice_title"), desc: t("tour_premium_voice_desc") },
-    { target: null, icon: Sparkles, color: "from-amber-400 to-orange-500", title: t("tour_premium_extras_title"), desc: t("tour_premium_extras_desc") },
+    { target: null, icon: BadgeCheck, title: t("tour_premium_welcome_title"), desc: t("tour_premium_welcome_desc") },
+    { target: "settings", icon: Globe, title: t("tour_premium_web_title"), desc: t("tour_premium_web_desc") },
+    { target: "voice", icon: Mic, title: t("tour_premium_voice_title"), desc: t("tour_premium_voice_desc") },
+    { target: null, icon: Sparkles, title: t("tour_premium_extras_title"), desc: t("tour_premium_extras_desc") },
   ];
 }
 
 /** Shown once per browser, for someone who already knows the phone app. */
 function webSteps(t: T): Step[] {
   return [
-    { target: null, icon: Globe, color: "from-primary to-mint", title: t("tour_web_welcome_title"), desc: t("tour_web_welcome_desc") },
-    { target: "insights", icon: BarChart3, color: "from-amber-400 to-orange-500", title: t("tour_insights_title"), desc: t("tour_insights_desc") },
-    { target: "voice", icon: Mic, color: "from-rose-400 to-pink-500", title: t("tour_voice_title"), desc: t("tour_voice_desc") },
+    { target: null, icon: Globe, title: t("tour_web_welcome_title"), desc: t("tour_web_welcome_desc") },
+    { target: "insights", icon: BarChart3, title: t("tour_insights_title"), desc: t("tour_insights_desc") },
+    { target: "voice", icon: Mic, title: t("tour_voice_title"), desc: t("tour_voice_desc") },
   ];
 }
 
@@ -235,7 +234,7 @@ export function Onboarding() {
           style={{ boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.7)" }}
         />
       ) : (
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-scrim" />
       )}
 
       <div
@@ -249,13 +248,16 @@ export function Onboarding() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.22 }}
-            className="w-full max-w-[360px] rounded-3xl border border-primary/20 bg-card p-5 shadow-glow"
+            className="w-full max-w-[360px] rounded-3xl border border-border bg-card p-5 shadow-lg"
           >
             <div className="mb-3 flex items-center gap-3">
-              <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${current.color} shadow-lg`}>
-                <Icon className="size-5 text-white" />
+              {/* One flat ink plate for every step. The tour used to give each
+                  step its own saturated gradient (orange, indigo, teal…),
+                  which is the one thing this palette has no room for. */}
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Icon className="size-5" strokeWidth={1.75} />
               </div>
-              <h3 className="text-base font-bold tracking-tight">{current.title}</h3>
+              <h3 className="font-serif text-lg leading-tight">{current.title}</h3>
             </div>
 
             <p className="text-sm leading-relaxed text-muted-foreground">{current.desc}</p>

@@ -139,7 +139,7 @@ export function TaskCalendar({
   }, [dateLocale]);
 
   const renderRow = (task: CalendarTask) => (
-    <div key={task.id} className="flex items-center gap-2 rounded-xl border bg-card/40 px-2.5 py-2">
+    <div key={task.id} className="flex items-center gap-2 rounded-xl border border-border bg-card px-2.5 py-2">
       <button
         onClick={() => onToggleTask(task.id)}
         aria-label={task.title}
@@ -168,14 +168,14 @@ export function TaskCalendar({
       <button
         onClick={() => onEditTask(task)}
         aria-label={t("edit")}
-        className="grid size-6 shrink-0 place-items-center rounded-md text-blue-500/80 hover:bg-blue-500/10"
+        className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
       >
         <Edit2 className="size-3.5" />
       </button>
       <button
         onClick={() => onDeleteTask(task.id)}
         aria-label={t("delete")}
-        className="grid size-6 shrink-0 place-items-center rounded-md text-red-500/80 hover:bg-red-500/10"
+        className="grid size-6 shrink-0 place-items-center rounded-md text-destructive transition hover:bg-destructive/10"
       >
         <Trash2 className="size-3.5" />
       </button>
@@ -186,7 +186,7 @@ export function TaskCalendar({
     <div className="flex flex-col gap-3">
       {/* Scale switch + period navigation */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center rounded-full bg-card/40 p-0.5">
+        <div className="flex items-center rounded-full bg-secondary p-0.5">
           {(["day", "week", "month"] as const).map((option) => (
             <button
               key={option}
@@ -208,7 +208,7 @@ export function TaskCalendar({
             size="icon"
             aria-label={t("calendar_prev")}
             onClick={() => shift(-1)}
-            className="size-8 rounded-full bg-card/40 hover:bg-card/60"
+            className="size-8 rounded-full bg-secondary hover:bg-accent"
           >
             <ChevronLeft className="size-4" />
           </Button>
@@ -216,7 +216,7 @@ export function TaskCalendar({
             variant="ghost"
             size="sm"
             onClick={() => onSelectDate(startOfDay(new Date()))}
-            className="h-8 rounded-full bg-card/40 px-3 text-[10px] font-bold hover:bg-card/60"
+            className="h-8 rounded-full bg-secondary px-3 text-[10px] font-bold hover:bg-accent"
           >
             {t("calendar_today")}
           </Button>
@@ -225,17 +225,17 @@ export function TaskCalendar({
             size="icon"
             aria-label={t("calendar_next")}
             onClick={() => shift(1)}
-            className="size-8 rounded-full bg-card/40 hover:bg-card/60"
+            className="size-8 rounded-full bg-secondary hover:bg-accent"
           >
             <ChevronRight className="size-4" />
           </Button>
         </div>
       </div>
 
-      <div className="text-center text-sm font-bold capitalize">{headerLabel}</div>
+      <div className="text-center font-serif text-lg capitalize leading-tight">{headerLabel}</div>
 
       {scale === "month" ? (
-        <div className="rounded-2xl border bg-card/30 p-2 backdrop-blur">
+        <div className="rounded-2xl border border-border bg-card p-2">
           <div className="grid grid-cols-7 gap-1 pb-1">
             {weekdayLabels.map((label, i) => (
               <div
@@ -258,7 +258,7 @@ export function TaskCalendar({
                   className={`flex min-h-[52px] flex-col items-stretch gap-0.5 rounded-lg border p-1 text-left transition sm:min-h-[76px] ${
                     selected
                       ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                      : "border-transparent bg-card/30 hover:bg-card/60"
+                      : "border-transparent bg-surface hover:bg-accent"
                   } ${inMonth ? "" : "opacity-40"}`}
                 >
                   <span
@@ -313,10 +313,10 @@ export function TaskCalendar({
             return (
               <div
                 key={date.toISOString()}
-                className={`rounded-2xl border p-3 backdrop-blur transition ${
+                className={`rounded-2xl border p-3 transition ${
                   selected && scale === "week"
                     ? "border-primary/40 bg-primary/5"
-                    : "border-border bg-card/30"
+                    : "border-border bg-card"
                 }`}
               >
                 {/* In day scale the heading above already names the day. */}
@@ -334,7 +334,7 @@ export function TaskCalendar({
                       )}
                     </span>
                     {dayTasks.length > 0 && (
-                      <span className="shrink-0 rounded-full bg-card/60 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                         {dayTasks.length}
                       </span>
                     )}

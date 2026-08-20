@@ -212,7 +212,7 @@ function Home() {
       <EndOfDayReview />
       <WhatsNew />
 
-      <header className="sticky top-0 z-30 -mx-4 mb-5 bg-background/85 px-4 pb-3 pt-safe-top-sm backdrop-blur-xl">
+      <header className="sticky top-0 z-30 -mx-4 mb-5 border-b border-border bg-background/85 px-4 pb-3 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">
           {/* Mark and wordmark sit together in the middle, as on the brand sheet */}
           <motion.div
@@ -222,9 +222,9 @@ function Home() {
           >
             <h1 className="flex items-center justify-center gap-2">
               <LogoMark className="size-9" />
-              <span className="text-xl font-bold tracking-tight">{t('app_name')}</span>
+              <span className="font-serif text-2xl leading-none">{t('app_name')}</span>
             </h1>
-            <p className="text-[10px] text-muted-foreground">{t('tagline')}</p>
+            <p className="font-serif text-[11px] italic text-muted-foreground">{t('tagline')}</p>
           </motion.div>
 
           <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2" data-tour="settings">
@@ -263,12 +263,19 @@ function Home() {
       {/* Bottom tab bar — "Classic Editorial" moves navigation off the top of
           the screen and onto the thumb. Fixed rather than sticky so it stays
           put while a tab's own list scrolls, and lifted above the ad banner
-          by `bottom-safe-nav` so the banner never covers it. */}
+          by `bottom-safe-nav` so the banner never covers it.
+
+          From md up it stops being a thumb bar: an edge-to-edge strip pinned
+          to the bottom of a desktop window is a phone gesture nobody makes
+          with a mouse. It shrinks to its contents and floats as a centred
+          slab instead (the gap comes from .bottom-safe-nav's own media
+          query), which also puts the tabs back within a short pointer throw
+          of the middle of the page. */}
       <nav
-        className="fixed inset-x-0 bottom-safe-nav z-40 border-t border-border bg-card/95 backdrop-blur-xl"
+        className="fixed inset-x-0 bottom-safe-nav z-40 border-t border-border bg-card/95 backdrop-blur-xl md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:overflow-hidden md:rounded-2xl md:border md:shadow-lg"
         data-tour="tabs"
       >
-        <div className="mx-auto flex w-full max-w-4xl items-stretch px-2 pb-[env(safe-area-inset-bottom,0px)] xl:max-w-6xl">
+        <div className="mx-auto flex w-full items-stretch px-2 pb-[env(safe-area-inset-bottom,0px)] md:w-auto md:px-0 md:pb-0">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
@@ -280,14 +287,18 @@ function Home() {
                 data-tour={t.id === "insights" ? "insights" : undefined}
                 // min-w-0 + truncate: the labels are translated, and a long
                 // translation used to run off the right edge of a 375px screen.
-                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1 py-3 text-[11px] font-medium transition ${
-                  active ? "text-foreground" : "text-muted-foreground"
+                // `hover:` earns its keep on the desktop build — on the phone
+                // there is no pointer to hover with, and it costs nothing.
+                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1 py-3 text-[11px] font-medium transition md:flex-none md:px-6 md:text-xs ${
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                 }`}
               >
                 {active && (
                   <motion.span
                     layoutId="tab-pill"
-                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-primary"
+                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-primary md:inset-x-0 md:rounded-none"
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}

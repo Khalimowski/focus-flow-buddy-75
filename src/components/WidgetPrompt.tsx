@@ -105,7 +105,7 @@ export function WidgetPrompt() {
     <motion.div
       initial={{ opacity: 0, y: -16, height: 0 }}
       animate={{ opacity: 1, y: 0, height: "auto" }}
-      className="mb-4 overflow-hidden rounded-2xl border border-mint/30 bg-mint/10 p-3 backdrop-blur"
+      className="mb-4 overflow-hidden rounded-2xl border border-mint/30 bg-mint/10 p-3"
     >
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-mint/20 text-mint">

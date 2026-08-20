@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.9.2";
+export const APP_VERSION = "1.9.3";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.3",
+    items: {
+      en: [
+        "FlowDay has a new look: a calm, printed-page feel with a serif face throughout, solid cards and a quieter palette.",
+        "Navigation has moved to the bottom of the screen, within easy reach.",
+        "The browser version gets the new look too, with the tabs floating as a centred bar.",
+      ],
+      pl: [
+        "FlowDay ma nowy wygląd: spokojny, jak drukowana strona — szeryfowy krój pisma, pełne karty i stonowana paleta.",
+        "Nawigacja przeniosła się na dół ekranu, pod kciuk.",
+        "Wersja w przeglądarce też dostaje nowy wygląd, a zakładki unoszą się tam jako wyśrodkowany pasek.",
+      ],
+    },
+  },
   {
     version: "1.8.8",
     items: {

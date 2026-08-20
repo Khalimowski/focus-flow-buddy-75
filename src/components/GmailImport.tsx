@@ -85,7 +85,7 @@ export function GmailImport({ onImport }: { onImport: (title: string) => void })
                 <li key={msg.id}>
                   <button
                     onClick={() => pick(msg)}
-                    className="w-full rounded-2xl border bg-card/40 p-3 text-left transition hover:bg-card/70 hover:border-primary/40"
+                    className="w-full rounded-2xl border border-border bg-card p-3 text-left transition hover:border-primary/40 hover:bg-secondary"
                   >
                     <div className="truncate text-sm font-medium">{msg.subject}</div>
                     <div className="mt-0.5 truncate text-[11px] text-muted-foreground">

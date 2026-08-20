@@ -128,7 +128,7 @@ export function PremiumSection() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-mint" />
-          <span className="text-sm font-semibold">{t("premium_free_all_title")}</span>
+          <span className="font-serif text-base leading-tight">{t("premium_free_all_title")}</span>
         </div>
         <p className="text-xs text-muted-foreground">{t("premium_free_all_body")}</p>
         <PremiumPerks withoutAds />
@@ -152,7 +152,7 @@ export function PremiumSection() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="size-4 text-mint" />
-          <span className="text-sm font-semibold">{t("premium_active")}</span>
+          <span className="font-serif text-base leading-tight">{t("premium_active")}</span>
         </div>
         <p className="text-[11px] text-muted-foreground">
           {t("premium_active_since")} {new Date(entitlement.purchasedAt).toLocaleDateString()}
@@ -169,7 +169,7 @@ export function PremiumSection() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Sparkles className="size-4 text-primary" />
-        <span className="text-sm font-semibold">{t("premium_title")}</span>
+        <span className="font-serif text-base leading-tight">{t("premium_title")}</span>
       </div>
       <p className="text-xs text-muted-foreground">{t("premium_tagline")}</p>
       <PremiumPerks />

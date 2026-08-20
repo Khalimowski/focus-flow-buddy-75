@@ -29,6 +29,22 @@
      sans/serif split only has to change one of the two. */
   --font-serif: "Tinos", "Times New Roman", Times, serif;
 
+  /* Editorial shadow scale. Every shadcn primitive in src/components/ui is
+     peppered with Tailwind's stock shadows, which are opaque black stacks
+     sized for a white app; against warm paper they read as plastic, and in
+     the dark theme they vanish. Redefining the scale re-tints dialogs,
+     sheets, menus, switches and popovers in one place instead of editing
+     twenty files, and the tints themselves are per-theme (see :root/.light).
+     Bare `shadow` resolves to --shadow-sm in Tailwind v4, so it is covered. */
+  --shadow: 0 1px 2px var(--shadow-tint-weak);
+  --shadow-2xs: 0 1px 1px var(--shadow-tint-weak);
+  --shadow-xs: 0 1px 2px var(--shadow-tint-weak);
+  --shadow-sm: 0 1px 2px var(--shadow-tint-weak);
+  --shadow-md: 0 2px 4px var(--shadow-tint-weak), 0 10px 24px -14px var(--shadow-tint);
+  --shadow-lg: 0 4px 10px -3px var(--shadow-tint-weak), 0 20px 48px -24px var(--shadow-tint);
+  --shadow-xl: 0 8px 18px -6px var(--shadow-tint-weak), 0 32px 72px -32px var(--shadow-tint);
+  --shadow-2xl: 0 12px 28px -8px var(--shadow-tint), 0 48px 96px -40px var(--shadow-tint);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -116,8 +132,16 @@
   --gradient-mint: linear-gradient(135deg, var(--mint), color-mix(in oklab, var(--mint) 70%, var(--foreground)));
 
   /* Shadows go black here rather than tinting toward primary, which is now
-     almost white and would halo every card. */
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.35), 0 8px 24px -16px oklch(0 0 0 / 0.6);
+     almost white and would halo every card. The two tints also feed the
+     Tailwind shadow scale redefined in @theme. */
+  --shadow-tint: oklch(0 0 0 / 0.6);
+  --shadow-tint-weak: oklch(0 0 0 / 0.35);
+
+  /* Scrim behind dialogs and the settings sheet. On a near-black ground the
+     stock bg-black/80 is almost the page colour, so the modal loses its edge;
+     this goes fully opaque-ish black instead and lets the card float. */
+  --scrim: oklch(0 0 0 / 0.72);
+  --shadow-soft: 0 1px 2px var(--shadow-tint-weak), 0 8px 24px -16px var(--shadow-tint);
   --shadow-glow: 0 2px 12px -4px oklch(0 0 0 / 0.55);
 
   /* Light text on a dark ground already reads heavier, so the stroke that
@@ -174,8 +198,15 @@
   --gradient-focus: none;
 
   /* Shadows are the only depth cue on a flat ground, so they stay very soft
-     and neutral instead of tinting toward the primary as the dark theme's do. */
-  --shadow-soft: 0 1px 2px oklch(0.21 0.006 60 / 0.05), 0 8px 24px -16px oklch(0.21 0.006 60 / 0.18);
+     and warm — tinted with the ink colour rather than pure black, which reads
+     grey and cold on cream. Also feeds the Tailwind scale (see @theme). */
+  --shadow-tint: oklch(0.21 0.006 60 / 0.18);
+  --shadow-tint-weak: oklch(0.21 0.006 60 / 0.05);
+
+  /* A wash of ink over paper rather than black over white — bg-black/80 on a
+     cream page reads as a hole cut in the sheet. */
+  --scrim: oklch(0.21 0.006 60 / 0.42);
+  --shadow-soft: 0 1px 2px var(--shadow-tint-weak), 0 8px 24px -16px var(--shadow-tint);
   --shadow-glow: 0 2px 10px -4px oklch(0.21 0.006 60 / 0.16);
 
   /* Ink on paper needs the full stroke to hold weight; see :root for why dark
@@ -212,14 +243,48 @@
     overflow-x: clip;
   }
 
+  /* Desktop refinement. The stroke above is tuned for a phone, where Tinos at
+     ~15px needs the help to hold weight. A browser window renders the same
+     copy larger and on a lower-density display, and there the same stroke
+     reads as ink bleed rather than weight — so it is dialled back instead of
+     dropped. The Android webview never crosses this breakpoint. */
+  @media (min-width: 768px) {
+    html, body {
+      -webkit-text-stroke: calc(var(--text-stroke) * 0.6) currentColor;
+    }
+  }
+
+  /* Browser-only: the stock scrollbar is a cool grey column running down the
+     side of a warm page. Firefox reads the two standard properties, Chromium
+     the pseudo-elements; the Android webview has no visible scrollbar and
+     ignores both. */
+  @media (pointer: fine) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+    }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--color-border);
+      border: 4px solid var(--color-background);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background-color: var(--color-muted-foreground); }
+  }
+
   body {
     background-image: var(--gradient-focus);
     background-attachment: fixed;
     min-height: 100vh;
   }
 
+  /* Both halves are set explicitly. `primary` is near-white in the editorial
+     dark theme, so the old translucent-primary highlight under unchanged cream
+     text left selected copy almost invisible. */
   ::selection {
-    background: color-mix(in oklab, var(--primary) 40%, transparent);
+    background: color-mix(in oklab, var(--primary) 90%, transparent);
+    color: var(--color-primary-foreground);
   }
 
   /* Radix dialogs lock body scroll and compensate for the scrollbar with a
@@ -265,6 +330,19 @@
   .bottom-safe-nav {
     bottom: calc(var(--ad-banner-height, 0px));
   }
+  /* On a desktop browser the same bar detaches from the window edge and floats
+     as a centred slab (see the nav in routes/index.tsx) — an edge-to-edge
+     thumb bar across a 1600px window reads as a phone app in a big frame.
+     The offset is set here rather than as an md:bottom-* class so it cannot
+     lose a specificity race with .bottom-safe-nav. There is no ad banner on
+     web, so this is a plain gap. */
+  @media (min-width: 768px) {
+    .bottom-safe-nav {
+      bottom: 1.5rem;
+    }
+  }
+  /* Modal scrim; see --scrim for why the stock bg-black/80 was dropped. */
+  .bg-scrim { background-color: var(--scrim); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
 }

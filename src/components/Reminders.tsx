@@ -213,7 +213,7 @@ export function Reminders() {
                 key={p.label}
                 onClick={() => addPreset(p)}
                 disabled={added}
-                className="group flex items-center gap-3 rounded-2xl border bg-card p-3 text-left transition hover:bg-card disabled:opacity-50"
+                className="group flex items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition hover:border-primary/30 hover:bg-secondary disabled:opacity-50"
               >
                 <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary">
                   <Icon className="size-4" />

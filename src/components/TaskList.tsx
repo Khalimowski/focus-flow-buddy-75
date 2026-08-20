@@ -646,7 +646,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 onClick={() => moveToTodo(item.id)}
                 aria-label={t('move_to_todo')}
                 title={t('move_to_todo')}
-                className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
+                // Row actions are monochrome now. Three candy chips per row
+                // (violet / blue / red) were the loudest thing left on an
+                // ink-on-paper list. Delete keeps a colour because it is the
+                // one action that cannot be undone, and it takes it from the
+                // palette (`destructive`) rather than from Tailwind red-500.
+                className="size-8 rounded-lg border-border bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <CheckSquare className="size-4" />
               </Button>
@@ -655,7 +660,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 variant="outline"
                 onClick={() => startEdit(item)}
                 aria-label={t('edit')}
-                className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
+                className="size-8 rounded-lg border-border bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground"
               >
                 <Edit2 className="size-4" />
               </Button>
@@ -664,7 +669,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 variant="outline"
                 onClick={() => remove(item.id)}
                 aria-label={t('delete')}
-                className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
+                className="size-8 rounded-lg border-border bg-transparent text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 className="size-4" />
               </Button>

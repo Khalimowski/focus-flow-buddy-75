@@ -291,7 +291,7 @@ export function EndOfDayReview() {
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1">
         {picking ? (
           <>
-            <div className="rounded-2xl border bg-card/40 p-3">
+            <div className="rounded-2xl border border-border bg-card p-3">
               <div className="text-xs font-medium">
                 {t("eod_moving").replace("{n}", String(selected.size))}
               </div>
@@ -305,7 +305,7 @@ export function EndOfDayReview() {
             {/* Inline rather than a popover: nesting one inside the dialog puts
                 a second layer between the user and a decision they're making at
                 half past eleven. */}
-            <div className="flex shrink-0 justify-center rounded-3xl border bg-card/40 p-2">
+            <div className="flex shrink-0 justify-center rounded-3xl border border-border bg-card p-2">
               <Calendar
                 mode="single"
                 selected={pickedDate}
@@ -333,7 +333,7 @@ export function EndOfDayReview() {
                 return (
                   <li
                     key={task.id}
-                    className="flex items-center gap-3 rounded-2xl border bg-card/40 p-3 backdrop-blur"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
                   >
                     <Checkbox
                       id={`eod-${task.id}`}

@@ -81,7 +81,7 @@ export function WhatsNew() {
                 {entry.items[language].map((item, i) => (
                   <li
                     key={i}
-                    className="flex items-start gap-2.5 rounded-2xl border bg-card/40 p-3 backdrop-blur"
+                    className="flex items-start gap-2.5 rounded-2xl border border-border bg-card p-3"
                   >
                     <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
                     <span className="text-sm leading-relaxed">{item}</span>

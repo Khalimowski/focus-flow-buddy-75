@@ -190,7 +190,7 @@ export function TimePicker({
           </DialogHeader>
 
           {/* Readout: the hour/minute switch, or the two fields to type into */}
-          <div className="flex items-center justify-center gap-1 rounded-2xl bg-secondary/40 p-2">
+          <div className="flex items-center justify-center gap-1 rounded-2xl bg-secondary p-2">
             {typing ? (
               <>
                 <TimeField

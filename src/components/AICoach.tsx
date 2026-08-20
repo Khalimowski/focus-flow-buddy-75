@@ -397,8 +397,10 @@ export function AICoach() {
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           className="fixed bottom-24 left-4 right-4 z-40"
         >
-          <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-card/95 p-5 backdrop-blur-xl shadow-glow">
-            <div className="absolute -right-4 -top-4 size-24 rounded-full bg-primary/10 blur-2xl" />
+          {/* Solid card, and no bloom behind the corner: that blurred disc was
+              tinted with `primary`, which is near-white in the editorial dark
+              theme and turned into a smear across the top of the card. */}
+          <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-lg">
 
             <button
               onClick={handleRefuse}
@@ -409,15 +411,15 @@ export function AICoach() {
             </button>
 
             <div className="flex items-start gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-mint shadow-lg">
-                <Sparkles className="size-6 text-white" />
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                <Sparkles className="size-6" strokeWidth={1.75} />
               </div>
 
               <div className="flex-1 min-w-0 pr-6 text-left">
                 {step === "greeting" ? (
                   <>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold tracking-tight">AI Flow Coach</h3>
+                      <h3 className="font-serif text-base leading-tight">AI Flow Coach</h3>
                       <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[8px] font-bold uppercase text-primary">
                         {t('ai_coach_beta')}
                       </span>
@@ -438,7 +440,7 @@ export function AICoach() {
                   </>
                 ) : step === "interview" ? (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-bold tracking-tight">{t('ai_coach_interview_title')}</h3>
+                    <h3 className="font-serif text-base leading-tight">{t('ai_coach_interview_title')}</h3>
                     <p className="text-[11px] leading-tight text-muted-foreground">{t('ai_coach_interview_desc')}</p>
 
                     {interviewPage === 0 && (
@@ -512,7 +514,7 @@ export function AICoach() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-bold tracking-tight">{planMode ? t('ai_coach_plan_title') : t('ai_coach_tasks_title')}</h3>
+                    <h3 className="font-serif text-base leading-tight">{planMode ? t('ai_coach_plan_title') : t('ai_coach_tasks_title')}</h3>
                     <p className="text-[11px] leading-tight text-muted-foreground">{planMode ? t('ai_coach_plan_desc') : t('ai_coach_tasks_desc')}</p>
 
                     <div className="rounded-xl bg-secondary/30 p-2 space-y-1 border border-primary/10">

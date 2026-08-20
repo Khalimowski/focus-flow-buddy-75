@@ -288,7 +288,7 @@ export function SimpleToDo() {
               onClick={() => startScheduling(item)}
               aria-label={t('move_to_tasks')}
               title={t('move_to_tasks')}
-              className="size-8 rounded-lg bg-violet-500/5 border-violet-500/10 text-violet-500 hover:bg-violet-500/10"
+              className="size-8 rounded-lg border-border bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <ListTodo className="size-4" />
             </Button>
@@ -297,7 +297,7 @@ export function SimpleToDo() {
               variant="outline"
               onClick={() => startEdit(item)}
               aria-label={t('edit')}
-              className="size-8 rounded-lg bg-blue-500/5 border-blue-500/10 text-blue-500 hover:bg-blue-500/10"
+              className="size-8 rounded-lg border-border bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground"
             >
               <Edit2 className="size-4" />
             </Button>
@@ -306,7 +306,7 @@ export function SimpleToDo() {
               variant="outline"
               onClick={() => remove(item.id)}
               aria-label={t('delete')}
-              className="size-8 rounded-lg bg-red-500/5 border-red-500/10 text-red-500 hover:bg-red-500/10"
+              className="size-8 rounded-lg border-border bg-transparent text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
             >
               <Trash2 className="size-4" />
             </Button>
@@ -342,7 +342,7 @@ export function SimpleToDo() {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/60 lg:col-span-2 2xl:col-span-3"
+              className="rounded-2xl border border-dashed border-border bg-card/60 py-12 text-center font-serif text-sm italic text-muted-foreground lg:col-span-2 2xl:col-span-3"
             >
               {items.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>

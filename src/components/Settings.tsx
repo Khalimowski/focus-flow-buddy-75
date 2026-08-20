@@ -321,7 +321,7 @@ export function Settings() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="rounded-full bg-background/80 backdrop-blur border-primary/20 shadow-lg">
+        <Button variant="outline" size="icon" className="rounded-full border-border bg-card shadow-sm hover:bg-secondary">
           <SettingsIcon className="size-6 text-primary" />
           <span className="sr-only">{t('settings')}</span>
         </Button>
@@ -489,7 +489,7 @@ export function Settings() {
           {isGoogleConfigured() && (
             <div className="pt-4 border-t space-y-4">
               <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-semibold">{t('google_integrations')}</span>
+                <span className="font-serif text-base leading-tight">{t('google_integrations')}</span>
                 {googleEmail && (
                   <span className="text-[11px] text-muted-foreground">
                     {t('google_connected_as')} {googleEmail}

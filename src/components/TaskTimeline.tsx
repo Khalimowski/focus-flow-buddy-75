@@ -352,7 +352,7 @@ export function TaskTimeline({
       {(untimed.length > 0 || shelfHighlight) && (
         <div
           className={`rounded-2xl border border-dashed p-2 flex flex-col gap-1.5 transition-colors ${
-            shelfHighlight ? "border-primary bg-primary/10" : "border-border/60 bg-card/20"
+            shelfHighlight ? "border-primary bg-primary/10" : "border-border bg-card/50"
           }`}
         >
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">
@@ -364,7 +364,7 @@ export function TaskTimeline({
               onPointerDown={(e) => beginPress(e, task, null)}
               onContextMenu={(e) => e.preventDefault()}
               onClickCapture={blockClick}
-              className={`flex items-center gap-2 rounded-xl border bg-card/50 px-2.5 py-2 cursor-grab active:cursor-grabbing touch-pan-y ${
+              className={`flex items-center gap-2 rounded-xl border border-border bg-card px-2.5 py-2 cursor-grab active:cursor-grabbing touch-pan-y ${
                 dragging?.itemId === task.id ? "opacity-40" : ""
               }`}
               style={{ touchAction: dragging?.itemId === task.id ? "none" : undefined }}
@@ -380,14 +380,14 @@ export function TaskTimeline({
               <button
                 onClick={() => onEditTask(task)}
                 aria-label={t("edit")}
-                className="grid size-6 shrink-0 place-items-center rounded-md text-blue-500/80 hover:bg-blue-500/10"
+                className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
               >
                 <Edit2 className="size-3.5" />
               </button>
               <button
                 onClick={() => onDeleteTask(task.id)}
                 aria-label={t("delete")}
-                className="grid size-6 shrink-0 place-items-center rounded-md text-red-500/80 hover:bg-red-500/10"
+                className="grid size-6 shrink-0 place-items-center rounded-md text-destructive transition hover:bg-destructive/10"
               >
                 <Trash2 className="size-3.5" />
               </button>
@@ -397,7 +397,7 @@ export function TaskTimeline({
       )}
 
       {/* Hour grid */}
-      <div className="rounded-2xl border bg-card/30 backdrop-blur p-2 pt-3">
+      <div className="rounded-2xl border border-border bg-card p-2 pt-3">
         <div className="relative ml-12 mr-1" style={{ height: gridBoxHeight }}>
           <div ref={gridRef} className="absolute inset-0">
             {hours.map((m) => (
@@ -417,8 +417,8 @@ export function TaskTimeline({
                 className="absolute left-0 right-0 z-20 pointer-events-none"
                 style={{ top: nowMin - startMin }}
               >
-                <div className="h-px bg-red-500" />
-                <div className="absolute -left-1.5 -top-[3px] size-1.5 rounded-full bg-red-500" />
+                <div className="h-px bg-destructive" />
+                <div className="absolute -left-1.5 -top-[3px] size-1.5 rounded-full bg-destructive" />
               </div>
             )}
 
@@ -442,7 +442,7 @@ export function TaskTimeline({
                     isDragged
                       ? dragging.minutes === null
                         ? "opacity-30"
-                        : "z-30 ring-2 ring-primary shadow-glow"
+                        : "z-30 ring-2 ring-primary shadow-lg"
                       : ""
                   } ${item.done && !isDragged ? "opacity-60" : ""}`}
                   style={{
@@ -477,14 +477,14 @@ export function TaskTimeline({
                       <button
                         onClick={() => onEditTask(item)}
                         aria-label={t("edit")}
-                        className="grid size-6 place-items-center rounded-md text-blue-500/80 hover:bg-blue-500/10"
+                        className="grid size-6 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
                       >
                         <Edit2 className="size-3.5" />
                       </button>
                       <button
                         onClick={() => onDeleteTask(item.id)}
                         aria-label={t("delete")}
-                        className="grid size-6 place-items-center rounded-md text-red-500/80 hover:bg-red-500/10"
+                        className="grid size-6 place-items-center rounded-md text-destructive transition hover:bg-destructive/10"
                       >
                         <Trash2 className="size-3.5" />
                       </button>

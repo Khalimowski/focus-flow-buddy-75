@@ -26,7 +26,7 @@ export function InAppToaster() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border bg-popover/90 p-3 backdrop-blur-xl shadow-glow"
+            className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-border bg-popover p-3 shadow-lg"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 text-primary">
               <Bell className="size-4" />

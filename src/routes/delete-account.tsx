@@ -64,8 +64,9 @@ function DeleteAccountPage() {
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark className="mb-4 size-16" />
-          <h1 className="text-2xl font-bold tracking-tight">Delete your FlowDay account</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Usuwanie konta FlowDay</p>
+          <h1 className="font-serif text-3xl leading-tight">Delete your FlowDay account</h1>
+          <div className="mt-4 h-px w-16 bg-border" />
+          <p className="mt-4 font-serif text-sm italic text-muted-foreground">Usuwanie konta FlowDay</p>
         </div>
 
         <div className="space-y-4 text-sm leading-relaxed">
@@ -84,7 +85,7 @@ function DeleteAccountPage() {
         </div>
 
         {(status === "idle" || status === "busy" || status === "error") && (
-          <div className="mt-8 space-y-3 rounded-2xl border bg-card/50 p-5 backdrop-blur">
+          <div className="mt-8 space-y-3 rounded-2xl border border-border bg-card p-5 shadow-soft">
             <Input
               type="email"
               autoComplete="email"
@@ -132,7 +133,7 @@ function DeleteAccountPage() {
         )}
 
         {status === "done" && (
-          <div className="mt-8 rounded-2xl border bg-card/50 p-5 text-sm leading-relaxed backdrop-blur">
+          <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed shadow-soft">
             <p className="font-medium">Your account and synced data have been deleted.</p>
             <p className="mt-1 text-muted-foreground">
               Twoje konto i zsynchronizowane dane zostały usunięte.
@@ -141,7 +142,7 @@ function DeleteAccountPage() {
         )}
 
         {status === "partial" && (
-          <div className="mt-8 rounded-2xl border bg-card/50 p-5 text-sm leading-relaxed backdrop-blur">
+          <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-sm leading-relaxed shadow-soft">
             <p className="font-medium">
               Your synced data has been deleted. Removing the login itself needs a manual step —
               please email us using the link below and we&apos;ll finish within 30 days.

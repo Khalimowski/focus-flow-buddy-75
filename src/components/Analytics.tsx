@@ -164,7 +164,7 @@ export function Analytics() {
       </div>
 
       {!hasHistory ? (
-        <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/60">
+        <div className="rounded-2xl border border-dashed border-border bg-card/60 py-12 text-center font-serif text-sm italic text-muted-foreground">
           {t("insights_empty")}
         </div>
       ) : (
