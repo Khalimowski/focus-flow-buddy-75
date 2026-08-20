@@ -257,13 +257,23 @@
     color: var(--color-mint-foreground);
   }
   /* Clears the fixed bottom tab bar, the ad banner beneath it, and the
-     gesture bar — so the last task in a list is never parked under the nav. */
+     gesture bar — so the last task in a list is never parked under the nav.
+     Ad and gesture bar don't stack: the banner is pinned flush to the bottom
+     of the screen (see patches/@capacitor-community%2Fadmob), so it already
+     covers the gesture area — whichever is taller is the space to clear. */
   .pb-safe-nav {
-    padding-bottom: calc(5.5rem + var(--ad-banner-height, 0px) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5.5rem + max(var(--ad-banner-height, 0px), env(safe-area-inset-bottom, 0px)));
   }
   /* The bottom bar sits above the ad banner rather than behind it. */
   .bottom-safe-nav {
     bottom: calc(var(--ad-banner-height, 0px));
+  }
+  /* Bottom padding for the tab bar's own row: keeps the labels off the gesture
+     bar on an ad-free build, but collapses to nothing once the banner is under
+     the nav — the banner already fills that strip, and padding it again left a
+     band of empty nav background sitting between the labels and the ad. */
+  .pb-safe-gesture {
+    padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ad-banner-height, 0px)));
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-glow { box-shadow: var(--shadow-glow); }

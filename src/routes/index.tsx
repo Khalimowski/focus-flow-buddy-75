@@ -263,12 +263,15 @@ function Home() {
       {/* Bottom tab bar — "Classic Editorial" moves navigation off the top of
           the screen and onto the thumb. Fixed rather than sticky so it stays
           put while a tab's own list scrolls, and lifted above the ad banner
-          by `bottom-safe-nav` so the banner never covers it. */}
+          by `bottom-safe-nav` so the banner never covers it. `pb-safe-gesture`
+          keeps the labels clear of the gesture bar, and drops that padding
+          when the ad banner is already covering it — otherwise the bar floats
+          an empty strip above the ad. */}
       <nav
         className="fixed inset-x-0 bottom-safe-nav z-40 border-t border-border bg-card/95 backdrop-blur-xl"
         data-tour="tabs"
       >
-        <div className="mx-auto flex w-full max-w-4xl items-stretch px-2 pb-[env(safe-area-inset-bottom,0px)] xl:max-w-6xl">
+        <div className="mx-auto flex w-full max-w-4xl items-stretch px-2 pb-safe-gesture xl:max-w-6xl">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;
