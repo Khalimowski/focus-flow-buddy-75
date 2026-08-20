@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.9.4";
+export const APP_VERSION = "1.9.5";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.5",
+    items: {
+      en: [
+        "New look for the FlowDay mark: a marble bust with a checklist orbiting it, in ink green and gold.",
+        "The full logo now sits at the top of the screen, and the app icon on your home screen matches it.",
+      ],
+      pl: [
+        "Nowy znak FlowDay: marmurowe popiersie z listą zadań krążącą wokół głowy, w zieleni i złocie.",
+        "Pełne logo pojawia się teraz na górze ekranu, a ikona aplikacji na ekranie głównym do niego pasuje.",
+      ],
+    },
+  },
   {
     version: "1.9.4",
     items: {
