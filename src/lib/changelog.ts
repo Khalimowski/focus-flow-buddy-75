@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.9.3";
+export const APP_VERSION = "1.9.4";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.4",
+    items: {
+      en: [
+        "The streak strip shows the date on each day again, so you can see at a glance which days you kept and which you missed.",
+      ],
+      pl: [
+        "Pasek passy znów pokazuje datę na każdym dniu, więc od razu widać, które dni się udały, a które przepadły.",
+      ],
+    },
+  },
   {
     version: "1.9.3",
     items: {

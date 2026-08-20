@@ -64,12 +64,12 @@ export function useStreak() {
 
 export function StreakStrip({ streak }: { streak: Streak }) {
   const { t } = useTranslation();
-  // Four weeks, drawn as two rows of 14. The mock shows a two-row dot grid
-  // rather than the single 14-day row of numbered squares this used to be, so
-  // the window widened to fill it — `days` retains 60 entries, well past 28.
-  const cells = Array.from({ length: 28 }).map((_, i) => {
+  // Back to the original fortnight of dated squares. The two-row dot grid that
+  // replaced it read as decoration: you could see *that* a day was kept but not
+  // *which*, so the strip stopped answering "did I miss Tuesday?".
+  const cells = Array.from({ length: 14 }).map((_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (27 - i));
+    d.setDate(d.getDate() - (13 - i));
     const key = dateKey(d);
     return { key, done: streak.days.includes(key), label: d.getDate() };
   });
@@ -95,23 +95,27 @@ export function StreakStrip({ streak }: { streak: Streak }) {
           <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
         </div>
       </div>
-      {/* Plain dots, no day numbers: at 14 to a row the numerals were unreadable
-          on a 390px screen, and the mock reads the grid as a chain, not a
-          calendar. The date stays available as the title tooltip. */}
+      {/* 14 across is tight on a 390px phone (~17px a cell), which is why the
+          numerals went away once. They are legible again at that size because
+          the digits are mono and the gap is hairline; anything wider would push
+          the strip past two weeks, and two weeks is the span that still reads
+          as "recently". */}
       <div
-        className="grid gap-1.5"
+        className="grid gap-1"
         style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}
       >
         {cells.map((c) => (
           <div
             key={c.key}
             title={c.key}
-            className={`aspect-square rounded-full border transition ${
+            className={`grid aspect-square place-items-center rounded-md border font-mono text-[10px] leading-none transition ${
               c.done
-                ? "border-mint bg-mint"
-                : "border-border bg-transparent"
+                ? "border-mint bg-mint/80 text-mint-foreground shadow-soft"
+                : "border-border bg-surface text-muted-foreground"
             }`}
-          />
+          >
+            {c.label}
+          </div>
         ))}
       </div>
       <p className="mt-4 font-serif text-[13px] italic text-muted-foreground">
