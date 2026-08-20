@@ -37,7 +37,7 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:title", content: "FlowDay" },
       { property: "og:description", content: "Calm focus, gentle reminders, tiny wins." },
-      { name: "theme-color", content: "#0F1115" },
+      { name: "theme-color", content: "#100E0C" },
     ],
   }),
   component: Home,
@@ -92,12 +92,16 @@ function Home() {
       void import("@/lib/google").then((g) => g.completeOAuthPopup());
       return;
     }
-    // Sync theme on mount to prevent flashing
+    // Sync theme on mount to prevent flashing. Both palettes are the
+    // "Classic Editorial" one now, so the toggle is live again — :root carries
+    // editorial dark and .light overrides it with editorial light.
     const root = window.document.documentElement;
     if (theme === "dark") {
+      root.classList.remove("light");
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
+      root.classList.add("light");
     }
 
     setMounted(true);
@@ -199,7 +203,7 @@ function Home() {
   if (WEB_GATE_ENABLED && !isNative() && !premium) return <PremiumGate />;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-24 xl:max-w-6xl 2xl:max-w-[1600px]">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-safe-nav xl:max-w-6xl 2xl:max-w-[1600px]">
       {/* Decides for itself which tour is due — first run, or a follow-up once
           Premium or the browser version brings new things into reach. */}
       <Onboarding />
@@ -208,7 +212,7 @@ function Home() {
       <EndOfDayReview />
       <WhatsNew />
 
-      <header className="sticky top-0 z-30 -mx-4 mb-10 bg-background/80 px-4 pb-2 pt-safe-top-sm backdrop-blur-xl">
+      <header className="sticky top-0 z-30 -mx-4 mb-5 bg-background/85 px-4 pb-3 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">
           {/* Mark and wordmark sit together in the middle, as on the brand sheet */}
           <motion.div
@@ -241,36 +245,6 @@ function Home() {
         <StreakStrip streak={streak} />
       </div>
 
-      <nav className="my-6 flex gap-1 rounded-full border bg-card/40 p-1 backdrop-blur" data-tour="tabs">
-        {tabs.map((t) => {
-          const Icon = t.icon;
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              // Insights is the one tab the tours point at on its own.
-              data-tour={t.id === "insights" ? "insights" : undefined}
-              // min-w-0 + truncate: the labels are translated, and a long
-              // translation used to run off the right edge of a 375px screen.
-              className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-sm font-medium transition sm:gap-2 sm:px-3 ${
-                active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {active && (
-                <motion.span
-                  layoutId="tab-pill"
-                  className="absolute inset-0 rounded-full bg-primary"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              <Icon className="relative size-4 shrink-0" />
-              <span className="relative truncate">{t.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
       {/* Keyed by tab only: remounting on sync would wipe in-progress input
           (draft titles, open edit rows, the picked date). Tabs re-read storage
           on ff.remote-update instead. */}
@@ -285,6 +259,48 @@ function Home() {
         {tab === "reminders" && <Reminders />}
         {tab === "insights" && showInsights && <Analytics />}
       </motion.section>
+
+      {/* Bottom tab bar — "Classic Editorial" moves navigation off the top of
+          the screen and onto the thumb. Fixed rather than sticky so it stays
+          put while a tab's own list scrolls, and lifted above the ad banner
+          by `bottom-safe-nav` so the banner never covers it. `pb-safe-gesture`
+          keeps the labels clear of the gesture bar, and drops that padding
+          when the ad banner is already covering it — otherwise the bar floats
+          an empty strip above the ad. */}
+      <nav
+        className="fixed inset-x-0 bottom-safe-nav z-40 border-t border-border bg-card/95 backdrop-blur-xl"
+        data-tour="tabs"
+      >
+        <div className="mx-auto flex w-full max-w-4xl items-stretch px-2 pb-safe-gesture xl:max-w-6xl">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                // Insights is the one tab the tours point at on its own.
+                data-tour={t.id === "insights" ? "insights" : undefined}
+                // min-w-0 + truncate: the labels are translated, and a long
+                // translation used to run off the right edge of a 375px screen.
+                className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1 py-3 text-[11px] font-medium transition ${
+                  active ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="tab-pill"
+                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className="size-4 shrink-0" strokeWidth={active ? 2.4 : 1.9} />
+                <span className="truncate">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
       <footer className="mt-12 text-center text-[11px] text-muted-foreground">
         {t('footer_hint')}

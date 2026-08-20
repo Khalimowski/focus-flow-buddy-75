@@ -213,7 +213,7 @@ export function Reminders() {
                 key={p.label}
                 onClick={() => addPreset(p)}
                 disabled={added}
-                className="group flex items-center gap-3 rounded-2xl border bg-card/40 p-3 text-left transition hover:bg-card disabled:opacity-50"
+                className="group flex items-center gap-3 rounded-2xl border bg-card p-3 text-left transition hover:bg-card disabled:opacity-50"
               >
                 <span className="grid size-9 place-items-center rounded-xl bg-secondary text-primary">
                   <Icon className="size-4" />
@@ -230,7 +230,7 @@ export function Reminders() {
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t('custom_reminder')}
         </h3>
-        <div className="flex flex-col gap-3 rounded-2xl border bg-card/50 p-4">
+        <div className="flex flex-col gap-3 rounded-2xl border bg-card p-4">
           <Input
             name="habit-label"
             autoComplete="off"
@@ -306,7 +306,7 @@ export function Reminders() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -10 }}
-                className="flex items-center gap-3 rounded-2xl border bg-card/40 p-3"
+                className="flex items-center gap-3 rounded-2xl border bg-card p-3"
               >
                 <div className="flex-1 min-w-0">
                   <div className="text-sm">{r.label}</div>

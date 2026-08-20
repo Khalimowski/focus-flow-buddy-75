@@ -46,7 +46,7 @@ function Card({
   className?: string;
 }) {
   return (
-    <div className={`rounded-2xl border bg-card/40 p-5 backdrop-blur ${className}`}>
+    <div className={`rounded-2xl border bg-card p-5 ${className}`}>
       {title && (
         <h3 className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {title}
@@ -142,10 +142,10 @@ export function Analytics() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-bold tracking-tight">{t("insights_title")}</h2>
+          <h2 className="font-serif text-xl leading-tight">{t("insights_title")}</h2>
           <p className="text-xs text-muted-foreground">{t("insights_desc")}</p>
         </div>
-        <div className="flex shrink-0 items-center rounded-full bg-card/40 p-0.5">
+        <div className="flex shrink-0 items-center rounded-full bg-card p-0.5">
           {RANGES.map((range) => (
             <button
               key={range}
@@ -164,7 +164,7 @@ export function Analytics() {
       </div>
 
       {!hasHistory ? (
-        <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10">
+        <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/60">
           {t("insights_empty")}
         </div>
       ) : (

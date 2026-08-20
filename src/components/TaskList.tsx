@@ -543,11 +543,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       className={`flex items-center gap-3 border p-3 ${
         nested
           ? item.kind === 'habit'
-            ? "rounded-xl bg-amber-500/5 border-amber-500/20"
-            : "rounded-xl border-border/60 bg-background/60"
+            ? "rounded-xl bg-amber-500/[0.06] border-amber-500/25"
+            : "rounded-xl border-border bg-surface"
           : item.kind === 'habit'
-            ? "rounded-2xl bg-amber-500/5 border-amber-500/10 shadow-sm backdrop-blur"
-            : "rounded-2xl bg-card/40 border-border backdrop-blur"
+            ? "rounded-2xl bg-amber-500/[0.06] border-amber-500/25 shadow-soft"
+            : "rounded-2xl bg-card border-border shadow-soft"
       }`}
     >
       {item.kind === 'task' && editingId === item.id ? (
@@ -616,7 +616,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <div
-                className={`text-sm font-medium break-words min-w-0 ${item.done ? "text-muted-foreground line-through" : ""}`}
+                className={`font-serif text-[15px] leading-snug break-words min-w-0 ${item.done ? "text-muted-foreground line-through" : ""}`}
               >
                 {item.title}
               </div>
@@ -699,8 +699,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               }}
               className={`flex min-w-[38px] flex-1 flex-col items-center rounded-2xl py-3.5 transition-all sm:min-w-[50px] ${
                 active
-                  ? "bg-primary text-primary-foreground shadow-glow scale-102 ring-1 ring-primary/20"
-                  : "bg-card/40 text-muted-foreground hover:bg-card/60"
+                  ? "bg-primary text-primary-foreground shadow-glow scale-102"
+                  : "border border-border bg-card text-muted-foreground"
               }`}
             >
               <span className="text-[10px] font-bold uppercase tracking-tighter opacity-70">
@@ -713,7 +713,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         })}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-2xl bg-card/40 size-[38px] shrink-0 hover:bg-card/60 sm:size-[50px]">
+            <Button variant="ghost" size="icon" className="rounded-2xl border border-border bg-card size-[38px] shrink-0 sm:size-[50px]">
               <CalendarIcon className="size-4" />
             </Button>
           </PopoverTrigger>
@@ -730,7 +730,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         </Popover>
       </div>
 
-      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm" data-tour="add-task">
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-soft" data-tour="add-task">
         <div className="flex flex-col gap-3">
           <Input
             name="task-title"
@@ -786,7 +786,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       </div>
 
       <div className="flex items-center justify-end gap-1">
-        <div className="flex items-center rounded-full bg-card/40 p-0.5" data-tour="view-toggle">
+        <div className="flex items-center rounded-full bg-secondary p-0.5" data-tour="view-toggle">
           <button
             onClick={() => switchView('list')}
             aria-label={t('view_list')}
@@ -813,7 +813,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         <button
           onClick={() => setCalendarOpen(true)}
           aria-label={t('view_calendar')}
-          className="flex items-center gap-1.5 rounded-full bg-card/40 px-3 py-1.5 text-[10px] font-bold text-muted-foreground transition-all hover:bg-card/60 hover:text-foreground"
+          className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-[10px] font-bold text-muted-foreground transition-all hover:text-foreground"
         >
           <CalendarDays className="size-3" /> {t('view_calendar')}
         </button>
@@ -841,7 +841,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
       {viewMode === 'timeline' ? (
         displayItems.length === 0 ? (
-          <div className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10">
+          <div className="rounded-2xl border border-dashed border-border py-12 text-center font-serif text-sm italic text-muted-foreground bg-card/60">
             {t('tasks_empty')}
           </div>
         ) : (
@@ -867,7 +867,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2 2xl:col-span-3"
+              className="rounded-2xl border border-dashed border-border py-12 text-center font-serif text-sm italic text-muted-foreground bg-card/60 lg:col-span-2 2xl:col-span-3"
             >
               {displayItems.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>
@@ -877,12 +877,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       </ul>
 
       {doneItems.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/40 backdrop-blur">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
             aria-expanded={showDone}
-            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:bg-card/60 hover:text-foreground"
+            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
           >
             <span className="grid size-8 shrink-0 place-items-center">
               <ChevronDown className={`size-5 transition-transform ${showDone ? "" : "-rotate-90"}`} />

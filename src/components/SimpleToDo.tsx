@@ -198,7 +198,7 @@ export function SimpleToDo() {
       className={`flex items-center gap-3 p-3 ${
         nested
           ? "rounded-xl border border-border/60 bg-background/60"
-          : "rounded-2xl border bg-card/40 border-border backdrop-blur"
+          : "rounded-2xl border bg-card border-border"
       }`}
     >
       {schedulingId === item.id ? (
@@ -277,7 +277,7 @@ export function SimpleToDo() {
             {item.done && <Check className="size-3.5" strokeWidth={3} />}
           </button>
           <div className="flex-1 min-w-0">
-            <div className={`text-sm font-medium break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
+            <div className={`font-serif text-[15px] leading-snug break-words ${item.done ? "text-muted-foreground line-through" : ""}`}>
               {item.title}
             </div>
           </div>
@@ -318,7 +318,7 @@ export function SimpleToDo() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-2xl border bg-card/50 p-4 backdrop-blur shadow-sm">
+      <div className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-3">
           <Input
             name="todo-title"
@@ -342,7 +342,7 @@ export function SimpleToDo() {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/10 lg:col-span-2 2xl:col-span-3"
+              className="rounded-2xl border border-dashed py-12 text-center text-sm text-muted-foreground bg-card/60 lg:col-span-2 2xl:col-span-3"
             >
               {items.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>
@@ -352,12 +352,12 @@ export function SimpleToDo() {
       </ul>
 
       {doneItems.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/40 backdrop-blur">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
             aria-expanded={showDone}
-            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:bg-card/60 hover:text-foreground"
+            className="flex w-full items-center gap-3 p-3 text-sm font-semibold text-muted-foreground transition hover:bg-surface hover:text-foreground"
           >
             <span className="grid size-8 shrink-0 place-items-center">
               <ChevronDown className={`size-5 transition-transform ${showDone ? "" : "-rotate-90"}`} />

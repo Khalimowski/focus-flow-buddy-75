@@ -2,17 +2,32 @@
 @source "../src";
 @import "tw-animate-css";
 
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
+/* Tinos is metric-compatible with Times New Roman (same widths, near-identical
+   letterforms) and Apache-2.0, so it can actually ship. Times New Roman itself
+   is Monotype's and is not present on Android, where it silently falls back to
+   Noto Serif — much heavier and wider than Times. Only latin and latin-ext are
+   imported: latin-ext is what carries Polish diacritics, and the Cyrillic,
+   Greek, Hebrew and Vietnamese subsets @fontsource also ships would add ~490
+   KiB to the APK for languages this app does not offer. */
+@import "@fontsource/tinos/latin-400.css";
+@import "@fontsource/tinos/latin-ext-400.css";
+@import "@fontsource/tinos/latin-400-italic.css";
+@import "@fontsource/tinos/latin-ext-400-italic.css";
+@import "@fontsource/tinos/latin-700.css";
+@import "@fontsource/tinos/latin-ext-700.css";
 @import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* Named --font-sans because that is the token Tailwind's `font-sans` and the
+     base `html, body` rule read; the family it points at is a serif now. */
+  --font-sans: "Tinos", "Times New Roman", Times, serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  /* Same family as --font-sans; kept as its own token so the headings and task
+     titles that ask for `font-serif` still say what they mean, and so a future
+     sans/serif split only has to change one of the two. */
+  --font-serif: "Tinos", "Times New Roman", Times, serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -52,88 +67,120 @@
      Updated at runtime by src/lib/ads.ts; stays 0 on web. */
   --ad-banner-height: 0px;
 
-  /* Calm dark palette */
-  --background: oklch(0.18 0.013 260);
-  --foreground: oklch(0.96 0.005 250);
+  /*
+   * "Classic Editorial" — dark. The light theme is ink on warm paper, so this
+   * is the same page turned down rather than the app's old cool indigo dark:
+   * a warm near-black ground, cream text, and `primary` inverted to paper so
+   * the buttons and the active day pill read as cut-outs of the light theme.
+   * Lives on :root (not .dark) so the pre-hydration paint already matches.
+   */
+  --background: oklch(0.165 0.006 65);
+  --foreground: oklch(0.93 0.007 90);
 
-  --surface: oklch(0.22 0.014 260);
-  --surface-foreground: oklch(0.96 0.005 250);
+  --surface: oklch(0.205 0.007 65);
+  --surface-foreground: oklch(0.93 0.007 90);
 
-  --card: oklch(0.235 0.015 260);
-  --card-foreground: oklch(0.96 0.005 250);
+  --card: oklch(0.215 0.008 65);
+  --card-foreground: oklch(0.93 0.007 90);
 
-  --popover: oklch(0.23 0.015 260);
-  --popover-foreground: oklch(0.96 0.005 250);
+  --popover: oklch(0.215 0.008 65);
+  --popover-foreground: oklch(0.93 0.007 90);
 
-  --primary: oklch(0.78 0.11 270);          /* #7C9CFF soft indigo */
-  --primary-foreground: oklch(0.18 0.013 260);
+  /* Paper on ink — the exact inverse of the light theme's ink-on-paper. */
+  --primary: oklch(0.93 0.007 90);
+  --primary-foreground: oklch(0.18 0.006 65);
 
-  --secondary: oklch(0.28 0.018 260);
-  --secondary-foreground: oklch(0.96 0.005 250);
+  --secondary: oklch(0.26 0.009 65);
+  --secondary-foreground: oklch(0.9 0.006 90);
 
-  --muted: oklch(0.26 0.015 260);
-  --muted-foreground: oklch(0.72 0.012 260);
+  --muted: oklch(0.25 0.008 65);
+  --muted-foreground: oklch(0.69 0.009 78);
 
-  --accent: oklch(0.32 0.025 265);
-  --accent-foreground: oklch(0.96 0.005 250);
+  --accent: oklch(0.3 0.011 68);
+  --accent-foreground: oklch(0.93 0.007 90);
 
-  --mint: oklch(0.88 0.08 165);              /* #A8E6CF gentle mint */
-  --mint-foreground: oklch(0.18 0.013 260);
+  /* Sage lifts slightly off a dark ground to keep the streak dots legible. */
+  --mint: oklch(0.8 0.095 160);
+  --mint-foreground: oklch(0.2 0.02 160);
 
-  --destructive: oklch(0.68 0.18 22);
+  --destructive: oklch(0.62 0.18 25);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.3 0.015 260);
-  --input: oklch(0.3 0.015 260);
-  --ring: oklch(0.78 0.11 270);
+  --border: oklch(0.285 0.008 70);
+  --input: oklch(0.31 0.008 70);
+  --ring: oklch(0.9 0.007 90);
 
-  --gradient-focus: radial-gradient(
-    ellipse at top,
-    color-mix(in oklab, var(--primary) 22%, transparent),
-    transparent 60%
-  );
-  --gradient-mint: linear-gradient(135deg, var(--mint), color-mix(in oklab, var(--primary) 60%, var(--mint)));
-  --shadow-soft: 0 10px 40px -12px color-mix(in oklab, var(--primary) 30%, transparent);
-  --shadow-glow: 0 0 60px -10px color-mix(in oklab, var(--primary) 45%, transparent);
+  /* Flat, as in light: the old radial glow was tied to the indigo primary and
+     would now smear near-white across the top of the page. */
+  --gradient-focus: none;
+  --gradient-mint: linear-gradient(135deg, var(--mint), color-mix(in oklab, var(--mint) 70%, var(--foreground)));
+
+  /* Shadows go black here rather than tinting toward primary, which is now
+     almost white and would halo every card. */
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.35), 0 8px 24px -16px oklch(0 0 0 / 0.6);
+  --shadow-glow: 0 2px 12px -4px oklch(0 0 0 / 0.55);
+
+  /* Light text on a dark ground already reads heavier, so the stroke that
+     thickens Times on paper is dialled back here — at 0.3px the counters in
+     a/e/g start to close up. See the html, body rule below. */
+  --text-stroke: 0.16px;
 }
 
+/*
+ * "Classic Editorial" — light. Variation 1 as drawn in Figma: warm paper
+ * ground, pure-white cards, ink-black type, hairline warm borders.
+ */
 .light {
-  /* Light palette */
-  --background: oklch(0.98 0.005 250);
-  --foreground: oklch(0.18 0.013 260);
+  /* Paper, not white: a flat warm cream so the white cards lift off it. */
+  --background: oklch(0.978 0.005 95);
+  --foreground: oklch(0.21 0.006 60);
 
-  --surface: oklch(0.94 0.01 250);
-  --surface-foreground: oklch(0.18 0.013 260);
+  --surface: oklch(0.952 0.007 92);
+  --surface-foreground: oklch(0.21 0.006 60);
 
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.013 260);
+  --card-foreground: oklch(0.21 0.006 60);
 
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.013 260);
+  --popover-foreground: oklch(0.21 0.006 60);
 
-  --primary: oklch(0.65 0.15 260);          /* Deeper indigo for visibility */
-  --primary-foreground: oklch(0.98 0.005 250);
+  /* Ink, not indigo. The mock's "Add Focus" button and active tab are both
+     near-black, so primary carries the editorial accent rather than a hue. */
+  --primary: oklch(0.24 0.008 60);
+  --primary-foreground: oklch(0.98 0.005 95);
 
-  --secondary: oklch(0.92 0.01 250);
-  --secondary-foreground: oklch(0.18 0.013 260);
+  --secondary: oklch(0.94 0.008 92);
+  --secondary-foreground: oklch(0.26 0.006 60);
 
-  --muted: oklch(0.9 0.01 250);
-  --muted-foreground: oklch(0.4 0.015 260);
+  --muted: oklch(0.93 0.008 92);
+  --muted-foreground: oklch(0.52 0.008 70);
 
-  --accent: oklch(0.88 0.02 260);
-  --accent-foreground: oklch(0.18 0.013 260);
+  --accent: oklch(0.9 0.012 90);
+  --accent-foreground: oklch(0.21 0.006 60);
 
-  --mint: oklch(0.8 0.08 165);
-  --mint-foreground: oklch(0.18 0.013 260);
+  /* The streak dots — a soft sage green on paper. */
+  --mint: oklch(0.82 0.088 160);
+  --mint-foreground: oklch(0.24 0.02 160);
 
-  --border: oklch(0.85 0.01 260);
-  --input: oklch(0.85 0.01 260);
+  --destructive: oklch(0.58 0.19 25);
+  --destructive-foreground: oklch(0.99 0 0);
 
-  --gradient-focus: radial-gradient(
-    ellipse at top,
-    color-mix(in oklab, var(--primary) 10%, transparent),
-    transparent 60%
-  );
+  /* Hairline warm rules rather than grey boxes. */
+  --border: oklch(0.9 0.008 88);
+  --input: oklch(0.88 0.008 88);
+  --ring: oklch(0.24 0.008 60);
+
+  /* Flat paper: the dark theme's radial glow reads as a smudge on cream. */
+  --gradient-focus: none;
+
+  /* Shadows are the only depth cue on a flat ground, so they stay very soft
+     and neutral instead of tinting toward the primary as the dark theme's do. */
+  --shadow-soft: 0 1px 2px oklch(0.21 0.006 60 / 0.05), 0 8px 24px -16px oklch(0.21 0.006 60 / 0.18);
+  --shadow-glow: 0 2px 10px -4px oklch(0.21 0.006 60 / 0.16);
+
+  /* Ink on paper needs the full stroke to hold weight; see :root for why dark
+     uses less. */
+  --text-stroke: 0.3px;
 }
 
 @layer base {
@@ -145,7 +192,16 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
+    /* Tinos ships only 400 and 700, exactly as Times itself does, so CSS
+       weights 500 and 600 collapse straight back to 400 — there is no semibold
+       to ask for. A hairline stroke in the current text colour lands between
+       the two and thickens every glyph just enough that Times holds up against
+       a light ground at phone sizes. Raise it toward 0.5px for more weight;
+       past that the counters start to fill in. Dark mode sets a smaller value
+       on :root, since light-on-dark already reads heavier. */
+    -webkit-text-stroke: var(--text-stroke) currentColor;
+    /* `antialiased` deliberately not set: it thins glyph stems, which is the
+       opposite of what this palette needs. */
     text-rendering: optimizeLegibility;
     /* Disable Android overscroll stretch (y) and swipe-to-navigate gestures (x) */
     overscroll-behavior: none;
@@ -199,6 +255,25 @@
   .bg-mint {
     background-color: var(--color-mint);
     color: var(--color-mint-foreground);
+  }
+  /* Clears the fixed bottom tab bar, the ad banner beneath it, and the
+     gesture bar — so the last task in a list is never parked under the nav.
+     Ad and gesture bar don't stack: the banner is pinned flush to the bottom
+     of the screen (see patches/@capacitor-community%2Fadmob), so it already
+     covers the gesture area — whichever is taller is the space to clear. */
+  .pb-safe-nav {
+    padding-bottom: calc(5.5rem + max(var(--ad-banner-height, 0px), env(safe-area-inset-bottom, 0px)));
+  }
+  /* The bottom bar sits above the ad banner rather than behind it. */
+  .bottom-safe-nav {
+    bottom: calc(var(--ad-banner-height, 0px));
+  }
+  /* Bottom padding for the tab bar's own row: keeps the labels off the gesture
+     bar on an ad-free build, but collapses to nothing once the banner is under
+     the nav — the banner already fills that strip, and padding it again left a
+     band of empty nav background sitting between the labels and the ad. */
+  .pb-safe-gesture {
+    padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ad-banner-height, 0px)));
   }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-glow { box-shadow: var(--shadow-glow); }

@@ -27,6 +27,7 @@
     "@ebarooni/capacitor-calendar": "^8.2.0",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/tinos": "^5.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@neondatabase/auth-ui": "^0.2.1-beta",
     "@neondatabase/neon-js": "^0.6.2-beta",

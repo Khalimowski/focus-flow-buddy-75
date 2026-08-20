@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.8.8";
+export const APP_VERSION = "1.9.3";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.3",
+    items: {
+      en: [
+        "The tab bar at the bottom now sits right on the ad — the empty strip that used to sit between them is gone.",
+      ],
+      pl: [
+        "Pasek zakładek na dole przylega teraz do reklamy — zniknął pusty pas, który został między nimi.",
+      ],
+    },
+  },
   {
     version: "1.8.8",
     items: {
