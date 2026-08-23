@@ -21,7 +21,7 @@ import { UpdateBanner } from "@/components/UpdateBanner";
 import { WidgetPrompt } from "@/components/WidgetPrompt";
 import { EndOfDayReview } from "@/components/EndOfDayReview";
 import { WhatsNew } from "@/components/WhatsNew";
-import { LogoMark } from "@/components/Logo";
+import { LogoLockup } from "@/components/Logo";
 import { isNative, updateStatusBar } from "@/lib/native";
 import { isOAuthPopupCallback } from "@/lib/google";
 
@@ -214,17 +214,17 @@ function Home() {
 
       <header className="sticky top-0 z-30 -mx-4 mb-5 border-b border-border bg-background/85 px-4 pb-3 pt-safe-top-sm backdrop-blur-xl">
         <div className="relative flex items-center justify-center min-h-[64px]">
-          {/* Mark and wordmark sit together in the middle, as on the brand sheet */}
+          {/* The masthead is the brand sheet's lockup itself — mark, wordmark
+              and tagline are all inside the artwork, so nothing is set in type
+              here. */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="text-center"
           >
-            <h1 className="flex items-center justify-center gap-2">
-              <LogoMark className="size-9" />
-              <span className="font-serif text-2xl leading-none">{t('app_name')}</span>
+            <h1>
+              <LogoLockup className="h-12 sm:h-14" />
             </h1>
-            <p className="font-serif text-[11px] italic text-muted-foreground">{t('tagline')}</p>
           </motion.div>
 
           <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center gap-2" data-tour="settings">

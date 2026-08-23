@@ -1,61 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: orbits + checkmark (matches ic_launcher_foreground.xml).
-     Bold style for brand consistency.
-     Must be white-on-transparent for Android status bar compatibility. -->
+<!-- Notification small icon: the check badge from the brand mark, reduced to
+     an outline. Android throws away colour here and tints whatever is opaque,
+     so this has to be white-on-transparent and simple enough to survive 24dp —
+     the full bust from ic_launcher_foreground would be mush at this size. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
-    <group
-        android:translateX="2"
-        android:translateY="2"
-        android:scaleX="0.2"
-        android:scaleY="0.2">
-        <!-- Outer Arcs -->
-        <path
-            android:pathData="M 69.61 18.62 A 37 37 0 0 0 18.62 69.61"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="6"
-            android:strokeLineCap="round" />
-        <path
-            android:pathData="M 34.95 83.8 A 37 37 0 0 0 85.57 60.2"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="6"
-            android:strokeLineCap="round" />
+    <path
+        android:pathData="M 12 2.9 a 9.1 9.1 0 1 0 0 18.2 a 9.1 9.1 0 1 0 0 -18.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.9" />
 
-        <!-- Inner Arcs -->
-        <path
-            android:pathData="M 70.23 35.31 A 25 25 0 0 0 26.82 40.63"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="5"
-            android:strokeLineCap="round" />
-        <path
-            android:pathData="M 26.51 58.55 A 25 25 0 0 0 64.69 70.23"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="5"
-            android:strokeLineCap="round" />
-
-        <!-- Short spark between the orbits -->
-        <path
-            android:pathData="M 74.82 30.61 A 31.5 31.5 0 0 1 81.48 48.9"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="5"
-            android:strokeLineCap="round" />
-
-        <!-- Checkmark -->
-        <path
-            android:pathData="M 36 51 L 45 60 L 64 39"
-            android:strokeColor="#FFFFFFFF"
-            android:strokeWidth="10"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-
-        <!-- Dot terminals -->
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 69.61, 18.62 m -6, 0 a 6, 6 0 1, 0 12, 0 a 6, 6 0 1, 0 -12, 0" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 34.95, 83.8 m -6, 0 a 6, 6 0 1, 0 12, 0 a 6, 6 0 1, 0 -12, 0" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 70.23, 35.31 m -5, 0 a 5, 5 0 1, 0 10, 0 a 5, 5 0 1, 0 -10, 0" />
-        <path android:fillColor="#FFFFFFFF" android:pathData="M 81.48, 48.9 m -4, 0 a 4, 4 0 1, 0 8, 0 a 4, 4 0 1, 0 -8, 0" />
-    </group>
+    <path
+        android:pathData="M 7.7 12.1 L 10.7 15.1 L 16.4 8.9"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

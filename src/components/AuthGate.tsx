@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { KeyRound, LogIn, Mail, UserPlus, UserRound } from "lucide-react";
-import { LogoMark } from "@/components/Logo";
+import { LogoLockup } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18nStore, useTranslation } from "@/lib/i18n";
@@ -190,15 +190,18 @@ export function AuthGate() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-sm"
       >
-        {/* Masthead. For most people on the web this is the whole first
-            impression of the app, so it gets the full editorial treatment:
-            mark, serif wordmark at display size, a hairline rule, then the
-            standfirst in italic. */}
+        {/* Masthead. Guest mode is Android-only, so on the web every visitor
+            lands here — this is the whole first impression of the app, and it
+            gets the brand sheet's lockup at display size rather than the mark
+            beside a wordmark set in type. The lockup already carries the
+            tagline between its own gold rules, so the hairline that used to
+            sit under the wordmark would only crowd it; the standfirst below
+            is contextual copy, not the tagline, and stays. */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <LogoMark className="mb-4 size-16" />
-          <h1 className="font-serif text-4xl leading-none">{t("app_name")}</h1>
-          <div className="mt-4 h-px w-16 bg-border" />
-          <p className="mt-4 font-serif text-sm italic leading-relaxed text-muted-foreground">
+          <h1>
+            <LogoLockup className="h-16 sm:h-20" />
+          </h1>
+          <p className="mt-5 font-serif text-sm italic leading-relaxed text-muted-foreground">
             {mode === "forgot" || mode === "reset" ? t("reset_password") : t("auth_gate_subtitle")}
           </p>
         </div>

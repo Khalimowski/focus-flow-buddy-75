@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#151C2E</color>
+    <!-- The icon tile's cream, matching the brand sheet and the app's light
+         background. The artwork sits on it as the adaptive foreground. -->
+    <color name="ic_launcher_background">#F8F6F1</color>
 </resources>

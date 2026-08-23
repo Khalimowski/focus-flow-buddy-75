@@ -11,7 +11,6 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
-import { applyFavicon } from "../lib/favicon";
 import { useI18nStore } from "../lib/i18n";
 
 // Share-card art lives in public/og.png. The origin has to be baked in because
@@ -89,7 +88,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { title: "FlowDay" },
       { name: "description", content: "Calm focus & reminders for ADHD brains." },
-      { name: "theme-color", content: "#0F1115" },
+      { name: "theme-color", content: "#100E0C" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "FlowDay" },
@@ -111,21 +110,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/manifest.webmanifest" },
-      // PNG first as the universal fallback; the SVG tiles below win where
-      // they're supported, and Settings re-points the themed one at runtime.
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
-      {
-        rel: "icon",
-        type: "image/svg+xml",
-        href: "/icon-light.svg",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        rel: "icon",
-        type: "image/svg+xml",
-        href: "/icon-dark.svg",
-        media: "(prefers-color-scheme: dark)",
-      },
+      // One icon in three sizes rather than a themed pair: the mark now comes
+      // on its own cream tile, which reads on light and dark browser chrome
+      // alike, so there is nothing left to swap at runtime.
+      { rel: "icon", type: "image/png", sizes: "64x64", href: "/favicon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
@@ -163,16 +153,9 @@ function useDocumentLanguage(language: string) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const theme = useI18nStore((s) => s.theme);
   const language = useI18nStore((s) => s.language);
 
   useDocumentLanguage(language);
-
-  // Root-level so the tab icon tracks the theme everywhere, including the auth
-  // gate and /delete-account, where Settings never mounts.
-  useEffect(() => {
-    applyFavicon(theme);
-  }, [theme]);
 
   return (
     <QueryClientProvider client={queryClient}>
