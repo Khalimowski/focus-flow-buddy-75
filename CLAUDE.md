@@ -135,6 +135,17 @@ for two days while deploys ran green every day:
   setting (Settings → Build → Branch control) is the real fix; this guard is
   what survives it being changed back. `ALLOW_BRANCH_DEPLOY=1` overrides.
 
+  **Since 2026-08-23, Branch control builds `main` only**, so side branches no
+  longer build at all and a PR from one shows no Workers check (that absence is
+  correct, not a missing check to chase). But only the *branch list* changed:
+  **the non-production deploy command is still a full deploy.** So the danger is
+  dormant, not gone — re-including any branch, or setting
+  `ALLOW_BRANCH_DEPLOY=1` to get a branch build to run, republishes that branch
+  over `flowday.day`. Treat this guard as load-bearing; the standing fix is to
+  point the non-production deploy command back at
+  `npx wrangler versions upload --config dist/server/wrangler.json --name focus-flow-buddy-75`
+  (explicit `--config`/`--name` for the reason in the bullet above).
+
 Two more traps, both found on 2026-08-16 after Workers Builds had failed on
 **15 consecutive commits** (last green build 2026-08-12) without anyone
 noticing — manual `wrangler deploy` runs kept production alive and masked it.
