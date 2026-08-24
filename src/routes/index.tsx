@@ -275,7 +275,7 @@ function Home() {
         className="fixed inset-x-0 bottom-safe-nav z-40 border-t border-border bg-card/95 backdrop-blur-xl md:inset-x-auto md:left-1/2 md:-translate-x-1/2 md:overflow-hidden md:rounded-2xl md:border md:shadow-lg"
         data-tour="tabs"
       >
-        <div className="mx-auto flex w-full items-stretch px-2 pb-[env(safe-area-inset-bottom,0px)] md:w-auto md:px-0 md:pb-0">
+        <div className="mx-auto flex w-full items-stretch px-2 pb-nav-inset md:w-auto md:px-0">
           {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.id;

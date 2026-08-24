@@ -330,6 +330,26 @@
   .bottom-safe-nav {
     bottom: calc(var(--ad-banner-height, 0px));
   }
+  /* The tab bar's own bottom padding clears the gesture bar — but only the
+     part of it the ad banner doesn't already cover. The banner is drawn at the
+     very bottom of the screen, over the gesture area, and .bottom-safe-nav
+     already lifts the bar onto the banner's top edge; adding the full inset on
+     top of that left a strip of empty card between the tabs and the ad. With a
+     banner (taller than any inset) this collapses to 0 and the bar sits flush
+     on the ad; with no banner — web, or premium — it's the plain inset again.
+     Handles md: itself rather than pairing with `md:pb-0`, for the same
+     specificity reason as .bottom-safe-nav above. */
+  .pb-nav-inset {
+    padding-bottom: max(
+      0px,
+      calc(env(safe-area-inset-bottom, 0px) - var(--ad-banner-height, 0px))
+    );
+  }
+  @media (min-width: 768px) {
+    .pb-nav-inset {
+      padding-bottom: 0;
+    }
+  }
   /* On a desktop browser the same bar detaches from the window edge and floats
      as a centred slab (see the nav in routes/index.tsx) — an edge-to-edge
      thumb bar across a 1600px window reads as a phone app in a big frame.
