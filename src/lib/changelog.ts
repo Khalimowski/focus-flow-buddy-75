@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.9.8";
+export const APP_VERSION = "1.9.9";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.9.9",
+    items: {
+      en: [
+        "Fixed a gap that could show up between the ad banner and the bottom navigation bar.",
+      ],
+      pl: [
+        "Naprawiono lukę, która mogła pojawić się między banerem reklamowym a dolnym paskiem nawigacji.",
+      ],
+    },
+  },
   {
     version: "1.9.5",
     items: {
