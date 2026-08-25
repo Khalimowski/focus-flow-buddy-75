@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.9.6";
+export const APP_VERSION = "1.10.0";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.10.0",
+    items: {
+      en: [
+        "The privacy policy now lives in the app — open it from the bottom of Settings, in English or Polish.",
+      ],
+      pl: [
+        "Polityka prywatności jest teraz w aplikacji — otworzysz ją na dole Ustawień, po polsku lub po angielsku.",
+      ],
+    },
+  },
   {
     version: "1.9.5",
     items: {
