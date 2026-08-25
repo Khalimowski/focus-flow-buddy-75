@@ -112,27 +112,48 @@ public class TaskWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_tasks);
 
         int maxRows = rowsForSize(manager, appWidgetId);
-        // At one-row height the header steals too much space — drop it
-        views.setViewVisibility(R.id.widget_header_row, maxRows == 1 ? View.GONE : View.VISIBLE);
+        // At one-row height the masthead steals too much space — drop it, and
+        // the rule that sits under it with it
+        boolean masthead = maxRows > 1;
+        views.setViewVisibility(R.id.widget_header_row, masthead ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_rule_head, masthead ? View.VISIBLE : View.GONE);
 
         int[] rowIds = { R.id.widget_row_1, R.id.widget_row_2, R.id.widget_row_3 };
         int[] textIds = { R.id.widget_task_1, R.id.widget_task_2, R.id.widget_task_3 };
         int[] timeIds = { R.id.widget_time_1, R.id.widget_time_2, R.id.widget_time_3 };
         int[] checkIds = { R.id.widget_check_1, R.id.widget_check_2, R.id.widget_check_3 };
+        // One hairline between consecutive rows; index 0 is unused (nothing
+        // above the first row but the masthead rule)
+        int[] ruleIds = { 0, R.id.widget_rule_2, R.id.widget_rule_3 };
 
         SharedPreferences themePrefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         boolean light = "light".equals(themePrefs.getString(KEY_THEME, "dark"));
 
-        // Mirrors the app's palette (styles.css dark / .light)
-        int colorText = Color.parseColor(light ? "#14161D" : "#ECEFF4");
-        int colorMuted = Color.parseColor(light ? "#575E6C" : "#9AA3B2");
-        int colorAccent = Color.parseColor(light ? "#5B7CE6" : "#7C9CFF");
+        // "Classic Editorial", resolved from the app's tokens in styles.css
+        // (:root = dark, .light = light). No accent hue: this palette carries
+        // emphasis with ink and paper, so the widget does too.
+        int colorText = Color.parseColor(light ? "#1A1816" : "#EAE8E3");   // --foreground
+        int colorMuted = Color.parseColor(light ? "#6C6864" : "#9E9B95");  // --muted-foreground
+        int colorRule = Color.parseColor(light ? "#E0DED8" : "#2D2926");   // --border
+        // The unticked bullet. A shade firmer than --border, which is a
+        // hairline meant for full-width rules and disappears as a 19dp ring.
+        int colorRing = Color.parseColor(light ? "#C6C4BE" : "#504C48");
 
         views.setInt(R.id.widget_root, "setBackgroundResource",
                 light ? R.drawable.widget_bg_light : R.drawable.widget_bg);
-        views.setInt(R.id.widget_logo, "setColorFilter", colorAccent);
+        views.setInt(R.id.widget_logo, "setColorFilter", colorText);
         views.setTextColor(R.id.widget_header, colorMuted);
+        views.setTextColor(R.id.widget_date, colorMuted);
         views.setTextColor(R.id.widget_empty, colorMuted);
+        views.setInt(R.id.widget_rule_head, "setBackgroundColor", colorRule);
+        views.setInt(R.id.widget_rule_2, "setBackgroundColor", colorRule);
+        views.setInt(R.id.widget_rule_3, "setBackgroundColor", colorRule);
+
+        // Dateline, in the device's language: "24 AUG" / "24 SIE" (the layout
+        // upper-cases it). Short month so it still fits a narrowly resized
+        // widget next to the name.
+        views.setTextViewText(R.id.widget_date,
+                new SimpleDateFormat("d MMM", Locale.getDefault()).format(new Date()));
 
         JSONArray tasks;
         try {
@@ -165,7 +186,8 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 views.setTextViewText(timeIds[i], time);
                 views.setTextColor(timeIds[i], colorMuted);
                 views.setViewVisibility(timeIds[i], time.isEmpty() ? View.GONE : View.VISIBLE);
-                views.setInt(checkIds[i], "setColorFilter", colorAccent);
+                views.setInt(checkIds[i], "setColorFilter", colorRing);
+                if (i > 0) views.setViewVisibility(ruleIds[i], View.VISIBLE);
 
                 Intent tick = new Intent(context, TaskWidgetProvider.class);
                 tick.setAction(ACTION_TICK);
@@ -179,6 +201,7 @@ public class TaskWidgetProvider extends AppWidgetProvider {
                 views.setOnClickPendingIntent(rowIds[i], tickPi);
             } else {
                 views.setViewVisibility(rowIds[i], View.GONE);
+                if (i > 0) views.setViewVisibility(ruleIds[i], View.GONE);
             }
         }
         views.setViewVisibility(R.id.widget_empty, shown == 0 ? View.VISIBLE : View.GONE);

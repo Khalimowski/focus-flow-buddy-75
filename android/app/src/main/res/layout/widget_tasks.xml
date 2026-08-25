@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Task widget, "Classic Editorial".
+
+    A ruled column rather than a stack of chips: a masthead (mark, name,
+    dateline) over a hairline, then one hairline between rows. Titles are
+    serif and times monospace, matching the app's task rows.
+
+    The colours baked in here are the dark theme's; TaskWidgetProvider
+    re-applies them per theme at build time. They are kept accurate rather
+    than left as placeholders because the launcher's widget picker renders
+    this layout raw, with no provider in the loop.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -7,8 +19,8 @@
     android:background="@drawable/widget_bg"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
-    android:paddingTop="12dp"
-    android:paddingBottom="12dp">
+    android:paddingTop="13dp"
+    android:paddingBottom="13dp">
 
     <LinearLayout
         android:id="@+id/widget_header_row"
@@ -16,24 +28,52 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
+        android:baselineAligned="false">
 
         <ImageView
             android:id="@+id/widget_logo"
-            android:layout_width="14dp"
-            android:layout_height="14dp"
+            android:layout_width="13dp"
+            android:layout_height="13dp"
             android:src="@drawable/ic_stat_icon"
             android:contentDescription="@string/app_name" />
 
         <TextView
             android:id="@+id/widget_header"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/app_name"
+            android:textColor="#9E9B95"
+            android:textSize="9sp"
+            android:fontFamily="serif"
+            android:textAllCaps="true"
+            android:letterSpacing="0.2"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <!-- Dateline; set from the device locale in TaskWidgetProvider. -->
+        <TextView
+            android:id="@+id/widget_date"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="7dp"
-            android:text="@string/app_name"
-            android:textColor="#9AA3B2"
-            android:textSize="12sp" />
+            android:layout_marginStart="8dp"
+            android:textColor="#9E9B95"
+            android:textSize="9sp"
+            android:fontFamily="serif"
+            android:textAllCaps="true"
+            android:letterSpacing="0.14"
+            android:maxLines="1" />
     </LinearLayout>
+
+    <!-- The rules are FrameLayouts, not Views: RemoteViews only inflates
+         classes tagged @RemoteView, and bare android.view.View is not one. -->
+    <FrameLayout
+        android:id="@+id/widget_rule_head"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="8dp"
+        android:background="#2D2926" />
 
     <LinearLayout
         android:id="@+id/widget_row_1"
@@ -42,12 +82,13 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:baselineAligned="false"
         android:visibility="gone">
 
         <ImageView
             android:id="@+id/widget_check_1"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="19dp"
+            android:layout_height="19dp"
             android:src="@drawable/widget_check_off"
             android:contentDescription="@string/widget_tick" />
 
@@ -56,9 +97,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:textColor="#ECEFF4"
-            android:textSize="14sp"
+            android:layout_marginStart="11dp"
+            android:textColor="#EAE8E3"
+            android:textSize="15sp"
+            android:fontFamily="serif"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -66,12 +108,20 @@
             android:id="@+id/widget_time_1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="#9AA3B2"
-            android:textSize="12sp"
+            android:layout_marginStart="10dp"
+            android:textColor="#9E9B95"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
             android:maxLines="1"
             android:visibility="gone" />
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/widget_rule_2"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2D2926"
+        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/widget_row_2"
@@ -80,12 +130,13 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:baselineAligned="false"
         android:visibility="gone">
 
         <ImageView
             android:id="@+id/widget_check_2"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="19dp"
+            android:layout_height="19dp"
             android:src="@drawable/widget_check_off"
             android:contentDescription="@string/widget_tick" />
 
@@ -94,9 +145,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:textColor="#ECEFF4"
-            android:textSize="14sp"
+            android:layout_marginStart="11dp"
+            android:textColor="#EAE8E3"
+            android:textSize="15sp"
+            android:fontFamily="serif"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -104,12 +156,20 @@
             android:id="@+id/widget_time_2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="#9AA3B2"
-            android:textSize="12sp"
+            android:layout_marginStart="10dp"
+            android:textColor="#9E9B95"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
             android:maxLines="1"
             android:visibility="gone" />
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/widget_rule_3"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2D2926"
+        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/widget_row_3"
@@ -118,12 +178,13 @@
         android:layout_weight="1"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:baselineAligned="false"
         android:visibility="gone">
 
         <ImageView
             android:id="@+id/widget_check_3"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="19dp"
+            android:layout_height="19dp"
             android:src="@drawable/widget_check_off"
             android:contentDescription="@string/widget_tick" />
 
@@ -132,9 +193,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="10dp"
-            android:textColor="#ECEFF4"
-            android:textSize="14sp"
+            android:layout_marginStart="11dp"
+            android:textColor="#EAE8E3"
+            android:textSize="15sp"
+            android:fontFamily="serif"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -142,13 +204,15 @@
             android:id="@+id/widget_time_3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:textColor="#9AA3B2"
-            android:textSize="12sp"
+            android:layout_marginStart="10dp"
+            android:textColor="#9E9B95"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
             android:maxLines="1"
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Empty state: serif italic, the voice the app's empty lists use. -->
     <TextView
         android:id="@+id/widget_empty"
         android:layout_width="match_parent"
@@ -156,7 +220,8 @@
         android:layout_weight="3"
         android:gravity="center"
         android:text="@string/widget_empty"
-        android:textColor="#9AA3B2"
-        android:textSize="13sp"
-        android:visibility="gone" />
+        android:textColor="#9E9B95"
+        android:textSize="14sp"
+        android:fontFamily="serif"
+        android:textStyle="italic" />
 </LinearLayout>

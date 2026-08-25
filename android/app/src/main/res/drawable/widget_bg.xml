@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget card, dark ("Classic Editorial"): the app's card colour over its
+     hairline border. Card rather than the page ground, because on a home
+     screen the widget is a sheet floating on the wallpaper, not the page
+     itself. 22dp corners are the app's rounded-2xl. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#14161D" />
-    <corners android:radius="24dp" />
+    <solid android:color="#1C1916" />
+    <corners android:radius="22dp" />
     <stroke
         android:width="1dp"
-        android:color="#262B36" />
+        android:color="#2D2926" />
 </shape>
