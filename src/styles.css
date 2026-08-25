@@ -330,6 +330,22 @@
   .bottom-safe-nav {
     bottom: calc(var(--ad-banner-height, 0px));
   }
+  /* Gesture-bar padding for the tab bar's own row of buttons — but only the
+     part the ad banner isn't already covering.
+
+     The AdMob plugin patch (patches/@capacitor-community%2Fadmob@8.0.0.patch)
+     pins bottom banners flush to the screen edge instead of raising them above
+     the navigation-bar inset, so the banner already sits over the gesture bar.
+     A plain env(safe-area-inset-bottom) here would then be counted twice —
+     once as the banner height .bottom-safe-nav lifts the bar by, once as this
+     padding — and the surplus showed as a blank strip between the bar and the
+     ad. Subtract the banner height, floored at 0.
+
+     With no banner (web, or premium removing it) --ad-banner-height is 0px and
+     this is the full inset again, exactly as before. */
+  .pb-safe-gesture {
+    padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - var(--ad-banner-height, 0px)));
+  }
   /* On a desktop browser the same bar detaches from the window edge and floats
      as a centred slab (see the nav in routes/index.tsx) — an edge-to-edge
      thumb bar across a 1600px window reads as a phone app in a big frame.

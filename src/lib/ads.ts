@@ -117,17 +117,7 @@ export async function initAds() {
     await AdMob.showBanner({
       adId: BANNER_AD_ID,
       isTesting: false,
-      // Fixed size, not ADAPTIVE_BANNER: Google only *guarantees* an adaptive
-      // banner's creative fills its full reserved height for normal paid
-      // fills. During the current pre-approval/no-fill window (see the
-      // comment above BANNER_AD_ID), what actually serves is backfill/PSA
-      // content, which regularly ignores the adaptive height and renders
-      // smaller — leaving the reserved space (this file publishes it as
-      // --ad-banner-height, which both the body padding and the bottom nav
-      // bar's position key off) taller than the ad, i.e. a gap above it. A
-      // fixed BANNER size is honored even by backfill, so the reserved
-      // height always matches what's actually drawn.
-      adSize: BannerAdSize.BANNER,
+      adSize: BannerAdSize.ADAPTIVE_BANNER,
       position: BannerAdPosition.BOTTOM_CENTER,
       margin: 0,
     });
