@@ -26,6 +26,7 @@ import {
 } from "date-fns";
 import { STORAGE_KEYS, loadJSON } from "./storage";
 import { dateKey } from "./utils";
+import { runsOn } from "./habits";
 import { emptyTotals, readStats, totalsForDays, type StatTotals } from "./stats";
 
 export type Granularity = "day" | "week" | "month";
@@ -48,7 +49,7 @@ type Task = {
 
 type ToDoItem = { id: string; title: string; done: boolean; createdAt: number };
 
-type Reminder = { id: string; label: string; times: string[]; enabled: boolean };
+type Reminder = { id: string; label: string; times: string[]; enabled: boolean; days?: number[] };
 
 export type InsightBucket = {
   /** Stable identity: the first day in the bucket. */
@@ -209,7 +210,11 @@ export function buildInsights(granularity: Granularity, now: Date = new Date()):
       open: todos.filter((item) => !item.done).length,
       done: todos.filter((item) => item.done).length,
     },
-    habitSlots: reminders.filter((r) => r.enabled).reduce((n, r) => n + r.times.length, 0),
+    // Today's slots, not every habit's: a Monday-only habit isn't part of what
+    // a full Tuesday looks like.
+    habitSlots: reminders
+      .filter((r) => r.enabled && runsOn(r.days, now))
+      .reduce((n, r) => n + r.times.length, 0),
   };
 }
 

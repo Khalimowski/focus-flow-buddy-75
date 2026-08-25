@@ -17,6 +17,7 @@ import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
+import { runsOn } from "@/lib/habits";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -36,6 +37,7 @@ type Reminder = {
   id: string;
   label: string;
   times: string[]; // "HH:mm"
+  days?: number[]; // weekdays it runs on (0 = Sunday); absent = every day
   enabled: boolean;
   lastFired: Record<string, string>; // time -> YYYY-MM-DD
 };
@@ -154,7 +156,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     const filteredTasks = tasks.filter(t => t.dueDate === dateStr).map(t => ({ ...t, kind: 'task' as const }));
 
     const habitItems = reminders
-      .filter(r => r.enabled)
+      .filter(r => r.enabled && runsOn(r.days, selectedDate))
       .flatMap(r => r.times.map(time => ({
         id: `${r.id}-${time}`,
         title: r.label,

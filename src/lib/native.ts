@@ -1,4 +1,4 @@
-import { LocalNotifications } from "@capacitor/local-notifications";
+import { LocalNotifications, Weekday } from "@capacitor/local-notifications";
 import { StatusBar } from "@capacitor/status-bar";
 import { CapacitorCalendar } from "@ebarooni/capacitor-calendar";
 import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle } from "@capacitor/core";
@@ -7,6 +7,7 @@ import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
 import { recordStat } from "./stats";
 import { dateKey } from "./utils";
+import { habitSlots, nextOccurrence, runsOn } from "./habits";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
 
@@ -214,19 +215,28 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
 // notification an older build already scheduled is sitting on the user's phone
 // with those exact values. Reconciliation and the action handlers match on them,
 // so renaming here would orphan every pending notification until it re-fired.
-export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number, syncCalendar = false, habitId?: string) {
+/**
+ * Arm one repeating habit slot. Without `weekday` it repeats every day; with it
+ * (JS numbering, 0 = Sunday) the match narrows to that one day, so the same
+ * notification repeats weekly instead.
+ */
+export async function scheduleNativeDaily(id: number, title: string, body: string, hour: number, minute: number, syncCalendar = false, habitId?: string, weekday?: number) {
   if (!isNative()) return;
   try {
     await ensureChannel();
     const timeStr = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-    console.log(`Scheduling daily notification at ${hour}:${minute}: ${title} (id: ${id})`);
+    // Capacitor's Weekday runs Sunday = 1 … Saturday = 7, one ahead of getDay().
+    const on = weekday === undefined
+      ? { hour, minute }
+      : { weekday: (weekday + 1) as Weekday, hour, minute };
+    console.log(`Scheduling ${weekday === undefined ? 'daily' : `weekly (day ${weekday})`} notification at ${hour}:${minute}: ${title} (id: ${id})`);
     await LocalNotifications.schedule({
       notifications: [
         {
           id,
           title,
           body,
-          schedule: { on: { hour, minute }, repeats: true, allowWhileIdle: true },
+          schedule: { on, repeats: true, allowWhileIdle: true },
           channelId: currentChannelId(),
           smallIcon: "ic_stat_icon",
           sound: "boink",
@@ -237,10 +247,7 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
     });
 
     if (syncCalendar) {
-      const at = new Date();
-      at.setHours(hour, minute, 0, 0);
-      if (at.getTime() < Date.now()) at.setDate(at.getDate() + 1);
-      void addToCalendar(title, at);
+      void addToCalendar(title, nextOccurrence(weekday === undefined ? undefined : [weekday], hour, minute));
     }
 
     console.log(`Daily notification ${id} scheduled.`);
@@ -532,6 +539,7 @@ export async function reconcileNotifications() {
       times: string[];
       enabled: boolean;
       lastFired?: Record<string, string>;
+      days?: number[];
     };
 
     const tasks = loadJSON<TaskLike[]>(STORAGE_KEYS.tasks, []);
@@ -549,14 +557,18 @@ export async function reconcileNotifications() {
     const validHabitIds = new Set<number>();
     // …and the subset to (re)schedule now (skip slots already fired today —
     // boot cleanup cancels those; the Reminders UI re-arms them next day)
-    const scheduleHabit = new Map<number, { r: ReminderLike; time: string }>();
+    const scheduleHabit = new Map<number, { r: ReminderLike; hour: number; minute: number; weekday?: number }>();
     for (const r of reminders) {
       if (!r.enabled) continue;
-      r.times.forEach((time, idx) => {
-        const id = hashId(`rem:${r.id}:${idx}`);
+      for (const slot of habitSlots(r)) {
+        const id = hashId(slot.key);
         validHabitIds.add(id);
-        if (r.lastFired?.[time] !== today) scheduleHabit.set(id, { r, time });
-      });
+        // Already ticked off today: boot cleanup cancels it and the next
+        // reconcile re-arms it. A slot for another weekday was never armed for
+        // today, so today's lastFired says nothing about it.
+        const firedToday = r.lastFired?.[slot.time] === today && runsOn(r.days, new Date());
+        if (!firedToday) scheduleHabit.set(id, { r, hour: slot.hour, minute: slot.minute, weekday: slot.weekday });
+      }
     }
 
     const pending = await LocalNotifications.getPending();
@@ -602,19 +614,18 @@ export async function reconcileNotifications() {
     // kept) in this pass — delete-by-title must run at most once per reminder,
     // or the second slot's cleanup would erase the first slot's fresh event.
     const cleanedHabits = new Set<string>();
-    for (const [id, { r, time }] of scheduleHabit) {
+    for (const [id, { r, hour, minute, weekday }] of scheduleHabit) {
       if (!pendingIds.has(id)) {
-        const [h, m] = time.split(":").map(Number);
         if (settings.habitCalendarSync && !cleanedHabits.has(r.id)) {
           cleanedHabits.add(r.id);
           // Delete-first only when the reminder is wholly new to this device;
           // if sibling slots are still pending, their events must survive.
-          const siblingIds = r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`));
+          const siblingIds = habitSlots(r).map((slot) => hashId(slot.key));
           if (!siblingIds.some((sid) => pendingIds.has(sid))) {
             await deleteFromCalendar(r.label);
           }
         }
-        await scheduleNativeDaily(id, r.label, lang.gentle_habit_emoji, h, m, settings.habitCalendarSync, r.id);
+        await scheduleNativeDaily(id, r.label, lang.gentle_habit_emoji, hour, minute, settings.habitCalendarSync, r.id, weekday);
         added++;
       }
     }
@@ -726,10 +737,14 @@ export async function initNative() {
     const dateStr = dateKey();
     const firedHabitIds: number[] = [];
 
+    // Only slots that belong to today can have been ticked off today — a
+    // Monday-only habit keeps its notification armed on a Tuesday.
+    const runsToday = new Date();
     reminders.forEach(r => {
-      r.times.forEach((time: string, idx: number) => {
-        if (r.lastFired?.[time] === dateStr) {
-          firedHabitIds.push(hashId(`rem:${r.id}:${idx}`));
+      if (!runsOn(r.days, runsToday)) return;
+      habitSlots(r).forEach(slot => {
+        if (r.lastFired?.[slot.time] === dateStr) {
+          firedHabitIds.push(hashId(slot.key));
         }
       });
     });
@@ -820,12 +835,11 @@ export async function syncAllToCalendar(tasks: any[], reminders: any[]) {
   for (const reminder of reminders) {
     if (reminder.enabled) {
       await deleteFromCalendar(reminder.label);
-      for (const timeStr of reminder.times) {
-        const [h, m] = timeStr.split(":").map(Number);
-        const at = new Date();
-        at.setHours(h, m, 0, 0);
-        if (at.getTime() < Date.now()) at.setDate(at.getDate() + 1);
-        await addToCalendar(reminder.label, at);
+      for (const slot of habitSlots(reminder)) {
+        await addToCalendar(
+          reminder.label,
+          nextOccurrence(slot.weekday === undefined ? undefined : [slot.weekday], slot.hour, slot.minute),
+        );
       }
     }
   }

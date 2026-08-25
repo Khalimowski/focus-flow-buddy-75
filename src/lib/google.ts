@@ -1,6 +1,7 @@
 import { SocialLogin } from "@capgo/capacitor-social-login";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { useI18nStore } from "./i18n";
+import { normalizeDays, nextOccurrence } from "./habits";
 
 // Google integrations (Gmail import + Google Calendar push), client-only.
 // Auth runs through @capgo/capacitor-social-login: a popup OAuth flow on web,
@@ -438,10 +439,13 @@ export async function syncAllTasksToGoogleCalendar(tasks: CalTask[]) {
 }
 
 // --- Habits -> Google Calendar ---
-// A habit repeats daily at fixed times, so each time becomes one recurring
-// event (RRULE:FREQ=DAILY). Recurrence requires an explicit timeZone.
+// A habit repeats at fixed times, so each time becomes one recurring event —
+// daily, or weekly on the chosen days. Recurrence requires an explicit timeZone.
 
-type CalHabit = { id: string; label: string; times: string[]; enabled: boolean };
+type CalHabit = { id: string; label: string; times: string[]; enabled: boolean; days?: number[] };
+
+// RRULE day codes, indexed by JS weekday (0 = Sunday).
+const RRULE_DAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 
 // One entry per habit: the recurring events created for it, and a signature of
 // what they were built from (same purpose as CalEntry's fields — spotting an
@@ -449,7 +453,7 @@ type CalHabit = { id: string; label: string; times: string[]; enabled: boolean }
 type HabitEntry = { eventIds: string[]; sig: string };
 
 function habitSig(habit: CalHabit): string {
-  return `${habit.label}|${habit.times.join(",")}`;
+  return `${habit.label}|${habit.times.join(",")}|${normalizeDays(habit.days)?.join(",") ?? "*"}`;
 }
 
 function loadHabitMap(): Record<string, HabitEntry> {
@@ -490,11 +494,17 @@ export async function pushHabitToGoogleCalendar(habit: CalHabit) {
   try {
     await deleteHabitEvents(token, habit.id);
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const days = normalizeDays(habit.days);
+    // Google keeps the first instance wherever DTSTART lands, even when BYDAY
+    // excludes it, so a weekly series has to start on a day it actually runs.
+    const rrule = days
+      ? `RRULE:FREQ=WEEKLY;BYDAY=${days.map((d) => RRULE_DAYS[d]).join(",")}`
+      : "RRULE:FREQ=DAILY";
     const eventIds: string[] = [];
     for (const time of habit.times) {
       const [h, m] = time.split(":").map(Number);
-      const start = new Date();
-      start.setHours(h, m, 0, 0);
+      const start = days ? nextOccurrence(days, h, m) : new Date();
+      if (!days) start.setHours(h, m, 0, 0);
       const end = new Date(start.getTime() + 15 * 60 * 1000);
       const res = await gFetch(
         "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -505,7 +515,7 @@ export async function pushHabitToGoogleCalendar(habit: CalHabit) {
             summary: habit.label,
             start: { dateTime: start.toISOString(), timeZone },
             end: { dateTime: end.toISOString(), timeZone },
-            recurrence: ["RRULE:FREQ=DAILY"],
+            recurrence: [rrule],
           }),
         },
       );

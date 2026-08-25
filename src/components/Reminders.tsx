@@ -13,11 +13,16 @@ import { useTranslation, useI18nStore, translations } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
 import { TimePicker } from "@/components/TimePicker";
+import { DAY_KEYS, WEEK_DAYS, habitSlots, isEveryDay, normalizeDays, runsOn } from "@/lib/habits";
+import { cn } from "@/lib/utils";
 
 type Reminder = {
   id: string;
   label: string;
   times: string[]; // "HH:mm"
+  // Weekdays it runs on (0 = Sunday). Absent means every day, which is what
+  // every habit created before this option existed is.
+  days?: number[];
   enabled: boolean;
   lastFired: Record<string, string>; // time -> YYYY-MM-DD (local day)
   // Which quick-add preset this came from, if any. Language-independent, so
@@ -36,6 +41,7 @@ export function Reminders() {
   const [loaded, setLoaded] = useState(false);
   const [label, setLabel] = useState("");
   const [customTimes, setCustomTimes] = useState<string[]>([""]);
+  const [customDays, setCustomDays] = useState<number[]>([]);
   const { t } = useTranslation();
   const { habitCalendarSync } = useI18nStore();
   const { addEvent } = useHistoryStore();
@@ -99,8 +105,10 @@ export function Reminders() {
       const hm = nowHM();
       const d = today();
       let changed = false;
+      const now = new Date();
       const next = ref.current.map((r) => {
         if (!r.enabled) return r;
+        if (!runsOn(r.days, now)) return r;
         if (r.times.includes(hm) && r.lastFired[hm] !== d) {
           notify({ title: r.label, body: tRef.current('gentle_habit_emoji'), kind: "reminder" });
           changed = true;
@@ -118,15 +126,14 @@ export function Reminders() {
   const scheduleAll = (r: Reminder) => {
     void pushHabitToGoogleCalendar(r);
     if (!isNative()) return;
-    r.times.forEach((t_val, idx) => {
-      const [h, m] = t_val.split(":").map(Number);
-      void scheduleNativeDaily(hashId(`rem:${r.id}:${idx}`), r.label, t('gentle_habit_emoji'), h, m, habitCalendarSync, r.id);
+    habitSlots(r).forEach((slot) => {
+      void scheduleNativeDaily(hashId(slot.key), r.label, t('gentle_habit_emoji'), slot.hour, slot.minute, habitCalendarSync, r.id, slot.weekday);
     });
   };
   const cancelAll = (r: Reminder) => {
     void removeHabitFromGoogleCalendar(r.id);
     if (!isNative()) return;
-    void cancelNative(r.times.map((_, idx) => hashId(`rem:${r.id}:${idx}`)));
+    void cancelNative(habitSlots(r).map((slot) => hashId(slot.key)));
     void deleteFromCalendar(r.label);
   };
 
@@ -163,20 +170,26 @@ export function Reminders() {
     // minute (and two calendar events), with one lastFired slot between them.
     const validTimes = [...new Set(customTimes.filter(t => !!t))].sort();
     if (!label.trim() || validTimes.length === 0) return;
+    const days = normalizeDays(customDays);
     const r: Reminder = {
       id: generateId(),
       label: label.trim(),
       times: validTimes,
+      ...(days ? { days } : {}),
       enabled: true,
       lastFired: {},
     };
     scheduleAll(r);
-    addEvent('habit_created', { label: label.trim(), preset: false });
+    addEvent('habit_created', { label: label.trim(), preset: false, days: days ?? null });
     recordStat('habitCreated');
     setItems([...items, r]);
     setLabel("");
     setCustomTimes([""]);
+    setCustomDays([]);
   };
+
+  const toggleCustomDay = (day: number) =>
+    setCustomDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
 
   const toggle = (id: string) =>
     setItems(
@@ -282,6 +295,38 @@ export function Reminders() {
             </AnimatePresence>
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                {t('habit_repeat_on')}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {customDays.length === 0 ? t('habit_every_day') : t('habit_days_hint')}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {WEEK_DAYS.map((day) => {
+                const on = customDays.includes(day);
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => toggleCustomDay(day)}
+                    className={cn(
+                      "h-9 min-w-11 rounded-xl border px-2 text-xs transition",
+                      on
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-secondary",
+                    )}
+                  >
+                    {t(DAY_KEYS[day])}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <Button onClick={addCustom} className="w-full sm:w-auto self-end">
             {t('add_habit')}
           </Button>
@@ -310,12 +355,19 @@ export function Reminders() {
               >
                 <div className="flex-1 min-w-0">
                   <div className="text-sm">{r.label}</div>
-                  <div className="mt-0.5 flex flex-wrap gap-1 font-mono text-[11px] text-muted-foreground">
-                    {r.times.map((t) => (
-                      <span key={t} className="rounded-md bg-secondary px-1.5 py-0.5">
-                        {t}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                    {r.times.map((time) => (
+                      <span key={time} className="rounded-md bg-secondary px-1.5 py-0.5">
+                        {time}
                       </span>
                     ))}
+                    <span className="font-sans">
+                      {isEveryDay(r.days)
+                        ? t('habit_every_day')
+                        : WEEK_DAYS.filter((day) => r.days!.includes(day))
+                            .map((day) => t(DAY_KEYS[day]))
+                            .join(' · ')}
+                    </span>
                   </div>
                 </div>
                 <Switch checked={r.enabled} onCheckedChange={() => toggle(r.id)} />
