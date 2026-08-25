@@ -2,6 +2,11 @@
 
 _Last updated: August 25, 2026_
 
+> The version users and Play reviewers read is served by the app itself at
+> [flowday.day/privacy](https://flowday.day/privacy), in English and Polish.
+> This file is the same policy in the repo; the two are kept in step by hand, so
+> **change both together** (the page lives in `src/routes/privacy.tsx`).
+
 FlowDay ("the app") is a task, reminder and focus app designed for ADHD brains.
 It ships as an Android app and as a web app at
 [flowday.day](https://flowday.day/). This policy explains what the app stores,
