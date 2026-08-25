@@ -23,6 +23,19 @@ export type ChangelogEntry = {
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "1.10.0",
+    items: {
+      en: [
+        "Habits can now repeat on chosen days instead of every day — set \"Gym\" for Mondays at 18:00 and it only shows up on Mondays.",
+        "A habit's days appear next to its times in the list, and it only turns up in Tasks on the days it runs.",
+      ],
+      pl: [
+        "Nawyki mogą teraz powtarzać się w wybrane dni, nie tylko codziennie — ustaw „Siłownia” na poniedziałki o 18:00, a pojawi się tylko w poniedziałki.",
+        "Dni nawyku widać obok jego godzin na liście, a w Zadaniach pojawia się tylko w te dni, w które faktycznie działa.",
+      ],
+    },
+  },
+  {
     version: "1.9.9",
     items: {
       en: [
