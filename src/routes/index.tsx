@@ -309,10 +309,6 @@ function Home() {
           })}
         </div>
       </nav>
-
-      <footer className="mt-12 text-center text-[11px] text-muted-foreground">
-        {t('footer_hint')}
-      </footer>
     </div>
   );
 }

@@ -28,10 +28,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       en: [
         "Habits can now repeat on chosen days instead of every day — set \"Gym\" for Mondays at 18:00 and it only shows up on Mondays.",
         "A habit's days appear next to its times in the list, and it only turns up in Tasks on the days it runs.",
+        "The privacy policy now lives in the app — open it from the bottom of Settings, in English or Polish.",
       ],
       pl: [
         "Nawyki mogą teraz powtarzać się w wybrane dni, nie tylko codziennie — ustaw „Siłownia” na poniedziałki o 18:00, a pojawi się tylko w poniedziałki.",
         "Dni nawyku widać obok jego godzin na liście, a w Zadaniach pojawia się tylko w te dni, w które faktycznie działa.",
+        "Polityka prywatności jest teraz w aplikacji — otworzysz ją na dole Ustawień, po polsku lub po angielsku.",
       ],
     },
   },
