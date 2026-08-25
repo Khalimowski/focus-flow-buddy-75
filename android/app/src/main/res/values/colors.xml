@@ -3,4 +3,10 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+    <!-- App's dark --background, same value as capacitor.config.ts's
+         android.backgroundColor/splash. Used as the window background so any
+         native view showing through a transient layout gap (e.g. the AdMob
+         banner reflowing) reads as the app's own dark ground instead of
+         AppCompat's default light one. -->
+    <color name="colorAppBackground">#100E0C</color>
 </resources>

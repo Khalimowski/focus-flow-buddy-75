@@ -13,6 +13,13 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- AppCompat.DayNight's default windowBackground is near-white; with
+             no override, that showed through as a cream flash between the ad
+             banner and the bottom nav bar whenever the native AdMob view
+             resized (banner load, ad rotation, keyboard show/hide) and briefly
+             didn't fully cover the space our CSS had already reserved for it.
+             Pin it to the app's own dark ground so any such gap is invisible. -->
+        <item name="android:windowBackground">@color/colorAppBackground</item>
         <!-- No windowTranslucentStatus / windowDrawsSystemBarBackgrounds /
              fitsSystemWindows here: those attrs are deprecated or ignored on
              Android 15+ (Play flags them), and fitsSystemWindows would stop
