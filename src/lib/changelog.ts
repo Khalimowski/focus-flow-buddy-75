@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.10.0";
+export const APP_VERSION = "1.10.1";
 
 export type ChangelogEntry = {
   version: string;
@@ -23,16 +23,27 @@ export type ChangelogEntry = {
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.10.0",
+    version: "1.10.1",
     items: {
       en: [
         "Habits can now repeat on chosen days instead of every day — set \"Gym\" for Mondays at 18:00 and it only shows up on Mondays.",
         "A habit's days appear next to its times in the list, and it only turns up in Tasks on the days it runs.",
-        "The privacy policy now lives in the app — open it from the bottom of Settings, in English or Polish.",
+        "The home-screen task widget has been redrawn to match the rest of the app.",
       ],
       pl: [
         "Nawyki mogą teraz powtarzać się w wybrane dni, nie tylko codziennie — ustaw „Siłownia” na poniedziałki o 18:00, a pojawi się tylko w poniedziałki.",
         "Dni nawyku widać obok jego godzin na liście, a w Zadaniach pojawia się tylko w te dni, w które faktycznie działa.",
+        "Widżet z zadaniami na ekranie głównym został przerysowany, żeby pasował do reszty aplikacji.",
+      ],
+    },
+  },
+  {
+    version: "1.10.0",
+    items: {
+      en: [
+        "The privacy policy now lives in the app — open it from the bottom of Settings, in English or Polish.",
+      ],
+      pl: [
         "Polityka prywatności jest teraz w aplikacji — otworzysz ją na dole Ustawień, po polsku lub po angielsku.",
       ],
     },
