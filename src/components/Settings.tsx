@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "@tanstack/react-router";
 import { Settings as SettingsIcon, Moon, Sun, Calendar, Sparkles, GraduationCap, Vibrate, Mail, CalendarCheck, Unlink, Languages, LayoutGrid, MoonStar } from "lucide-react";
 import {
   Select,
@@ -624,7 +625,16 @@ export function Settings() {
         </div>
 
         <div className="mt-8 text-center text-[10px] text-muted-foreground">
-          {t('version')} {APP_VERSION} · {__BUILD_TIME__}
+          <Link
+            to="/privacy"
+            onClick={() => setOpen(false)}
+            className="underline-offset-2 hover:underline"
+          >
+            {t('privacy_policy')}
+          </Link>
+          <div className="mt-1">
+            {t('version')} {APP_VERSION} · {__BUILD_TIME__}
+          </div>
         </div>
       </SheetContent>
     </Sheet>
