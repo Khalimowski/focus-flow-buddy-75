@@ -94,8 +94,10 @@ export function TaskCalendarDialog({
               onKeyDown={(e) => e.key === "Enter" && submit()}
               className="h-auto border-none bg-transparent px-0 text-base focus-visible:ring-0"
             />
-            <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
-              <div className="flex items-center gap-2">
+            {/* Wrapping chips + a non-shrinking action, so the add button stays
+                on screen once the duration chip joins the row. */}
+            <div className="flex items-start justify-between gap-2 border-t border-border/50 pt-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <TimePicker
                   value={time}
                   onChange={(v) => {
@@ -104,7 +106,7 @@ export function TaskCalendarDialog({
                     else setDuration(null);
                   }}
                   clearable
-                  className="w-28 justify-center"
+                  className="justify-center"
                 />
                 {time && (
                   <DurationPicker
@@ -112,7 +114,7 @@ export function TaskCalendarDialog({
                     onChange={setDuration}
                     open={durationOpen}
                     onOpenChange={setDurationOpen}
-                    className="w-28 justify-center"
+                    className="justify-center"
                   />
                 )}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/50 px-3 py-1.5 text-[10px] font-bold">
@@ -126,7 +128,7 @@ export function TaskCalendarDialog({
                 onClick={submit}
                 size="sm"
                 aria-label={t("add_task")}
-                className="size-8 rounded-full p-0 shadow-soft"
+                className="size-8 shrink-0 rounded-full p-0 shadow-soft"
               >
                 <Plus className="size-4" />
               </Button>

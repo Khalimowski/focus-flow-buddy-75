@@ -580,7 +580,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             autoFocus
           />
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1.5 shrink-0">
+            <div className="flex flex-wrap gap-1.5">
               <TimePicker
                 value={editTime}
                 onChange={(v) => {
@@ -590,7 +590,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 }}
                 clearable
                 size="sm"
-                className="w-[84px] justify-center"
+                className="justify-center"
               />
               {editTime && (
                 <DurationPicker
@@ -599,7 +599,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   open={editDurationOpen}
                   onOpenChange={setEditDurationOpen}
                   size="sm"
-                  className="w-[84px] justify-center"
+                  className="justify-center"
                 />
               )}
               <Popover>
@@ -778,8 +778,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             onKeyDown={(e) => e.key === "Enter" && add()}
             className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
           />
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <div className="flex gap-2">
+          {/* The chips wrap and the actions never shrink: with a time set there
+              are four chips here, which is more than a 375px phone fits on one
+              line — without this the add button was pushed off the screen. */}
+          <div className="flex items-start justify-between gap-2 pt-2 border-t border-border/50">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <TimePicker
                 value={time}
                 onChange={(v) => {
@@ -788,7 +791,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   else setDuration(null);
                 }}
                 clearable
-                className="w-28 justify-center"
+                className="justify-center"
               />
               {time && (
                 <DurationPicker
@@ -796,7 +799,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   onChange={setDuration}
                   open={durationOpen}
                   onOpenChange={setDurationOpen}
-                  className="w-28 justify-center"
+                  className="justify-center"
                 />
               )}
               <Popover>
@@ -821,7 +824,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <GmailImport onImport={importFromEmail} />
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <MicButton
                 onStart={startDictation}
                 onTranscript={applyDictation}
