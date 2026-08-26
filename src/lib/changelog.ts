@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.11.0";
+export const APP_VERSION = "1.11.1";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.11.1",
+    items: {
+      en: [
+        "Timeline view: when several tasks share the same time, their names are readable again instead of squeezed away by the buttons. Tap a narrow block to open it full width with its tick, edit and delete controls.",
+      ],
+      pl: [
+        "Widok osi czasu: gdy kilka zadań przypada na tę samą godzinę, ich nazwy znów są czytelne, zamiast być wyparte przez przyciski. Dotknij wąskiego bloku, aby otworzyć go na całą szerokość razem z zaznaczaniem, edycją i usuwaniem.",
+      ],
+    },
+  },
   {
     version: "1.11.0",
     items: {
