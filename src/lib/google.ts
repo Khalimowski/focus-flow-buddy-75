@@ -244,12 +244,12 @@ export async function listRecentEmails(token: string, max = 15): Promise<GmailMe
 // it also works on web. Background paths no-op without a fresh token rather
 // than popping auth UI mid-save.
 
-type CalTask = { id: string; title: string; remindAt?: string | null; done?: boolean };
+type CalTask = { id: string; title: string; remindAt?: string | null; durationMin?: number; done?: boolean };
 
 // The event we created for a task, plus the fields it was built from — that's
 // what lets reconcile notice a task that was moved or renamed on a device with
 // no Google connection, where nothing pushed the change.
-type CalEntry = { eventId: string; remindAt: string; title: string };
+type CalEntry = { eventId: string; remindAt: string; title: string; durationMin?: number };
 
 function loadCalMap(): Record<string, CalEntry> {
   const raw = loadJSON<Record<string, string | CalEntry>>(CALMAP_KEY, {});
@@ -294,7 +294,7 @@ export async function pushTaskToGoogleCalendar(task: CalTask) {
       saveJSON(CALMAP_KEY, map);
     }
     const start = new Date(task.remindAt);
-    const end = new Date(start.getTime() + 15 * 60 * 1000);
+    const end = new Date(start.getTime() + (task.durationMin ?? 15) * 60 * 1000);
     const res = await gFetch(
       "https://www.googleapis.com/calendar/v3/calendars/primary/events",
       token,
@@ -312,7 +312,7 @@ export async function pushTaskToGoogleCalendar(task: CalTask) {
       return;
     }
     const event = (await res.json()) as { id: string };
-    map[task.id] = { eventId: event.id, remindAt: task.remindAt, title: task.title };
+    map[task.id] = { eventId: event.id, remindAt: task.remindAt, title: task.title, durationMin: task.durationMin };
     saveJSON(CALMAP_KEY, map);
     console.log(`[Google] Calendar event created for task ${task.id}`);
   } catch (e) {
@@ -378,7 +378,7 @@ export async function reconcileGoogleCalendar() {
         // after dead ones. Otherwise the event stands unless the task moved or
         // was renamed (the push loop below then recreates it).
         if (!syncOn) continue;
-        if (entry.remindAt === task.remindAt && entry.title === task.title) continue;
+        if (entry.remindAt === task.remindAt && entry.title === task.title && entry.durationMin === task.durationMin) continue;
       }
       if (await deleteEvent(token, entry.eventId)) {
         const fresh = loadCalMap();

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TaskCalendar, type CalendarTask } from "@/components/TaskCalendar";
 import { TimePicker } from "@/components/TimePicker";
+import { DurationPicker } from "@/components/DurationPicker";
 import { useTranslation } from "@/lib/i18n";
 
 type Props = {
@@ -21,7 +22,7 @@ type Props = {
   tasks: CalendarTask[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  onAddTask: (title: string, time: string, date: Date) => void;
+  onAddTask: (title: string, time: string, date: Date, durationMin?: number | null) => void;
   onToggleTask: (id: string) => void;
   onEditTask: (task: CalendarTask) => void;
   onDeleteTask: (id: string) => void;
@@ -48,12 +49,15 @@ export function TaskCalendarDialog({
 
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState<number | null>(null);
+  const [durationOpen, setDurationOpen] = useState(false);
 
   const submit = () => {
     if (!title.trim()) return;
-    onAddTask(title, time, selectedDate);
+    onAddTask(title, time, selectedDate, duration);
     setTitle("");
     setTime("");
+    setDuration(null);
   };
 
   return (
@@ -90,14 +94,29 @@ export function TaskCalendarDialog({
               onKeyDown={(e) => e.key === "Enter" && submit()}
               className="h-auto border-none bg-transparent px-0 text-base focus-visible:ring-0"
             />
-            <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
-              <div className="flex items-center gap-2">
+            {/* Wrapping chips + a non-shrinking action, so the add button stays
+                on screen once the duration chip joins the row. */}
+            <div className="flex items-start justify-between gap-2 border-t border-border/50 pt-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <TimePicker
                   value={time}
-                  onChange={setTime}
+                  onChange={(v) => {
+                    setTime(v);
+                    if (v) setDurationOpen(true);
+                    else setDuration(null);
+                  }}
                   clearable
-                  className="w-28 justify-center"
+                  className="justify-center"
                 />
+                {time && (
+                  <DurationPicker
+                    value={duration}
+                    onChange={setDuration}
+                    open={durationOpen}
+                    onOpenChange={setDurationOpen}
+                    className="justify-center"
+                  />
+                )}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/50 px-3 py-1.5 text-[10px] font-bold">
                   <CalendarIcon className="size-3" />
                   {isSameDay(selectedDate, new Date())
@@ -109,7 +128,7 @@ export function TaskCalendarDialog({
                 onClick={submit}
                 size="sm"
                 aria-label={t("add_task")}
-                className="size-8 rounded-full p-0 shadow-soft"
+                className="size-8 shrink-0 rounded-full p-0 shadow-soft"
               >
                 <Plus className="size-4" />
               </Button>

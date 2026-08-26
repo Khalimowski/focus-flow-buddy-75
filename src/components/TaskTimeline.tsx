@@ -8,6 +8,7 @@ export type TimelineTask = {
   title: string;
   done: boolean;
   remindAt: string | null;
+  durationMin?: number;
   dueDate: string;
   createdAt: number;
   notified?: boolean;
@@ -34,7 +35,17 @@ type Props = {
   onDeleteTask: (id: string) => void;
 };
 
-const BLOCK_MIN = 44; // visual block height in px == minutes (1px = 1min)
+const BLOCK_MIN = 44; // visual block height in px == minutes (1px = 1min); also the default extent for a task with no set duration
+const MIN_BLOCK_PX = 20; // floor so a short duration still shows its content
+// Below this lane width the check + edit + delete buttons leave no room for the
+// title, so the block drops the buttons and shows the name only.
+const COMPACT_LANE_PX = 170;
+// Narrower still (three or more items sharing an hour on a phone): even the
+// check circle costs more than the name can spare, so the title gets the whole
+// block and a tap expands it to full width for the controls.
+const TIGHT_LANE_PX = 112;
+const EXPANDED_MIN_PX = 44; // an expanded block needs room for the buttons
+const TIME_ROW_MIN_PX = 32; // …and the time row needs a second line
 const SNAP = 5;
 const HOLD_MS = 320;
 const TOUCH_CANCEL_DIST = 10;
@@ -49,6 +60,12 @@ const itemMinutes = (item: TimelineItem): number | null => {
   const d = new Date(item.remindAt);
   return d.getHours() * 60 + d.getMinutes();
 };
+
+// How much of the timeline an item occupies, in minutes — a task's own
+// duration when it has one, otherwise the same fixed block every item used to
+// get.
+const itemExtent = (item: TimelineItem): number =>
+  item.kind === "task" && item.durationMin ? item.durationMin : BLOCK_MIN;
 
 const fmtMinutes = (min: number) => {
   const d = new Date();
@@ -105,10 +122,31 @@ export function TaskTimeline({
   const teardownRef = useRef<(() => void) | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [, setNowTick] = useState(0);
+  // Width of the block area, so a lane can tell whether it is too narrow to
+  // fit anything but the title.
+  const [gridWidth, setGridWidth] = useState(0);
+  // Tapped narrow block, temporarily shown full width with its buttons.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowTick((n) => n + 1), 60_000);
     return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const measure = () => setGridWidth(grid.clientWidth);
+    measure();
+    // Rotation and window resizes go through the resize event; the observer
+    // catches the rest (side panels, the shelf appearing above the grid).
+    window.addEventListener("resize", measure);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    ro?.observe(grid);
+    return () => {
+      window.removeEventListener("resize", measure);
+      ro?.disconnect();
+    };
   }, []);
 
   // Switching tabs (or views) while a finger is down would otherwise leave
@@ -135,7 +173,7 @@ export function TaskTimeline({
     let endHour = 22;
     for (const e of timed) {
       startHour = Math.min(startHour, Math.floor(e.minutes / 60));
-      endHour = Math.max(endHour, Math.ceil((e.minutes + BLOCK_MIN) / 60));
+      endHour = Math.max(endHour, Math.ceil((e.minutes + itemExtent(e.item)) / 60));
     }
     if (isToday) {
       startHour = Math.min(startHour, Math.floor(nowMin / 60));
@@ -160,15 +198,16 @@ export function TaskTimeline({
     };
 
     for (const e of timed) {
+      const extent = itemExtent(e.item);
       if (cluster.length && e.minutes >= clusterEnd) flush();
       let lane = laneEnds.findIndex((end) => e.minutes >= end);
       if (lane === -1) {
         lane = laneEnds.length;
         laneEnds.push(0);
       }
-      laneEnds[lane] = e.minutes + BLOCK_MIN;
+      laneEnds[lane] = e.minutes + extent;
       cluster.push({ ...e, lane });
-      clusterEnd = Math.max(clusterEnd, e.minutes + BLOCK_MIN);
+      clusterEnd = Math.max(clusterEnd, e.minutes + extent);
     }
     flush();
     return out;
@@ -219,6 +258,7 @@ export function TaskTimeline({
     const activate = () => {
       if (session.active) return;
       session.active = true;
+      setExpandedId(null);
       if ("vibrate" in navigator) navigator.vibrate?.(15);
       const m = computeMinutes(session.lastY);
       dragMinutesRef.current = m;
@@ -325,9 +365,11 @@ export function TaskTimeline({
 
   const renderCheck = (item: TimelineItem) => (
     <button
-      onClick={() =>
-        item.kind === "task" ? onToggleTask(item.id) : onToggleHabit(item.originalId, item.time)
-      }
+      onClick={(e) => {
+        e.stopPropagation();
+        if (item.kind === "task") onToggleTask(item.id);
+        else onToggleHabit(item.originalId, item.time);
+      }}
       aria-label={item.title}
       aria-pressed={item.done}
       className={`grid size-5 shrink-0 place-items-center rounded-full border transition ${
@@ -428,13 +470,24 @@ export function TaskTimeline({
                 isDragged && dragging.minutes !== null ? dragging.minutes - startMin : minutes - startMin;
               const width = 100 / lanes;
               const draggable = item.kind === "task";
+              // Sharing the row with others leaves a lane too narrow for the
+              // buttons; those blocks show the title alone until tapped.
+              const laneWidthPx = gridWidth > 0 ? gridWidth / lanes : Infinity;
+              const compact = laneWidthPx < COMPACT_LANE_PX;
+              const expanded = compact && expandedId === item.id && !isDragged;
+              const tight = laneWidthPx < TIGHT_LANE_PX && !expanded;
+              const height = Math.max(expanded ? EXPANDED_MIN_PX : MIN_BLOCK_PX, itemExtent(item));
               return (
                 <div
                   key={item.id}
                   onPointerDown={draggable ? (e) => beginPress(e, item, minutes) : undefined}
                   onContextMenu={(e) => e.preventDefault()}
                   onClickCapture={blockClick}
-                  className={`absolute flex items-center gap-2 overflow-hidden rounded-xl border px-2 shadow-sm ${
+                  onClick={compact ? () => setExpandedId(expanded ? null : item.id) : undefined}
+                  title={item.title}
+                  className={`absolute flex items-center overflow-hidden rounded-xl border shadow-sm ${
+                    tight ? "gap-1 px-1.5" : "gap-2 px-2"
+                  } ${
                     item.kind === "habit"
                       ? "bg-amber-500/10 border-amber-500/20"
                       : "bg-card border-border"
@@ -443,18 +496,20 @@ export function TaskTimeline({
                       ? dragging.minutes === null
                         ? "opacity-30"
                         : "z-30 ring-2 ring-primary shadow-lg"
-                      : ""
+                      : expanded
+                        ? "z-30 ring-1 ring-primary shadow-lg"
+                        : ""
                   } ${item.done && !isDragged ? "opacity-60" : ""}`}
                   style={{
                     top,
-                    height: BLOCK_MIN,
-                    left: `${lane * width}%`,
-                    width: `calc(${width}% - 2px)`,
+                    height,
+                    left: expanded ? 0 : `${lane * width}%`,
+                    width: expanded ? "100%" : `calc(${width}% - 2px)`,
                     touchAction: isDragged ? "none" : undefined,
                     transition: isDragged ? "none" : "top 150ms ease",
                   }}
                 >
-                  {renderCheck(item)}
+                  {!tight && renderCheck(item)}
                   <div className="flex-1 min-w-0">
                     <div
                       className={`truncate text-xs font-medium leading-tight ${
@@ -463,33 +518,41 @@ export function TaskTimeline({
                     >
                       {item.title}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-                      <Clock className="size-2.5" />
-                      {isDragged && dragging.minutes !== null
-                        ? fmtMinutes(dragging.minutes)
-                        : fmtMinutes(minutes)}
-                    </div>
+                    {height >= TIME_ROW_MIN_PX && (
+                      <div className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
+                        <Clock className="size-2.5" />
+                        {isDragged && dragging.minutes !== null
+                          ? fmtMinutes(dragging.minutes)
+                          : fmtMinutes(minutes)}
+                      </div>
+                    )}
                   </div>
-                  {item.kind === "habit" ? (
-                    <Sparkles className="size-3.5 shrink-0 text-amber-500/50" />
-                  ) : (
-                    <div className="flex shrink-0 items-center">
-                      <button
-                        onClick={() => onEditTask(item)}
-                        aria-label={t("edit")}
-                        className="grid size-6 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
-                      >
-                        <Edit2 className="size-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteTask(item.id)}
-                        aria-label={t("delete")}
-                        className="grid size-6 place-items-center rounded-md text-destructive transition hover:bg-destructive/10"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  )}
+                  {item.kind === "habit"
+                    ? !compact && <Sparkles className="size-3.5 shrink-0 text-amber-500/50" />
+                    : (!compact || expanded) && (
+                        <div className="flex shrink-0 items-center">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditTask(item);
+                            }}
+                            aria-label={t("edit")}
+                            className="grid size-6 place-items-center rounded-md text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                          >
+                            <Edit2 className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTask(item.id);
+                            }}
+                            aria-label={t("delete")}
+                            className="grid size-6 place-items-center rounded-md text-destructive transition hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
                 </div>
               );
             })}

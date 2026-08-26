@@ -12,6 +12,7 @@ import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
 import { TaskCalendarDialog } from "@/components/TaskCalendarDialog";
 import { TimePicker } from "@/components/TimePicker";
+import { DurationPicker } from "@/components/DurationPicker";
 import { MicButton } from "@/components/MicButton";
 import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
@@ -28,6 +29,7 @@ type Task = {
   title: string;
   done: boolean;
   remindAt: string | null; // ISO
+  durationMin?: number; // only meaningful alongside remindAt
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
@@ -72,6 +74,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState<number | null>(null);
+  const [durationOpen, setDurationOpen] = useState(false);
   const [newTaskDate, setNewTaskDate] = useState<Date>(startOfDay(new Date()));
 
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
@@ -93,6 +97,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editTime, setEditTime] = useState("");
+  const [editDuration, setEditDuration] = useState<number | null>(null);
+  const [editDurationOpen, setEditDurationOpen] = useState(false);
   const [editDate, setEditDate] = useState<Date>(new Date());
 
   const { t, language } = useTranslation();
@@ -200,7 +206,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   // Shared by the inline composer and the calendar popup: everything a new task
   // needs is passed in, so no caller depends on the composer's own state.
-  const addTask = (rawTitle: string, time: string, date: Date) => {
+  const addTask = (rawTitle: string, time: string, date: Date, durationMin?: number | null) => {
     const cleanTitle = rawTitle.trim();
     if (!cleanTitle) return;
 
@@ -221,6 +227,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         title: cleanTitle,
         done: false,
         remindAt,
+        durationMin: remindAt && durationMin ? durationMin : undefined,
         dueDate,
         createdAt: Date.now()
       };
@@ -231,7 +238,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       // 2. Background native sync
       if (isNative() && remindAt) {
         deleteFromCalendar(cleanTitle).catch(e => console.error("Sync: delete failed", e));
-        scheduleNativeAt(hashId("task:" + id), cleanTitle, t('reminder_title'), new Date(remindAt), calendarSync, id)
+        scheduleNativeAt(hashId("task:" + id), cleanTitle, t('reminder_title'), new Date(remindAt), calendarSync, id, newTask.durationMin)
           .catch(e => console.error("Sync: schedule failed", e));
       }
       void pushTaskToGoogleCalendar(newTask);
@@ -245,9 +252,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   const add = () => {
     if (!title.trim()) return;
-    addTask(title, time, newTaskDate);
+    addTask(title, time, newTaskDate, duration);
     setTitle("");
     setTime("");
+    setDuration(null);
     setNewTaskDate(selectedDate);
   };
 
@@ -310,8 +318,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (task.remindAt) {
       const d = new Date(task.remindAt);
       setEditTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+      setEditDuration(task.durationMin ?? null);
     } else {
       setEditTime("");
+      setEditDuration(null);
     }
   };
 
@@ -319,6 +329,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     setEditingId(null);
     setEditTitle("");
     setEditTime("");
+    setEditDuration(null);
   };
 
   const saveEdit = async () => {
@@ -349,6 +360,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       // 1. Capture current values for background sync before clearing state
       const idToSync = editingId;
       const titleToSync = editTitle.trim();
+      const durationToSync = remindAt && editDuration ? editDuration : undefined;
       const oldTask = tasks.find(item => item.id === idToSync);
       const oldTitle = oldTask?.title;
 
@@ -358,6 +370,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           ...item,
           title: titleToSync,
           remindAt,
+          durationMin: durationToSync,
           dueDate,
           notified: false
         } : item);
@@ -380,7 +393,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               await deleteFromCalendar(oldTitle);
             }
             if (remindAt) {
-              await scheduleNativeAt(hashId("task:" + idToSync), titleToSync, t('reminder_title'), new Date(remindAt), calendarSync, idToSync);
+              await scheduleNativeAt(hashId("task:" + idToSync), titleToSync, t('reminder_title'), new Date(remindAt), calendarSync, idToSync, durationToSync);
             }
           } catch (nativeErr) {
             console.warn("[Native] Task sync failed during edit:", nativeErr);
@@ -389,7 +402,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         void runNativeSync();
       }
       if (remindAt) {
-        void pushTaskToGoogleCalendar({ id: idToSync, title: titleToSync, remindAt });
+        void pushTaskToGoogleCalendar({ id: idToSync, title: titleToSync, remindAt, durationMin: durationToSync });
       } else {
         void removeTaskFromGoogleCalendar(idToSync);
       }
@@ -411,9 +424,12 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       remindAt = d.toISOString();
     }
     if (remindAt === task.remindAt) return;
+    // Dropped onto the "no time" shelf: a duration with no time to anchor it
+    // to doesn't mean anything.
+    const durationMin = remindAt ? task.durationMin : undefined;
 
     setTasks(prev => sortTasks(prev.map(item =>
-      item.id === id ? { ...item, remindAt, notified: false } : item
+      item.id === id ? { ...item, remindAt, durationMin, notified: false } : item
     )));
 
     if (isNative()) {
@@ -422,7 +438,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           await cancelNative([hashId("task:" + id)]);
           await deleteFromCalendar(task.title);
           if (remindAt) {
-            await scheduleNativeAt(hashId("task:" + id), task.title, t('reminder_title'), new Date(remindAt), calendarSync, id);
+            await scheduleNativeAt(hashId("task:" + id), task.title, t('reminder_title'), new Date(remindAt), calendarSync, id, durationMin);
           }
         } catch (nativeErr) {
           console.warn("[Native] Task sync failed during timeline move:", nativeErr);
@@ -431,7 +447,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       void runNativeSync();
     }
     if (remindAt) {
-      void pushTaskToGoogleCalendar({ id, title: task.title, remindAt });
+      void pushTaskToGoogleCalendar({ id, title: task.title, remindAt, durationMin });
     } else {
       void removeTaskFromGoogleCalendar(id);
     }
@@ -564,14 +580,28 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             autoFocus
           />
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex gap-1.5 shrink-0">
+            <div className="flex flex-wrap gap-1.5">
               <TimePicker
                 value={editTime}
-                onChange={setEditTime}
+                onChange={(v) => {
+                  setEditTime(v);
+                  if (v) setEditDurationOpen(true);
+                  else setEditDuration(null);
+                }}
                 clearable
                 size="sm"
-                className="w-[84px] justify-center"
+                className="justify-center"
               />
+              {editTime && (
+                <DurationPicker
+                  value={editDuration}
+                  onChange={setEditDuration}
+                  open={editDurationOpen}
+                  onOpenChange={setEditDurationOpen}
+                  size="sm"
+                  className="justify-center"
+                />
+              )}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="h-7 rounded-full px-2 text-[9px] font-bold gap-1">
@@ -748,14 +778,30 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             onKeyDown={(e) => e.key === "Enter" && add()}
             className="flex-1 bg-transparent border-none text-base focus-visible:ring-0 px-0 h-auto"
           />
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <div className="flex gap-2">
+          {/* The chips wrap and the actions never shrink: with a time set there
+              are four chips here, which is more than a 375px phone fits on one
+              line — without this the add button was pushed off the screen. */}
+          <div className="flex items-start justify-between gap-2 pt-2 border-t border-border/50">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <TimePicker
                 value={time}
-                onChange={setTime}
+                onChange={(v) => {
+                  setTime(v);
+                  if (v) setDurationOpen(true);
+                  else setDuration(null);
+                }}
                 clearable
-                className="w-28 justify-center"
+                className="justify-center"
               />
+              {time && (
+                <DurationPicker
+                  value={duration}
+                  onChange={setDuration}
+                  open={durationOpen}
+                  onOpenChange={setDurationOpen}
+                  className="justify-center"
+                />
+              )}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="secondary" size="sm" className="h-8 rounded-full px-3 text-[10px] font-bold gap-1.5">
@@ -778,7 +824,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 <GmailImport onImport={importFromEmail} />
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <MicButton
                 onStart={startDictation}
                 onTranscript={applyDictation}

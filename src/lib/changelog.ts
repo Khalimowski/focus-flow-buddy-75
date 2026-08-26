@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.10.2";
+export const APP_VERSION = "1.11.1";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,28 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.11.1",
+    items: {
+      en: [
+        "Timeline view: when several tasks share the same time, their names are readable again instead of squeezed away by the buttons. Tap a narrow block to open it full width with its tick, edit and delete controls.",
+      ],
+      pl: [
+        "Widok osi czasu: gdy kilka zadań przypada na tę samą godzinę, ich nazwy znów są czytelne, zamiast być wyparte przez przyciski. Dotknij wąskiego bloku, aby otworzyć go na całą szerokość razem z zaznaczaniem, edycją i usuwaniem.",
+      ],
+    },
+  },
+  {
+    version: "1.11.0",
+    items: {
+      en: [
+        "Tasks with a time can now also get a duration — pick 15 minutes up to 2 hours right after setting the time. It sizes the block on the Timeline view and how long the matching calendar event runs.",
+      ],
+      pl: [
+        "Zadania z ustawioną godziną mogą teraz też mieć czas trwania — wybierz od 15 minut do 2 godzin zaraz po ustawieniu godziny. Wpływa on na rozmiar bloku w widoku osi czasu i długość powiązanego wydarzenia w kalendarzu.",
+      ],
+    },
+  },
   {
     version: "1.10.2",
     items: {
