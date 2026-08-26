@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
-import { Sparkles, Check, Mail, RotateCw } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Sparkles, Check, Copy, Globe, Mail, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
-import { isUnlockServiceConfigured, redeemWithUnlockService, usePremium } from "@/lib/premium";
+import {
+  isUnlockServiceConfigured,
+  redeemWithUnlockService,
+  usePremium,
+  WEB_APP_URL,
+} from "@/lib/premium";
 import {
   getPremiumProduct,
   isBillingSupported,
@@ -35,6 +40,77 @@ export function PremiumPerks({ withoutAds = false }: { withoutAds?: boolean } = 
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * The browser address itself, spelled out once premium is on — the email link
+ * only helps someone who can reach their inbox, and a user standing at another
+ * computer just needs to read or copy the address.
+ */
+export function PremiumWebAddress() {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Shown without the scheme and trailing slash — it's an address to read and
+  // type, not a link to click (the useful screen is usually the other device).
+  const display = WEB_APP_URL.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+
+  useEffect(
+    () => () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    },
+    [],
+  );
+
+  const copy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(WEB_APP_URL);
+      } else {
+        // Older Android WebViews: no async clipboard, fall back to execCommand.
+        const field = document.createElement("textarea");
+        field.value = WEB_APP_URL;
+        field.style.position = "fixed";
+        field.style.opacity = "0";
+        document.body.appendChild(field);
+        field.select();
+        document.execCommand("copy");
+        field.remove();
+      }
+      setCopied(true);
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+      resetTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error("[Premium] Copy failed", e);
+      notify({ title: t("premium"), body: t("premium_copy_failed"), kind: "info" });
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2">
+        <Globe className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="min-w-0 flex-1 select-all break-all font-mono text-xs">{display}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 shrink-0 px-2 text-[11px] text-muted-foreground"
+          onClick={copy}
+        >
+          {copied ? (
+            <>
+              <Check className="mr-1 size-3.5 text-mint" /> {t("premium_link_copied")}
+            </>
+          ) : (
+            <>
+              <Copy className="mr-1 size-3.5" /> {t("premium_copy_link")}
+            </>
+          )}
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">{t("premium_web_address_hint")}</p>
+    </div>
   );
 }
 
@@ -132,6 +208,7 @@ export function PremiumSection() {
         </div>
         <p className="text-xs text-muted-foreground">{t("premium_free_all_body")}</p>
         <PremiumPerks withoutAds />
+        <PremiumWebAddress />
         {isBillingSupported() && (
           <Button
             variant="ghost"
@@ -160,6 +237,7 @@ export function PremiumSection() {
             <> · {entitlement.verified ? t("premium_verified") : t("premium_unverified")}</>
           )}
         </p>
+        <PremiumWebAddress />
         <PremiumWebLink />
       </div>
     );

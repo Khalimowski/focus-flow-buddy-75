@@ -45,6 +45,17 @@ export const CHANGELOG: ChangelogEntry[] = [
     },
   },
   {
+    version: "1.10.2",
+    items: {
+      en: [
+        "Settings now shows the browser address for FlowDay under Premium, with a copy button — open flowday.day on any computer and sign in with the same account.",
+      ],
+      pl: [
+        "W Ustawieniach, w sekcji Premium, widać teraz adres FlowDay w przeglądarce wraz z przyciskiem kopiowania — otwórz flowday.day na dowolnym komputerze i zaloguj się tym samym kontem.",
+      ],
+    },
+  },
+  {
     version: "1.10.1",
     items: {
       en: [
