@@ -503,6 +503,10 @@ export const translations = {
     premium_check_again: "I've purchased — check again",
     premium_checking: "Checking your purchase…",
     premium_still_locked: "We still can't see a purchase on this account. Open FlowDay on your phone, make sure you're signed in with the same email, then try again.",
+    premium_web_address_hint: "Open this on any computer and sign in with the same account.",
+    premium_copy_link: "Copy",
+    premium_link_copied: "Copied",
+    premium_copy_failed: "Couldn't copy the address — you can select it and copy it by hand.",
     premium_email_link: "Email me the link",
     premium_email_sent: "Sent — check your inbox for the link.",
     premium_email_failed: "Couldn't send the email right now. We'll try again later.",
@@ -893,6 +897,12 @@ export const translations = {
     premium_check_again: "Mam już zakup — sprawdź ponownie",
     premium_checking: "Sprawdzamy Twój zakup…",
     premium_still_locked: "Nadal nie widzimy zakupu na tym koncie. Otwórz FlowDay w telefonie, sprawdź, czy to ten sam e-mail, i spróbuj ponownie.",
+    premium_web_address_hint:
+      "Otwórz ten adres na dowolnym komputerze i zaloguj się tym samym kontem.",
+    premium_copy_link: "Kopiuj",
+    premium_link_copied: "Skopiowano",
+    premium_copy_failed:
+      "Nie udało się skopiować adresu — możesz go zaznaczyć i skopiować ręcznie.",
     premium_email_link: "Wyślij mi link e-mailem",
     premium_email_sent: "Wysłane — sprawdź skrzynkę.",
     premium_email_failed: "Nie udało się wysłać e-maila. Spróbujemy ponownie później.",
