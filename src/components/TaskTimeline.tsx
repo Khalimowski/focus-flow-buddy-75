@@ -8,6 +8,7 @@ export type TimelineTask = {
   title: string;
   done: boolean;
   remindAt: string | null;
+  durationMin?: number;
   dueDate: string;
   createdAt: number;
   notified?: boolean;
@@ -34,7 +35,8 @@ type Props = {
   onDeleteTask: (id: string) => void;
 };
 
-const BLOCK_MIN = 44; // visual block height in px == minutes (1px = 1min)
+const BLOCK_MIN = 44; // visual block height in px == minutes (1px = 1min); also the default extent for a task with no set duration
+const MIN_BLOCK_PX = 20; // floor so a short duration still shows its content
 const SNAP = 5;
 const HOLD_MS = 320;
 const TOUCH_CANCEL_DIST = 10;
@@ -49,6 +51,12 @@ const itemMinutes = (item: TimelineItem): number | null => {
   const d = new Date(item.remindAt);
   return d.getHours() * 60 + d.getMinutes();
 };
+
+// How much of the timeline an item occupies, in minutes — a task's own
+// duration when it has one, otherwise the same fixed block every item used to
+// get.
+const itemExtent = (item: TimelineItem): number =>
+  item.kind === "task" && item.durationMin ? item.durationMin : BLOCK_MIN;
 
 const fmtMinutes = (min: number) => {
   const d = new Date();
@@ -135,7 +143,7 @@ export function TaskTimeline({
     let endHour = 22;
     for (const e of timed) {
       startHour = Math.min(startHour, Math.floor(e.minutes / 60));
-      endHour = Math.max(endHour, Math.ceil((e.minutes + BLOCK_MIN) / 60));
+      endHour = Math.max(endHour, Math.ceil((e.minutes + itemExtent(e.item)) / 60));
     }
     if (isToday) {
       startHour = Math.min(startHour, Math.floor(nowMin / 60));
@@ -160,15 +168,16 @@ export function TaskTimeline({
     };
 
     for (const e of timed) {
+      const extent = itemExtent(e.item);
       if (cluster.length && e.minutes >= clusterEnd) flush();
       let lane = laneEnds.findIndex((end) => e.minutes >= end);
       if (lane === -1) {
         lane = laneEnds.length;
         laneEnds.push(0);
       }
-      laneEnds[lane] = e.minutes + BLOCK_MIN;
+      laneEnds[lane] = e.minutes + extent;
       cluster.push({ ...e, lane });
-      clusterEnd = Math.max(clusterEnd, e.minutes + BLOCK_MIN);
+      clusterEnd = Math.max(clusterEnd, e.minutes + extent);
     }
     flush();
     return out;
@@ -447,7 +456,7 @@ export function TaskTimeline({
                   } ${item.done && !isDragged ? "opacity-60" : ""}`}
                   style={{
                     top,
-                    height: BLOCK_MIN,
+                    height: Math.max(MIN_BLOCK_PX, itemExtent(item)),
                     left: `${lane * width}%`,
                     width: `calc(${width}% - 2px)`,
                     touchAction: isDragged ? "none" : undefined,

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TaskCalendar, type CalendarTask } from "@/components/TaskCalendar";
 import { TimePicker } from "@/components/TimePicker";
+import { DurationPicker } from "@/components/DurationPicker";
 import { useTranslation } from "@/lib/i18n";
 
 type Props = {
@@ -21,7 +22,7 @@ type Props = {
   tasks: CalendarTask[];
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
-  onAddTask: (title: string, time: string, date: Date) => void;
+  onAddTask: (title: string, time: string, date: Date, durationMin?: number | null) => void;
   onToggleTask: (id: string) => void;
   onEditTask: (task: CalendarTask) => void;
   onDeleteTask: (id: string) => void;
@@ -48,12 +49,15 @@ export function TaskCalendarDialog({
 
   const [title, setTitle] = useState("");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState<number | null>(null);
+  const [durationOpen, setDurationOpen] = useState(false);
 
   const submit = () => {
     if (!title.trim()) return;
-    onAddTask(title, time, selectedDate);
+    onAddTask(title, time, selectedDate, duration);
     setTitle("");
     setTime("");
+    setDuration(null);
   };
 
   return (
@@ -94,10 +98,23 @@ export function TaskCalendarDialog({
               <div className="flex items-center gap-2">
                 <TimePicker
                   value={time}
-                  onChange={setTime}
+                  onChange={(v) => {
+                    setTime(v);
+                    if (v) setDurationOpen(true);
+                    else setDuration(null);
+                  }}
                   clearable
                   className="w-28 justify-center"
                 />
+                {time && (
+                  <DurationPicker
+                    value={duration}
+                    onChange={setDuration}
+                    open={durationOpen}
+                    onOpenChange={setDurationOpen}
+                    className="w-28 justify-center"
+                  />
+                )}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary/50 px-3 py-1.5 text-[10px] font-bold">
                   <CalendarIcon className="size-3" />
                   {isSameDay(selectedDate, new Date())

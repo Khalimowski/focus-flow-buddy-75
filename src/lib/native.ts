@@ -177,7 +177,7 @@ export async function nativeNotify(title: string, body?: string) {
 }
 
 // Schedule a one-shot notification at a future date
-export async function scheduleNativeAt(id: number, title: string, body: string, at: Date, syncCalendar = false, taskId?: string) {
+export async function scheduleNativeAt(id: number, title: string, body: string, at: Date, syncCalendar = false, taskId?: string, durationMin?: number) {
   if (!isNative()) return;
   try {
     await ensureChannel();
@@ -199,7 +199,7 @@ export async function scheduleNativeAt(id: number, title: string, body: string, 
     });
 
     if (syncCalendar) {
-      void addToCalendar(title, at);
+      void addToCalendar(title, at, durationMin);
     }
 
     console.log(`[Native] Notification ${id} scheduled.`);
@@ -314,7 +314,7 @@ export async function refreshEndOfDayPrompt() {
   }
 }
 
-async function addToCalendar(title: string, date: Date) {
+async function addToCalendar(title: string, date: Date, durationMin?: number) {
   if (!isNative()) return;
   try {
     const hasPerm = await ensureCalendarPermission();
@@ -338,7 +338,7 @@ async function addToCalendar(title: string, date: Date) {
 
     console.log(`[Sync] Selected calendar: "${bestCalendar.title}" (id: ${bestCalendar.id}, visible: ${bestCalendar.visible})`);
 
-    const endDate = new Date(date.getTime() + 15 * 60 * 1000);
+    const endDate = new Date(date.getTime() + (durationMin ?? 15) * 60 * 1000);
     console.log(`[Sync] Adding: "${title}" at ${date.toISOString()}`);
 
     const res = await CapacitorCalendar.createEvent({
@@ -532,7 +532,7 @@ export async function reconcileNotifications() {
     // Local day key — must match what the Reminders UI writes into lastFired.
     const today = dateKey();
 
-    type TaskLike = { id: string; title: string; done: boolean; remindAt?: string | null };
+    type TaskLike = { id: string; title: string; done: boolean; remindAt?: string | null; durationMin?: number };
     type ReminderLike = {
       id: string;
       label: string;
@@ -606,7 +606,7 @@ export async function reconcileNotifications() {
         // Same idiom as TaskList's add path: delete-by-title first (dedupe),
         // then schedule with the calendar flag.
         if (settings.calendarSync) await deleteFromCalendar(t.title);
-        await scheduleNativeAt(id, t.title, lang.reminder_title, new Date(t.remindAt!), settings.calendarSync, t.id);
+        await scheduleNativeAt(id, t.title, lang.reminder_title, new Date(t.remindAt!), settings.calendarSync, t.id, t.durationMin);
         added++;
       }
     }
@@ -829,7 +829,7 @@ export async function syncAllToCalendar(tasks: any[], reminders: any[]) {
   for (const task of tasks) {
     if (task.remindAt && !task.done) {
       await deleteFromCalendar(task.title);
-      await addToCalendar(task.title, new Date(task.remindAt));
+      await addToCalendar(task.title, new Date(task.remindAt), task.durationMin);
     }
   }
   for (const reminder of reminders) {

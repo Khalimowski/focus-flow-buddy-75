@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.10.1";
+export const APP_VERSION = "1.11.0";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.11.0",
+    items: {
+      en: [
+        "Tasks with a time can now also get a duration — pick 15 minutes up to 2 hours right after setting the time. It sizes the block on the Timeline view and how long the matching calendar event runs.",
+      ],
+      pl: [
+        "Zadania z ustawioną godziną mogą teraz też mieć czas trwania — wybierz od 15 minut do 2 godzin zaraz po ustawieniu godziny. Wpływa on na rozmiar bloku w widoku osi czasu i długość powiązanego wydarzenia w kalendarzu.",
+      ],
+    },
+  },
   {
     version: "1.10.1",
     items: {

@@ -23,6 +23,7 @@ export type CalendarTask = {
   title: string;
   done: boolean;
   remindAt: string | null;
+  durationMin?: number;
   dueDate: string; // YYYY-MM-DD
   createdAt: number;
   notified?: boolean;
