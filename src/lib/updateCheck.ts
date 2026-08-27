@@ -11,6 +11,12 @@ export type UpdateInfo = {
   versionCode: number;
   versionName: string;
   url: string;
+  /**
+   * Legacy: builds up to 1.11.3 render this in the banner, so it must stay a
+   * plain string in version.json — an object here would crash those clients
+   * (React refuses an object as a child). Newer builds ignore it and let the
+   * what's-new dialog do the talking, in the user's own language.
+   */
   notes?: string;
 };
 

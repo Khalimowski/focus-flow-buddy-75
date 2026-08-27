@@ -1,6 +1,6 @@
 {
-  "versionCode": 37,
-  "versionName": "1.7.1",
+  "versionCode": 71,
+  "versionName": "1.11.3",
   "url": "https://play.google.com/store/apps/details?id=com.khalimowski.focusflow",
-  "notes": "A calendar view with day, week and month scales, an end-of-day check-in for whatever is still unfinished, and a short note after each update telling you what changed."
+  "notes": "Setting a time on a task no longer pops open the duration picker. The duration chip is still there next to the time — tap it when you actually want one."
 }

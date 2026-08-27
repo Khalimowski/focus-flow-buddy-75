@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.11.3";
+export const APP_VERSION = "1.11.4";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,15 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.11.4",
+    items: {
+      en: ["The update banner now speaks Polish too, instead of always showing English."],
+      pl: [
+        "Baner o dostępnej aktualizacji mówi teraz również po polsku, zamiast zawsze po angielsku.",
+      ],
+    },
+  },
   {
     version: "1.11.3",
     items: {
