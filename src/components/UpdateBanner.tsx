@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, X } from "lucide-react";
 import { checkForUpdate, dismissUpdate, type UpdateInfo } from "@/lib/updateCheck";
+import { useTranslation } from "@/lib/i18n";
 
 export function UpdateBanner() {
+  const { t } = useTranslation();
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
@@ -23,10 +25,12 @@ export function UpdateBanner() {
             <Download className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">Update available — v{update.versionName}</div>
-            {update.notes && (
-              <div className="mt-0.5 truncate text-xs text-muted-foreground">{update.notes}</div>
-            )}
+            {/* version.json carries `notes` as one English string, so it stays out
+                of the banner. The what's-new dialog lists the changes in the user's
+                own language right after the install this banner is asking for. */}
+            <div className="text-sm font-medium">
+              {t("update_available").replace("{version}", update.versionName)}
+            </div>
           </div>
           <a
             href={update.url}
@@ -34,7 +38,7 @@ export function UpdateBanner() {
             rel="noopener noreferrer"
             className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
           >
-            Update
+            {t("update_action")}
           </a>
           <button
             onClick={() => {
