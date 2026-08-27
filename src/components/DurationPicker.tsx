@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 /**
  * Duration in minutes, chosen from a short list of presets. Paired with
  * TimePicker: a task's duration only means anything alongside a time, so
- * callers open this right after a time is committed.
+ * callers render the chip only once a time is set. Opening the dialog is
+ * always the user's move — it never pops up on its own.
  */
 
 const PRESETS = [15, 30, 45, 60, 90, 120];

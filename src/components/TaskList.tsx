@@ -585,8 +585,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 value={editTime}
                 onChange={(v) => {
                   setEditTime(v);
-                  if (v) setEditDurationOpen(true);
-                  else setEditDuration(null);
+                  if (!v) setEditDuration(null);
                 }}
                 clearable
                 size="sm"
@@ -787,8 +786,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                 value={time}
                 onChange={(v) => {
                   setTime(v);
-                  if (v) setDurationOpen(true);
-                  else setDuration(null);
+                  if (!v) setDuration(null);
                 }}
                 clearable
                 className="justify-center"
