@@ -30,6 +30,20 @@ equal to `versionName` — that constant is what the Settings footer shows and
 what the release-notes popup compares against. This keeps the next Play upload
 from being rejected over a stale version code.
 
+**`version.json` at the repo root is the fourth file and is easy to forget** —
+its `versionCode`/`versionName` must match `build.gradle` too. It is not
+bundled: `src/lib/updateCheck.ts` fetches it live from
+`raw.githubusercontent.com/…/main/version.json` and shows the "update
+available" banner only when its `versionCode` is **greater** than the installed
+build. So a stale file never fails loudly — it silently disables the banner and
+users are never told a new version exists. It sat at `versionCode` 37 (1.7.1)
+while releases ran to 71, so nobody was prompted to update for 34 releases.
+
+Point it at a build that is **actually live on Play**, and push it only once the
+rollout is out: it is the only one of the four files that reaches users without
+a new APK, so running ahead of Play sends people to a store page with nothing to
+install.
+
 While you're in `changelog.ts`, add a `CHANGELOG` entry at the top for the new
 version, in **both `en` and `pl`**, describing the change in user-facing terms
 (skip anything invisible to them — refactors, build fixes). That entry is the
