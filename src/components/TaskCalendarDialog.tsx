@@ -102,8 +102,7 @@ export function TaskCalendarDialog({
                   value={time}
                   onChange={(v) => {
                     setTime(v);
-                    if (v) setDurationOpen(true);
-                    else setDuration(null);
+                    if (!v) setDuration(null);
                   }}
                   clearable
                   className="justify-center"

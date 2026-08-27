@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.11.1";
+export const APP_VERSION = "1.11.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.11.2",
+    items: {
+      en: [
+        "Setting a time on a task no longer pops open the duration picker. The duration chip is still there next to the time — tap it when you actually want one.",
+      ],
+      pl: [
+        "Ustawienie godziny zadania nie otwiera już automatycznie okna wyboru czasu trwania. Przycisk czasu trwania nadal jest obok godziny — dotknij go, gdy chcesz go ustawić.",
+      ],
+    },
+  },
   {
     version: "1.11.1",
     items: {
