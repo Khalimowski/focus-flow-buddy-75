@@ -30,25 +30,26 @@ equal to `versionName` — that constant is what the Settings footer shows and
 what the release-notes popup compares against. This keeps the next Play upload
 from being rejected over a stale version code.
 
-**`version.json` at the repo root is the fourth file and is easy to forget** —
-its `versionCode`/`versionName` must match `build.gradle` too. It is not
-bundled: `src/lib/updateCheck.ts` fetches it live from
-`raw.githubusercontent.com/…/main/version.json` and shows the "update
-available" banner only when its `versionCode` is **greater** than the installed
-build. So a stale file never fails loudly — it silently disables the banner and
-users are never told a new version exists. It sat at `versionCode` 37 (1.7.1)
-while releases ran to 71, so nobody was prompted to update for 34 releases.
-
-Point it at a build that is **actually live on Play**, and push it only once the
-rollout is out: it is the only one of the four files that reaches users without
-a new APK, so running ahead of Play sends people to a store page with nothing to
-install.
-
 While you're in `changelog.ts`, add a `CHANGELOG` entry at the top for the new
 version, in **both `en` and `pl`**, describing the change in user-facing terms
 (skip anything invisible to them — refactors, build fixes). That entry is the
 "what's new" dialog users see on their first launch after updating; a version
 with no entry shows nothing.
+
+**`version.json` at the repo root is a fourth version file, and it is the one
+that does NOT get bumped with the other three.** It must *trail* them, naming
+the newest build actually live on Play: it is the only one of the four that
+reaches users without a new APK, so running it ahead of the rollout points
+people at a store page with nothing to install. Bump it in its own commit once
+the release is out — expect it to sit one version behind `build.gradle`
+whenever a release is in flight.
+
+It is not bundled: `src/lib/updateCheck.ts` fetches it live from
+`raw.githubusercontent.com/…/main/version.json` and shows the "update
+available" banner only when its `versionCode` is **greater** than the installed
+build. So a stale file never fails loudly — it silently disables the banner and
+users are never told a new version exists. It sat at `versionCode` 37 (1.7.1)
+while releases ran to 71, so nobody was prompted to update for 34 releases.
 
 ## Git rules (Lovable-connected repo)
 
