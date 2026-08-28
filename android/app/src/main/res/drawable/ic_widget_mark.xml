@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget masthead mark: the same bust as ic_stat_icon, filled rather than
+     outlined, and without the check badge.
+
+     The widget header renders this at 13dp — 39px on a 3x screen. At that size
+     the notification icon's 1.85dp outline closes up into a blur and its badge
+     shrinks to an ambiguous dot, so this is a solid silhouette instead. The
+     badge is dropped because the mark sits directly beside the FLOWDAY
+     wordmark, which already says whose widget this is.
+
+     The group scales the head up about its own centre to use the padding the
+     badge would otherwise have occupied. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <group
+        android:pivotX="12.7"
+        android:pivotY="11.55"
+        android:scaleX="1.12"
+        android:scaleY="1.12"
+        android:translateX="-0.7"
+        android:translateY="0.45">
+        <path
+            android:pathData="M 5.8 12.7 C 5.0 10.9, 5.2 8.8, 6.4 7.3 C 6.5 5.9, 7.9 4.7, 9.3 4.6 C 9.7 3.4, 11.1 2.7, 12.4 3.2 C 13.3 2.2, 15.0 2.3, 15.8 3.4 C 17.0 3.7, 18.0 4.7, 18.0 6.2 C 17.7 6.6, 17.5 6.9, 17.7 7.3 L 20.3 10.5 C 20.7 11.1, 20.4 11.6, 19.7 11.6 L 18.5 11.6 C 17.9 11.8, 17.9 12.3, 18.3 12.6 C 18.7 13.0, 18.6 13.8, 18.0 14.2 C 17.6 14.7, 17.1 15.0, 16.6 15.2 C 16.2 15.4, 15.5 15.5, 14.9 15.5 L 14.9 17.2 C 15.1 18.3, 16.6 19.1, 18.4 20.6 L 7.8 20.6 C 8.2 18.6, 9.4 17.6, 9.6 15.4 C 8.0 15.2, 6.5 14.3, 5.8 12.7 Z"
+            android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

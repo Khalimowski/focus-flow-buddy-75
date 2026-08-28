@@ -1,23 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: the check badge from the brand mark, reduced to
-     an outline. Android throws away colour here and tints whatever is opaque,
-     so this has to be white-on-transparent and simple enough to survive 24dp —
-     the full bust from ic_launcher_foreground would be mush at this size. -->
+<!-- Notification small icon: the brand mark's classical bust in profile, drawn
+     as an outline, with the check badge from the app icon beside it. Android
+     throws away colour here and tints whatever is opaque, so this has to be
+     white-on-transparent.
+
+     Two things are load-bearing at this size. The brow notch before the nose:
+     without it the forehead runs straight into the nose as one slope and the
+     profile reads as a plain round head. And the badge being a solid disc with
+     the check knocked out rather than more line work — that contrast is what
+     keeps it legible once the head is hollow.
+
+     24dp is 72px on a 3x screen, which is what most devices actually render.
+     The widget masthead needs the same mark at 13dp, where an outline is too
+     fine to survive; that one is ic_widget_mark.xml, filled. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
 
+    <!-- Head: curls over the crown, brow notch, straight nose, bust cut. -->
     <path
-        android:pathData="M 12 2.9 a 9.1 9.1 0 1 0 0 18.2 a 9.1 9.1 0 1 0 0 -18.2"
+        android:pathData="M 5.8 12.7 C 5.0 10.9, 5.2 8.8, 6.4 7.3 C 6.5 5.9, 7.9 4.7, 9.3 4.6 C 9.7 3.4, 11.1 2.7, 12.4 3.2 C 13.3 2.2, 15.0 2.3, 15.8 3.4 C 17.0 3.7, 18.0 4.7, 18.0 6.2 C 17.7 6.6, 17.5 6.9, 17.7 7.3 L 20.3 10.5 C 20.7 11.1, 20.4 11.6, 19.7 11.6 L 18.5 11.6 C 17.9 11.8, 17.9 12.3, 18.3 12.6 C 18.7 13.0, 18.6 13.8, 18.0 14.2 C 17.6 14.7, 17.1 15.0, 16.6 15.2 C 16.2 15.4, 15.5 15.5, 14.9 15.5 L 14.9 17.2 C 15.1 18.3, 16.6 19.1, 18.4 20.6 L 7.8 20.6 C 8.2 18.6, 9.4 17.6, 9.6 15.4 C 8.0 15.2, 6.5 14.3, 5.8 12.7 Z"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.9" />
-
-    <path
-        android:pathData="M 7.7 12.1 L 10.7 15.1 L 16.4 8.9"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.4"
+        android:strokeWidth="1.85"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
+
+    <!-- Check badge: disc with the tick knocked out via evenOdd. -->
+    <path
+        android:pathData="M 4.4 1.45 a 2.75 2.75 0 1 0 0 5.5 a 2.75 2.75 0 1 0 0 -5.5 Z M 3.06 3.92 L 2.77 4.22 L 3.94 5.39 L 6.03 3.30 L 5.74 3.01 L 3.94 4.80 Z"
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd" />
 </vector>

@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.11.5";
+export const APP_VERSION = "1.11.6";
 
 export type ChangelogEntry = {
   version: string;

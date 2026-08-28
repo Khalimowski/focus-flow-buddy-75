@@ -34,7 +34,7 @@
             android:id="@+id/widget_logo"
             android:layout_width="13dp"
             android:layout_height="13dp"
-            android:src="@drawable/ic_stat_icon"
+            android:src="@drawable/ic_widget_mark"
             android:contentDescription="@string/app_name" />
 
         <TextView
