@@ -106,11 +106,13 @@ the client.
    builds — that's the usual cause of "Product not found in Play Console".
 3. Add testers under **License testing** so they can buy without being charged.
 
-Billing Library is pinned to **7.1.1** in `android/gradle/libs.versions.toml`.
-Play enforces a minimum library version on a rolling deadline; when that moves
-past 7.x, bumping to 8.x also requires updating the
-`queryProductDetailsAsync` callback in `BillingPlugin.java` (8.0 changed it to
-return a `QueryProductDetailsResult` instead of a `List<ProductDetails>`).
+Billing Library is pinned to **9.1.0** in `android/gradle/libs.versions.toml`.
+Play enforces a minimum library version on a rolling deadline — 8.0.0+ from
+31 Aug 2026, which is why this moved off 7.1.1. Everything `BillingPlugin.java`
+uses has the same shape in 8.x and 9.x, so 9.1.0 also covers the next deadline.
+The one API that changed is the `queryProductDetailsAsync` callback: since 8.0
+its second argument is a `QueryProductDetailsResult` (call
+`getProductDetailsList()`) rather than a bare `List<ProductDetails>`.
 
 ## Verification and the welcome email
 
