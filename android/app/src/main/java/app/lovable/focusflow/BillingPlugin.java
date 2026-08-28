@@ -15,7 +15,9 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
+import com.android.billingclient.api.UnfetchedProduct;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -188,20 +190,40 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                 .setProductList(Collections.singletonList(product))
                 .build();
 
-        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
+        // Billing Library 8 changed this callback: the second argument is a
+        // QueryProductDetailsResult rather than a bare List<ProductDetails>.
+        billingClient.queryProductDetailsAsync(params, (billingResult, queryResult) -> {
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 callback.onError("Product query failed: " + billingResult.getDebugMessage());
                 return;
             }
+            List<ProductDetails> productDetailsList = queryResult.getProductDetailsList();
             if (productDetailsList == null || productDetailsList.isEmpty()) {
                 // Almost always a configuration problem: the product id isn't
                 // active in Play Console, or this build isn't signed with the
                 // uploaded key / isn't on a test track.
-                callback.onError("Product not found in Play Console: " + productId);
+                callback.onError("Product not found in Play Console: " + productId
+                        + unfetchedDetail(queryResult));
                 return;
             }
             callback.onProduct(productDetailsList.get(0));
         });
+    }
+
+    /**
+     * Library 8+ also reports the products Play refused to return, each with a
+     * status code for why. Appending it keeps the "not found" message from
+     * hiding the difference between a wrong id and a product Play won't offer
+     * to this account.
+     */
+    private static String unfetchedDetail(QueryProductDetailsResult queryResult) {
+        List<UnfetchedProduct> unfetched = queryResult.getUnfetchedProductList();
+        if (unfetched == null || unfetched.isEmpty()) return "";
+        StringBuilder detail = new StringBuilder(" (Play status");
+        for (UnfetchedProduct product : unfetched) {
+            detail.append(' ').append(product.getStatusCode());
+        }
+        return detail.append(')').toString();
     }
 
     /** options: { productId } -> resolved later from onPurchasesUpdated */
