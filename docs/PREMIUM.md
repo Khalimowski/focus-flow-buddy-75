@@ -1,12 +1,34 @@
 # FlowDay Premium
 
-One-time Play purchase that unlocks two things:
+Unlocks two things:
 
 - **the browser version** — the web build refuses to run without it
 - **no AdMob banner** in the Android app
 
 Android itself stays free and ad-supported. That's deliberate: the phone app is
 the shop window, and it's the only place Play Billing can run.
+
+## Two ways to pay
+
+| Plan | Price | Play product | Play type |
+| --- | --- | --- | --- |
+| Monthly | 14,99 zł / month | `focus_flow_premium_monthly` (base plan `monthly`) | subscription |
+| One-off | 150 zł once | `focus_flow_premium` | one-time product |
+
+They unlock **exactly the same things**. No feature anywhere asks which plan is
+running — every gate goes through `isPremium()` / `usePremium()`, and the plan
+is recorded only so Settings can say what the customer is on and link a
+subscriber to Play to manage it.
+
+The prices in `PLAN_LIST_PRICE` (`premium.ts`) are what the Play products are
+configured with. Play's own localized price wins wherever it is available; the
+constants are the fallback for the browser build, which has no Play Billing, and
+for the moment before Play answers on Android. **Change one and change the
+other**, or the app quotes a price that checkout then contradicts.
+
+150 zł is a little under ten months of the subscription, which is why the
+one-off carries a plain "best value" note. That is the only steer between the
+two — no countdown, no crossed-out price.
 
 ## Early access: premium is currently free for everyone
 
@@ -37,6 +59,7 @@ returns when it's off.
 
 ```
 Android: Play checkout -> BillingPlugin.java -> billing.ts -> grantPremium()
+             (either plan; same entitlement)
              writes ff.premium.v1 in localStorage
                         |
              sync.ts pushes the key to user_data (Neon)
@@ -98,13 +121,41 @@ the client.
 
 ## Play Console setup
 
+Both products have to exist and be **active**, or the plan they back shows the
+fallback list price and its button fails at checkout with "Product not found in
+Play Console".
+
 1. **Monetize → In-app products** → create a product with id
    `focus_flow_premium` (must match `PREMIUM_PRODUCT_ID` in `premium.ts`),
-   type *one-time*, and **activate** it.
-2. Upload a build signed with the upload key to at least an internal test
+   type *one-time*, price **150 zł**, and **activate** it.
+2. **Monetize → Subscriptions** → create a subscription with id
+   `focus_flow_premium_monthly` (`PREMIUM_SUBSCRIPTION_ID`), then add a base
+   plan with id `monthly` (`PREMIUM_BASE_PLAN_ID`): **auto-renewing**, monthly,
+   **14,99 zł**. Activate both the subscription and the base plan — a
+   subscription with no active base plan returns no offers, and the app refuses
+   to open checkout rather than guessing one.
+   The base plan must be *auto-renewing*, not prepaid: `BillingPlugin.load()`
+   enables pending purchases for one-time products only, and a prepaid plan
+   additionally needs `enablePrepaidPlans()`.
+3. Upload a build signed with the upload key to at least an internal test
    track. `queryProductDetailsAsync` returns nothing for unsigned/unpublished
    builds — that's the usual cause of "Product not found in Play Console".
-3. Add testers under **License testing** so they can buy without being charged.
+4. Add testers under **License testing** so they can buy without being charged.
+   Test subscriptions renew on an accelerated clock (a monthly plan renews
+   every few minutes), which is how to exercise renewal and expiry.
+
+### What the app does with each
+
+`BillingPlugin.java` carries the product *type* on every call, because Play
+keeps the two apart everywhere: separate `queryProductDetails` queries,
+separate `queryPurchases` queries (`restore()` asks for both and merges), and
+subscriptions additionally need an **offer token** naming the base plan being
+bought. The token is resolved inside the plugin from the same query that
+launches checkout — it is only valid for the `ProductDetails` it came from, so
+it is deliberately not passed in from JS.
+
+A customer holding both keeps the one-time entitlement: `restorePremium()`
+prefers it, because it is the one that never needs re-checking.
 
 Billing Library is pinned to **9.1.0** in `android/gradle/libs.versions.toml`.
 Play enforces a minimum library version on a rolling deadline — 8.0.0+ from
@@ -113,6 +164,36 @@ uses has the same shape in 8.x and 9.x, so 9.1.0 also covers the next deadline.
 The one API that changed is the `queryProductDetailsAsync` callback: since 8.0
 its second argument is a `QueryProductDetailsResult` (call
 `getProductDetailsList()`) rather than a bare `List<ProductDetails>`.
+
+## Subscription lifetime
+
+A one-time purchase is settled once and never changes. A subscription does, and
+the client cannot see that on its own — Play's on-device `queryPurchases` says
+only "this is currently valid", with no expiry attached. So:
+
+- The unlock service reports `expiresAt` and `autoRenewing` from
+  `purchases.subscriptionsv2`, and the entitlement stores both.
+- Those fields are **informational, never a gate**. A date in the past does not
+  lock anyone out: a renewal we haven't heard about yet is indistinguishable
+  from a lapse, and this codebase's standing rule is that a paying customer is
+  never locked out by our uncertainty.
+- What *does* end access is the service answering `revoked`, exactly as it does
+  for a refund. `syncEntitlementWithService()` re-asks once the recorded period
+  is inside its last day, which is what turns a real cancellation into a
+  tombstone that syncs to every device.
+- With no `VITE_PREMIUM_UNLOCK_URL` configured there is no `expiresAt` and no
+  `revoked` answer, so subscriptions are trusted client-side for as long as
+  they sit in local storage. That is the same trade already made for one-time
+  purchases without the service, and it's why the service is worth deploying
+  once subscriptions are live.
+- A subscription keeps its purchase token across renewals, so `grantPremium()`
+  treats a re-grant as the same purchase. It drops a recorded expiry that has
+  already passed: Play only hands back a subscription it still considers live,
+  so being re-granted with a stale date means the period rolled over.
+
+Settings shows a subscriber "Renews on …" (or "Ends on …" once auto-renew is
+off) and a link to Play, which is where cancelling and changing plans happens.
+Play policy requires that link; the app never cancels on a customer's behalf.
 
 ## Verification and the welcome email
 
@@ -167,6 +248,9 @@ select u.email,
        u.id                             as user_id,
        coalesce((ud.value->>'active')::boolean, false) as premium,
        ud.value->>'source'              as source,
+       -- Written since subscriptions arrived; older rows are all one-time.
+       coalesce(ud.value->>'plan', 'lifetime') as plan,
+       ud.value->>'expiresAt'           as expires_at,
        (ud.value->>'verified')::boolean as verified,
        ud.value->>'purchasedAt'         as purchased_at,
        ud.updated_at
@@ -212,7 +296,7 @@ it without touching the database:
 ```js
 localStorage.setItem('ff.premium.v1', JSON.stringify({
   active: true, source: 'manual', productId: 'focus_flow_premium',
-  orderId: null, purchasedAt: new Date().toISOString(),
+  plan: 'lifetime', orderId: null, purchasedAt: new Date().toISOString(),
   verified: true, emailSent: true,
 }));
 location.reload();
@@ -236,11 +320,19 @@ of both the web bundle and the APK.
 
 ## Testing checklist
 
-- [ ] Android, non-premium: banner shows, Settings offers the price from Play
-- [ ] Android, buy: Play sheet completes, banner disappears without a restart
-- [ ] Android, reinstall: "Restore purchase" re-unlocks
+- [ ] Android, non-premium: banner shows, Settings offers both plans with the
+      prices coming from Play (not the fallback constants)
+- [ ] Android, buy monthly: Play sheet completes, banner disappears without a
+      restart, Settings says "Monthly plan"
+- [ ] Android, buy one-off: same, and Settings says "One-off purchase"
+- [ ] Android, subscriber: "Manage subscription" opens the Play subscription page
+- [ ] Android, reinstall: "Restore purchase" re-unlocks, on either plan
 - [ ] Browser, non-premium: `PremiumGate` blocks the app
 - [ ] Browser, same account after a phone purchase: unlocks within ~15s, or
       immediately via "Check again"
 - [ ] Browser, signed out: `AuthGate` shows with no "continue as guest" option
 - [ ] Play refund → unlock service returns `revoked` → access is withdrawn
+- [ ] Subscription cancelled → Settings switches to "Ends on", access survives
+      to the end of the paid period
+- [ ] Subscription expired (test track's accelerated clock) → next launch
+      re-checks, unlock service returns `revoked`, access is withdrawn

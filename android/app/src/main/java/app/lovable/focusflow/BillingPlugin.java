@@ -26,11 +26,18 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Google Play Billing bridge for the premium unlock (ad-free + browser access).
+ *
+ * Premium sells two ways, and this plugin has to speak to Play differently for
+ * each: the one-time unlock is an INAPP product, the monthly plan is a SUBS
+ * product. Every entry point therefore carries a productType, and subscriptions
+ * additionally need an *offer token* (which base plan / offer is being bought)
+ * that INAPP purchases have no equivalent of.
  *
  * The JS side (src/lib/billing.ts) treats this as request/response, but Play's
  * purchase result arrives asynchronously on PurchasesUpdatedListener rather
@@ -77,6 +84,10 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
 
     @Override
     public void load() {
+        // Pending purchases are enabled for one-time products only. The monthly
+        // plan is auto-renewing, which needs nothing here; a *prepaid* base plan
+        // would additionally need enablePrepaidPlans(), so keep the base plan in
+        // Play Console auto-renewing or this will refuse to launch checkout.
         billingClient = BillingClient.newBuilder(getContext())
                 .setListener(this)
                 .enablePendingPurchases(
@@ -137,7 +148,22 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
         });
     }
 
-    /** options: { productId } -> { productId, title, description, price } */
+    /**
+     * Normalizes the productType the JS side asks for. Anything that isn't
+     * explicitly "subs" is treated as a one-time product, which keeps a caller
+     * that omits the field behaving exactly as it did before subscriptions.
+     */
+    private static String productType(PluginCall call) {
+        String requested = call.getString("productType");
+        return BillingClient.ProductType.SUBS.equals(requested)
+                ? BillingClient.ProductType.SUBS
+                : BillingClient.ProductType.INAPP;
+    }
+
+    /**
+     * options: { productId, productType?, basePlanId? }
+     * -> { productId, productType, title, description, price, billingPeriod }
+     */
     @PluginMethod
     public void getProduct(final PluginCall call) {
         final String productId = call.getString("productId");
@@ -145,19 +171,31 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
             call.reject("productId is required");
             return;
         }
+        final String type = productType(call);
+        final String basePlanId = call.getString("basePlanId");
         withConnection(new ConnectionCallback() {
             @Override
             public void onReady() {
-                queryProduct(productId, new ProductCallback() {
+                queryProduct(productId, type, new ProductCallback() {
                     @Override
                     public void onProduct(ProductDetails details) {
                         JSObject ret = new JSObject();
                         ret.put("productId", details.getProductId());
+                        ret.put("productType", type);
                         ret.put("title", details.getTitle());
                         ret.put("description", details.getDescription());
-                        ProductDetails.OneTimePurchaseOfferDetails offer =
-                                details.getOneTimePurchaseOfferDetails();
-                        ret.put("price", offer != null ? offer.getFormattedPrice() : "");
+                        if (BillingClient.ProductType.SUBS.equals(type)) {
+                            ProductDetails.SubscriptionOfferDetails offer =
+                                    selectOffer(details, basePlanId);
+                            ProductDetails.PricingPhase phase = recurringPhase(offer);
+                            ret.put("price", phase != null ? phase.getFormattedPrice() : "");
+                            ret.put("billingPeriod", phase != null ? phase.getBillingPeriod() : "");
+                        } else {
+                            ProductDetails.OneTimePurchaseOfferDetails offer =
+                                    details.getOneTimePurchaseOfferDetails();
+                            ret.put("price", offer != null ? offer.getFormattedPrice() : "");
+                            ret.put("billingPeriod", "");
+                        }
                         call.resolve(ret);
                     }
 
@@ -175,16 +213,49 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
         });
     }
 
+    /**
+     * The offer to buy and to quote a price from. Prefers the requested base
+     * plan when the caller named one; otherwise takes the first Play returned.
+     * Returns null when the product carries no offers at all, which Play only
+     * does for a subscription with no active base plan.
+     */
+    private static ProductDetails.SubscriptionOfferDetails selectOffer(
+            ProductDetails details, String basePlanId) {
+        List<ProductDetails.SubscriptionOfferDetails> offers =
+                details.getSubscriptionOfferDetails();
+        if (offers == null || offers.isEmpty()) return null;
+        if (basePlanId != null) {
+            for (ProductDetails.SubscriptionOfferDetails offer : offers) {
+                if (basePlanId.equals(offer.getBasePlanId())) return offer;
+            }
+        }
+        return offers.get(0);
+    }
+
+    /**
+     * The phase whose price the customer keeps paying. An offer with a free
+     * trial or an intro price lists those phases first, so the *last* one is
+     * the standing rate — the honest number to show next to "per month".
+     */
+    private static ProductDetails.PricingPhase recurringPhase(
+            ProductDetails.SubscriptionOfferDetails offer) {
+        if (offer == null) return null;
+        List<ProductDetails.PricingPhase> phases =
+                offer.getPricingPhases().getPricingPhaseList();
+        if (phases == null || phases.isEmpty()) return null;
+        return phases.get(phases.size() - 1);
+    }
+
     private interface ProductCallback {
         void onProduct(ProductDetails details);
 
         void onError(String message);
     }
 
-    private void queryProduct(String productId, final ProductCallback callback) {
+    private void queryProduct(String productId, String type, final ProductCallback callback) {
         QueryProductDetailsParams.Product product = QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(productId)
-                .setProductType(BillingClient.ProductType.INAPP)
+                .setProductType(type)
                 .build();
         QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
                 .setProductList(Collections.singletonList(product))
@@ -203,7 +274,7 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                 // active in Play Console, or this build isn't signed with the
                 // uploaded key / isn't on a test track.
                 callback.onError("Product not found in Play Console: " + productId
-                        + unfetchedDetail(queryResult));
+                        + " (" + type + ")" + unfetchedDetail(queryResult));
                 return;
             }
             callback.onProduct(productDetailsList.get(0));
@@ -226,7 +297,10 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
         return detail.append(')').toString();
     }
 
-    /** options: { productId } -> resolved later from onPurchasesUpdated */
+    /**
+     * options: { productId, productType?, basePlanId? }
+     * -> resolved later from onPurchasesUpdated
+     */
     @PluginMethod
     public void purchase(final PluginCall call) {
         final String productId = call.getString("productId");
@@ -234,6 +308,8 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
             call.reject("productId is required");
             return;
         }
+        final String type = productType(call);
+        final String basePlanId = call.getString("basePlanId");
         final Activity activity = getActivity();
         if (activity == null) {
             call.reject("No activity available to host the purchase flow");
@@ -251,16 +327,28 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
         withConnection(new ConnectionCallback() {
             @Override
             public void onReady() {
-                queryProduct(productId, new ProductCallback() {
+                queryProduct(productId, type, new ProductCallback() {
                     @Override
                     public void onProduct(ProductDetails details) {
-                        BillingFlowParams.ProductDetailsParams productParams =
+                        BillingFlowParams.ProductDetailsParams.Builder productBuilder =
                                 BillingFlowParams.ProductDetailsParams.newBuilder()
-                                        .setProductDetails(details)
-                                        .build();
+                                        .setProductDetails(details);
+                        if (BillingClient.ProductType.SUBS.equals(type)) {
+                            // Subscriptions must say which offer is being bought,
+                            // and the token is only valid for the details object
+                            // it came from — so it is resolved from this query
+                            // rather than passed in from JS.
+                            ProductDetails.SubscriptionOfferDetails offer =
+                                    selectOffer(details, basePlanId);
+                            if (offer == null) {
+                                failPurchase(call, "No base plan is active for " + productId);
+                                return;
+                            }
+                            productBuilder.setOfferToken(offer.getOfferToken());
+                        }
                         BillingFlowParams flowParams = BillingFlowParams.newBuilder()
                                 .setProductDetailsParamsList(
-                                        Collections.singletonList(productParams))
+                                        Collections.singletonList(productBuilder.build()))
                                 .build();
 
                         // The call is already parked (and kept alive): Play can
@@ -329,32 +417,55 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
             return;
         }
 
+        JSArray array = new JSArray();
+        appendPurchases(array, purchases, productType(call));
         JSObject ret = new JSObject();
-        ret.put("purchases", purchasesToArray(purchases));
+        ret.put("purchases", array);
         ret.put("userCancelled", false);
         call.resolve(ret);
     }
 
-    /** -> { purchases: [...] } for everything Play currently attributes to this account. */
+    /**
+     * -> { purchases: [...] } for everything Play currently attributes to this
+     * account, across both product types.
+     *
+     * Play keeps one-time purchases and subscriptions in separate queries, and
+     * a customer may hold either. Both are asked for and the results merged, so
+     * the JS side sees one list and doesn't have to know how Play splits them.
+     * A subscription only appears here while Play still considers it live
+     * (including its grace period), which is what makes an ended plan quietly
+     * drop out of the list.
+     */
     @PluginMethod
     public void restore(final PluginCall call) {
         withConnection(new ConnectionCallback() {
             @Override
             public void onReady() {
-                QueryPurchasesParams params = QueryPurchasesParams.newBuilder()
-                        .setProductType(BillingClient.ProductType.INAPP)
-                        .build();
-                billingClient.queryPurchasesAsync(params, (billingResult, purchases) -> {
-                    if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
-                        call.reject("Purchase query failed: " + billingResult.getDebugMessage());
-                        return;
+                queryPurchases(BillingClient.ProductType.INAPP, new PurchasesCallback() {
+                    @Override
+                    public void onPurchases(List<Purchase> oneTime) {
+                        queryPurchases(BillingClient.ProductType.SUBS, new PurchasesCallback() {
+                            @Override
+                            public void onPurchases(List<Purchase> subscriptions) {
+                                JSArray array = new JSArray();
+                                appendPurchases(array, oneTime, BillingClient.ProductType.INAPP);
+                                appendPurchases(array, subscriptions, BillingClient.ProductType.SUBS);
+                                JSObject ret = new JSObject();
+                                ret.put("purchases", array);
+                                call.resolve(ret);
+                            }
+
+                            @Override
+                            public void onError(String message) {
+                                call.reject(message);
+                            }
+                        });
                     }
-                    for (Purchase purchase : purchases) {
-                        acknowledgeIfNeeded(purchase);
+
+                    @Override
+                    public void onError(String message) {
+                        call.reject(message);
                     }
-                    JSObject ret = new JSObject();
-                    ret.put("purchases", purchasesToArray(purchases));
-                    call.resolve(ret);
                 });
             }
 
@@ -362,6 +473,29 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
             public void onError(String message) {
                 call.reject(message);
             }
+        });
+    }
+
+    private interface PurchasesCallback {
+        void onPurchases(List<Purchase> purchases);
+
+        void onError(String message);
+    }
+
+    /** One product type's purchases, acknowledged on the way through. */
+    private void queryPurchases(String type, final PurchasesCallback callback) {
+        QueryPurchasesParams params = QueryPurchasesParams.newBuilder()
+                .setProductType(type)
+                .build();
+        billingClient.queryPurchasesAsync(params, (billingResult, purchases) -> {
+            if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+                callback.onError("Purchase query failed: " + billingResult.getDebugMessage());
+                return;
+            }
+            for (Purchase purchase : purchases) {
+                acknowledgeIfNeeded(purchase);
+            }
+            callback.onPurchases(purchases != null ? purchases : new ArrayList<>());
         });
     }
 
@@ -379,15 +513,21 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
         });
     }
 
-    private JSArray purchasesToArray(List<Purchase> purchases) {
-        JSArray array = new JSArray();
-        if (purchases == null) return array;
+    /**
+     * Appends Play's purchases to `array`. `type` is the product type they were
+     * queried under, or null when the caller can't know it (the purchase
+     * listener hears about both); the JS side keys the entitlement off the
+     * product id either way, so it stays optional.
+     */
+    private void appendPurchases(JSArray array, List<Purchase> purchases, String type) {
+        if (purchases == null) return;
         for (Purchase purchase : purchases) {
             // A purchase can cover several products; the entitlement is keyed
             // by product id on the JS side, so emit one entry per product.
             for (String productId : purchase.getProducts()) {
                 JSObject item = new JSObject();
                 item.put("productId", productId);
+                if (type != null) item.put("productType", type);
                 item.put("purchaseToken", purchase.getPurchaseToken());
                 item.put("orderId", purchase.getOrderId());
                 item.put("state", purchase.getPurchaseState());
@@ -395,7 +535,6 @@ public class BillingPlugin extends Plugin implements PurchasesUpdatedListener {
                 array.put(item);
             }
         }
-        return array;
     }
 
     @Override

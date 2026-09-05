@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.11.6";
+export const APP_VERSION = "1.12.0";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.12.0",
+    items: {
+      en: [
+        "Premium now has two ways to pay: 14,99 zł a month, or 150 zł once and it's yours for good. Both unlock the same thing — the browser version, voice input, Insights and no ads.",
+        "Settings shows which plan you're on, and subscribers get a link straight to Google Play to change or cancel it.",
+      ],
+      pl: [
+        "Premium ma teraz dwa sposoby płatności: 14,99 zł miesięcznie albo 150 zł jednorazowo i zostaje na zawsze. Oba odblokowują to samo — wersję w przeglądarce, dyktowanie, Podsumowania i brak reklam.",
+        "W Ustawieniach widzisz, który plan masz włączony, a przy subskrypcji znajdziesz link prosto do Google Play, żeby ją zmienić albo anulować.",
+      ],
+    },
+  },
   {
     version: "1.11.4",
     items: {

@@ -4,6 +4,11 @@
 //   - the browser version of the app (see PremiumGate; native is never gated)
 //   - no AdMob banner on Android (see ads.ts)
 //
+// There are two ways to pay for it, and they unlock exactly the same things:
+// a monthly subscription and a one-time purchase. The plan is recorded on the
+// entitlement so the UI can say which one is running, but no feature anywhere
+// asks about it — every gate goes through isPremium()/usePremium().
+//
 // How it travels between devices: the entitlement is a normal localStorage key
 // listed in sync.ts SYNC_KEYS, so a purchase made on the phone is pushed to the
 // user's `user_data` row and pulled by the browser on the next sync tick. That
@@ -22,6 +27,59 @@ import { getSyncUser, REMOTE_UPDATE_EVENT } from "./sync";
 
 /** Play in-app product id (one-time purchase, non-consumable). */
 export const PREMIUM_PRODUCT_ID = "focus_flow_premium";
+
+/** Play subscription id (auto-renewing, monthly base plan). */
+export const PREMIUM_SUBSCRIPTION_ID = "focus_flow_premium_monthly";
+
+/**
+ * Base plan id inside the subscription above. Play needs the *offer* token to
+ * launch checkout, which the plugin resolves from the base plan; this constant
+ * is only here so Play Console and the code name the same thing.
+ */
+export const PREMIUM_BASE_PLAN_ID = "monthly";
+
+/** The two ways to pay. Same entitlement either way — only the billing differs. */
+export type PremiumPlan = "monthly" | "lifetime";
+
+/**
+ * List prices, shown when Play hasn't answered yet (or can't — the browser
+ * build has no Play Billing). Play's own localized price wins whenever it is
+ * available; these are the zloty figures the products are configured with, so
+ * the two agree for the Polish store and nobody is quoted a price we then
+ * change at checkout.
+ */
+export const PLAN_LIST_PRICE: Record<PremiumPlan, string> = {
+  monthly: "14,99 zł",
+  lifetime: "150 zł",
+};
+
+/** Which product id backs each plan. */
+export const PLAN_PRODUCT_ID: Record<PremiumPlan, string> = {
+  monthly: PREMIUM_SUBSCRIPTION_ID,
+  lifetime: PREMIUM_PRODUCT_ID,
+};
+
+/**
+ * The plan a product id belongs to. Anything that isn't the subscription is
+ * read as the one-time unlock — that includes entitlements written before
+ * subscriptions existed, which is exactly the right answer for them.
+ */
+export function planForProduct(productId: string | undefined): PremiumPlan {
+  return productId === PREMIUM_SUBSCRIPTION_ID ? "monthly" : "lifetime";
+}
+
+/**
+ * Where a subscriber cancels or changes their plan. Play policy requires an app
+ * that sells subscriptions to link here, and only Play can actually make the
+ * change — we never cancel on a customer's behalf.
+ *
+ * The package name is the applicationId from android/app/build.gradle (and
+ * capacitor.config.ts); it is part of the URL Play expects, not something the
+ * bundle can read at runtime.
+ */
+export const PLAY_SUBSCRIPTIONS_URL =
+  "https://play.google.com/store/account/subscriptions" +
+  `?sku=${PREMIUM_SUBSCRIPTION_ID}&package=com.khalimowski.focusflow`;
 
 /** Fired whenever the entitlement changes locally. */
 export const PREMIUM_CHANGED_EVENT = "ff.premium-changed";
@@ -79,11 +137,28 @@ export type Entitlement = {
   active: true;
   source: PremiumSource;
   productId: string;
+  /**
+   * Which of the two ways the customer paid. Absent on records written
+   * before subscriptions existed — read those through entitlementPlan(), which
+   * falls back to the product id and so answers "lifetime" for them.
+   */
+  plan?: PremiumPlan;
   /** Play purchase token — the unlock service re-checks this. */
   purchaseToken?: string;
   orderId?: string | null;
   /** ISO timestamp of the purchase (or of the restore that found it). */
   purchasedAt: string;
+  /**
+   * Subscriptions only: the end of the paid period, as reported by the unlock
+   * service. Informational, and it decides when to re-ask Play — it is
+   * deliberately NOT a gate. A stale date must never lock out a customer whose
+   * renewal we simply haven't heard about yet; a subscription that has really
+   * ended comes back from the service as `revoked`, the same authoritative
+   * answer a refund gives.
+   */
+  expiresAt?: string | null;
+  /** Subscriptions only: whether Play says the plan will renew again. */
+  autoRenewing?: boolean;
   /** True once the unlock service confirmed the token with Google Play. */
   verified: boolean;
   /** True once the welcome email with the browser link has been sent. */
@@ -108,6 +183,7 @@ const FREE_ENTITLEMENT: Entitlement = Object.freeze({
   active: true,
   source: "free",
   productId: PREMIUM_PRODUCT_ID,
+  plan: "lifetime",
   orderId: null,
   purchasedAt: new Date(0).toISOString(),
   verified: true,
@@ -140,6 +216,25 @@ export function hasPurchasedPremium(): boolean {
   return getEntitlement() !== null;
 }
 
+/** How this entitlement was paid for, tolerating records that predate plans. */
+export function entitlementPlan(ent: Entitlement): PremiumPlan {
+  return ent.plan ?? planForProduct(ent.productId);
+}
+
+/**
+ * Whether it is worth asking the unlock service about this subscription again.
+ * True once the recorded period is inside its last day (or already past), which
+ * is when a renewal — or a cancellation — would have happened. One-time
+ * purchases never need this: they don't change after they're verified.
+ */
+function subscriptionNeedsRecheck(ent: Entitlement): boolean {
+  if (entitlementPlan(ent) !== "monthly") return false;
+  if (!ent.expiresAt) return true;
+  const expiry = Date.parse(ent.expiresAt);
+  if (Number.isNaN(expiry)) return true;
+  return Date.now() > expiry - 24 * 60 * 60 * 1000;
+}
+
 function writeEntitlement(next: Entitlement) {
   saveJSON(STORAGE_KEYS.premium, next);
   if (typeof window !== "undefined") {
@@ -155,23 +250,40 @@ function writeEntitlement(next: Entitlement) {
 export function grantPremium(grant: {
   source: PremiumSource;
   productId?: string;
+  plan?: PremiumPlan;
   purchaseToken?: string;
   orderId?: string | null;
 }): Entitlement {
+  const productId = grant.productId || PREMIUM_PRODUCT_ID;
+  const plan = grant.plan ?? planForProduct(productId);
   const existing = getEntitlement();
   const same = existing && existing.purchaseToken === grant.purchaseToken;
+  // A subscription keeps its token across renewals, so `same` stays true and
+  // the recorded expiry would survive forever. Drop one that has already run
+  // out: Play only hands back a subscription it still considers live, so being
+  // re-granted with a past expiry means the period rolled over and the date we
+  // hold is stale. Clearing `verified` alongside it queues the re-check that
+  // fetches the new one.
+  const staleExpiry = same && !!existing!.expiresAt && Date.parse(existing!.expiresAt) < Date.now();
   const next: Entitlement = {
     active: true,
     source: grant.source,
-    productId: grant.productId || PREMIUM_PRODUCT_ID,
+    productId,
+    plan,
     purchaseToken: grant.purchaseToken,
     orderId: grant.orderId ?? null,
     purchasedAt: same ? existing!.purchasedAt : new Date().toISOString(),
-    verified: same ? existing!.verified : false,
+    expiresAt: same && !staleExpiry ? (existing!.expiresAt ?? null) : null,
+    autoRenewing: same && !staleExpiry ? existing!.autoRenewing : undefined,
+    verified: same && !staleExpiry ? existing!.verified : false,
     emailSent: same ? existing!.emailSent : false,
   };
   writeEntitlement(next);
-  console.log("[Premium] Entitlement granted", { source: next.source, verified: next.verified });
+  console.log("[Premium] Entitlement granted", {
+    source: next.source,
+    plan: next.plan,
+    verified: next.verified,
+  });
   return next;
 }
 
@@ -194,6 +306,9 @@ type UnlockResponse = {
   verified?: boolean;
   emailSent?: boolean;
   revoked?: boolean;
+  /** Subscriptions: end of the paid period Play currently reports. */
+  expiresAt?: string | null;
+  autoRenewing?: boolean;
   error?: string;
 };
 
@@ -214,7 +329,11 @@ export async function redeemWithUnlockService(
   if (!ent) return { verified: false, emailSent: false, contacted: false };
   if (!UNLOCK_ENDPOINT)
     return { verified: ent.verified, emailSent: ent.emailSent, contacted: false };
-  if (!options.force && ent.verified && ent.emailSent) {
+  // Nothing left to ask about: verified, email sent, and either a one-time
+  // purchase (which never changes) or a subscription whose period still has
+  // time on it. The subscription clause matters — without it a renewal or a
+  // cancellation would never be seen, because both flags stay true forever.
+  if (!options.force && ent.verified && ent.emailSent && !subscriptionNeedsRecheck(ent)) {
     return { verified: true, emailSent: true, contacted: false };
   }
 
@@ -226,6 +345,9 @@ export async function redeemWithUnlockService(
       body: JSON.stringify({
         email,
         productId: ent.productId,
+        // Tells the service which Play endpoint to check the token against.
+        // It can derive this from the id too, so an older service still works.
+        plan: entitlementPlan(ent),
         purchaseToken: ent.purchaseToken,
         orderId: ent.orderId,
         appUrl: WEB_APP_URL,
@@ -250,6 +372,11 @@ export async function redeemWithUnlockService(
         ...fresh,
         verified: body.verified ?? fresh.verified,
         emailSent: body.emailSent ? true : fresh.emailSent,
+        // Only overwrite the subscription period when the service actually
+        // reported one; an older service that answers without these fields
+        // must not erase what we already know.
+        expiresAt: body.expiresAt !== undefined ? body.expiresAt : fresh.expiresAt,
+        autoRenewing: body.autoRenewing !== undefined ? body.autoRenewing : fresh.autoRenewing,
       });
     }
     return {
@@ -271,7 +398,12 @@ export async function redeemWithUnlockService(
 export async function syncEntitlementWithService(): Promise<void> {
   const ent = getEntitlement();
   if (!ent || !UNLOCK_ENDPOINT) return;
-  if (ent.verified && ent.emailSent) return;
+  // A subscription is also re-checked once its period is nearly up: that call
+  // is what picks up a renewal (a fresh expiry) or an ending (the service
+  // answers `revoked`, which is the only thing that withdraws access). Without
+  // it a cancelled subscription would keep unlocking the browser forever,
+  // because verified/emailSent are both long since true.
+  if (ent.verified && ent.emailSent && !subscriptionNeedsRecheck(ent)) return;
   await redeemWithUnlockService();
 }
 

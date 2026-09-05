@@ -102,11 +102,25 @@ The settings store renamed `nudgeCalendarSync`/`googleNudgeSync` to
 v3 migration.
 
 ### Premium (src/lib/premium.ts, src/lib/billing.ts)
-One-time Play purchase (`focus_flow_premium`) that unlocks the **browser
-version** (`PremiumGate` blocks the web build without it) and removes the AdMob
-banner on Android. Android stays free/ad-supported — it's also the only place
-Play Billing runs, via the custom `BillingPlugin.java` (same pattern as
-`WidgetBridgePlugin`).
+Unlocks the **browser version** (`PremiumGate` blocks the web build without it)
+and removes the AdMob banner on Android. Android stays free/ad-supported — it's
+also the only place Play Billing runs, via the custom `BillingPlugin.java` (same
+pattern as `WidgetBridgePlugin`).
+
+It sells **two ways, for the same entitlement**: a monthly subscription
+(`focus_flow_premium_monthly`, base plan `monthly`, 14,99 zł) and a one-time
+purchase (`focus_flow_premium`, 150 zł). Play models these as different product
+*types*, so `BillingPlugin.java` carries a `productType` on every call, resolves
+an **offer token** for the subscription, and queries both types in `restore()`.
+Nothing above `billing.ts` branches on the plan — every gate is `isPremium()` /
+`usePremium()`.
+
+The prices in `PLAN_LIST_PRICE` (`premium.ts`) must match what the Play products
+are configured with; they are the fallback shown where Play can't answer (the
+browser build, or before its query returns). A subscription's `expiresAt` is
+informational and **never a gate** — only the unlock service answering `revoked`
+withdraws access, because a renewal we haven't heard about and a lapse look
+identical from the client.
 
 **Currently switched off**: `PREMIUM_FREE_FOR_ALL` in `premium.ts` is on while
 the app is not on Play production, so `isPremium()`/`usePremium()` answer yes for
