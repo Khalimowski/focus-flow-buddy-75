@@ -217,7 +217,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Purchases",
       blocks: [
         {
-          p: "Premium is a one-time purchase through **Google Play**. Google handles the payment; we never see your card or billing details.",
+          p: "Premium is sold through **Google Play**, either as a monthly subscription or as a one-time purchase — both unlock exactly the same thing. Google handles the payment; we never see your card or billing details. A subscription renews until you cancel it, which you can do at any time in Google Play; cancelling stops future charges and Premium runs to the end of the period you have already paid for.",
         },
         {
           p: "To confirm that a purchase is genuine and to email you the link to the browser version, the app can send your **purchase token, order id, product id and account email** to a small service we run on Cloudflare Workers. That service checks the token against Google Play's API and sends you a single email through the delivery provider Resend. The address is not added to any list and is not used for anything else.",
@@ -451,7 +451,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Zakupy",
       blocks: [
         {
-          p: "Premium to jednorazowy zakup przez **Google Play**. Płatność obsługuje Google; nigdy nie widzimy danych Twojej karty ani rozliczeń.",
+          p: "Premium kupujesz przez **Google Play** — w abonamencie miesięcznym albo jednorazowo; obie opcje odblokowują dokładnie to samo. Płatność obsługuje Google; nigdy nie widzimy danych Twojej karty ani rozliczeń. Abonament odnawia się do momentu anulowania, a anulować możesz go w każdej chwili w Google Play; anulowanie wstrzymuje kolejne płatności, a Premium działa do końca opłaconego okresu.",
         },
         {
           p: "Żeby potwierdzić, że zakup jest prawdziwy, i wysłać Ci link do wersji przeglądarkowej, aplikacja może przesłać **token zakupu, identyfikator zamówienia, identyfikator produktu i adres e-mail konta** do niewielkiej usługi, którą prowadzimy na Cloudflare Workers. Usługa sprawdza token w API Google Play i wysyła jeden e-mail przez dostawcę Resend. Adres nie trafia na żadną listę i nie jest używany do niczego innego.",

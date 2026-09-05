@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.0";
+export const APP_VERSION = "1.14.1";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.1",
+    items: {
+      en: [
+        "Premium removes the ads again. A test switch left the banner showing to everyone, including people who had paid to be rid of it — if you bought Premium, the free version's banner is gone the moment you open this build.",
+      ],
+      pl: [
+        "Premium znowu usuwa reklamy. Przełącznik testowy sprawiał, że baner widzieli wszyscy — także osoby, które zapłaciły, żeby się go pozbyć. Jeśli masz Premium, baner znika w chwili otwarcia tej wersji.",
+      ],
+    },
+  },
   {
     version: "1.14.0",
     items: {

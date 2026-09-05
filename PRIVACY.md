@@ -152,8 +152,12 @@ Ads**. Buying Premium removes the banner entirely. The web version has no ads.
 
 ## Purchases
 
-Premium is a one-time purchase through **Google Play**. Google handles the
-payment; we never see your card or billing details.
+Premium is sold through **Google Play**, either as a monthly subscription or
+as a one-time purchase — both unlock exactly the same thing. Google handles
+the payment; we never see your card or billing details. A subscription renews
+until you cancel it, which you can do at any time in Google Play; cancelling
+stops future charges and Premium runs to the end of the period you have
+already paid for.
 
 To confirm that a purchase is genuine and to email you the link to the browser
 version, the app can send your **purchase token, order id, product id and
