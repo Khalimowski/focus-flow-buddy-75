@@ -102,18 +102,49 @@ The settings store renamed `nudgeCalendarSync`/`googleNudgeSync` to
 v3 migration.
 
 ### Premium (src/lib/premium.ts, src/lib/billing.ts)
-One-time Play purchase (`focus_flow_premium`) that unlocks the **browser
-version** (`PremiumGate` blocks the web build without it) and removes the AdMob
-banner on Android. Android stays free/ad-supported — it's also the only place
-Play Billing runs, via the custom `BillingPlugin.java` (same pattern as
-`WidgetBridgePlugin`).
+Unlocks the **browser version** (`PremiumGate` blocks the web build without it)
+and removes the AdMob banner on Android. Android stays free/ad-supported — it's
+also the only place Play Billing runs, via the custom `BillingPlugin.java` (same
+pattern as `WidgetBridgePlugin`).
 
-**Currently switched off**: `PREMIUM_FREE_FOR_ALL` in `premium.ts` is on while
-the app is not on Play production, so `isPremium()`/`usePremium()` answer yes for
-everyone (browser access and dictation are open) without writing anything to
-storage or sync. Ads are exempt — `ads.ts` uses `hasPurchasedPremium()`, which
-only a real purchase satisfies. Turn it off with `VITE_PREMIUM_FREE_FOR_ALL=false`
-or by changing the default.
+It sells **two ways, for the same entitlement**: a monthly subscription
+(`focus_flow_premium_monthly`, base plan `monthly`, 14,99 zł) and a one-time
+purchase (`focus_flow_premium`, 150 zł). Play models these as different product
+*types*, so `BillingPlugin.java` carries a `productType` on every call, resolves
+an **offer token** for the subscription, and queries both types in `restore()`.
+Nothing above `billing.ts` branches on the plan — every gate is `isPremium()` /
+`usePremium()`.
+
+The prices in `PLAN_LIST_PRICE` (`premium.ts`) must match what the Play products
+are configured with; they are the fallback shown where Play can't answer (the
+browser build, or before its query returns). A subscription's `expiresAt` is
+informational and **never a gate** — only the unlock service answering `revoked`
+withdraws access, because a renewal we haven't heard about and a lapse look
+identical from the client.
+
+**Early access is over.** `PREMIUM_FREE_FOR_ALL` now defaults to **off**;
+`VITE_PREMIUM_FREE_FOR_ALL=true` turns it back on for a demo deploy or a test
+track. It writes nothing to storage or sync, which is precisely why it could not
+grandfather anyone by itself — when it went off, every account would have read
+as "never paid".
+
+Two mechanisms carry the early users instead, and neither is optional reading
+before touching this area:
+
+- **Accounts**: `scripts/grandfather-premium.mjs` backfills a real
+  `ff.premium.v1` row with `source: "grandfathered"` for every account without
+  one. **Run it before shipping a build with the flag off**, or every existing
+  user is locked out. It never overwrites an existing row, so purchases keep
+  their record and a revocation tombstone stays revoked.
+- **Android guests** (no account, so no row to write): `isGrandfatheredInstall()`
+  freezes a decision in the device-local, never-synced `ff.grandfathered.v1` at
+  module load, from keys only a previous run could have left. It is honoured on
+  **Android only** — the flag is localStorage, so on the web it would hand over
+  the paid product; that check is the security boundary, not a nicety.
+
+Ads are exempt from both stand-ins — `ads.ts` uses `hasPurchasedPremium()`,
+which only a stored record satisfies, so a grandfathered guest keeps seeing
+them and a grandfathered account does not.
 
 The entitlement is just another synced localStorage key (`ff.premium.v1` in
 SYNC_KEYS), so a phone purchase reaches the browser through the existing sync —

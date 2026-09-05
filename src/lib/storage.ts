@@ -83,6 +83,12 @@ export const STORAGE_KEYS = {
   // device updates on its own schedule, so another one's answer means nothing —
   // and syncing it would hide the notes on a phone that hasn't updated yet.
   whatsNew: "ff.whatsnew.v1",
+  // Device-local and deliberately NOT synced: whether this install was already
+  // running FlowDay when early access ended. It keeps voice input working for
+  // a guest who has no account to hang an entitlement on. Syncing it would let
+  // one grandfathered phone unlock the browser for a new account, which is the
+  // one thing this must never do (see premium.ts).
+  grandfathered: "ff.grandfathered.v1",
   version: "ff.storage.version",
 } as const;
 

@@ -1,6 +1,6 @@
 # FlowDay Premium
 
-One-time Play purchase that unlocks two things:
+Unlocks two things:
 
 - **the browser version** — the web build refuses to run without it
 - **no AdMob banner** in the Android app
@@ -8,35 +8,104 @@ One-time Play purchase that unlocks two things:
 Android itself stays free and ad-supported. That's deliberate: the phone app is
 the shop window, and it's the only place Play Billing can run.
 
-## Early access: premium is currently free for everyone
+## Two ways to pay
 
-`PREMIUM_FREE_FOR_ALL` in `premium.ts` is **on**. The app is not on Play
-production yet, so nobody can buy the product — gating features behind it would
-leave most of the app untestable for testers.
+| Plan | Price | Play product | Play type |
+| --- | --- | --- | --- |
+| Monthly | 14,99 zł / month | `focus_flow_premium_monthly` (base plan `monthly`) | subscription |
+| One-off | 150 zł once | `focus_flow_premium` | one-time product |
 
-What the switch does:
+They unlock **exactly the same things**. No feature anywhere asks which plan is
+running — every gate goes through `isPremium()` / `usePremium()`, and the plan
+is recorded only so Settings can say what the customer is on and link a
+subscriber to Play to manage it.
 
-- `isPremium()` / `usePremium()` return a stand-in entitlement with
-  `source: "free"`, so the web `PremiumGate` never appears and dictation works
-  for everyone.
-- **Nothing is written to storage**, so no synthetic entitlement reaches sync.
-  Flipping the switch off returns every account to its real state, and real
-  purchases made meanwhile are untouched.
-- The AdMob banner is *not* affected: `ads.ts` asks `hasPurchasedPremium()`,
-  which only a real purchase satisfies. The free tier keeps looking the way it
-  will ship, and the banner keeps getting exercised.
-- Settings shows an "Everything is unlocked" card instead of a buy button —
-  offering to sell what's currently free would be misleading. Restore stays
-  available on Android.
+The prices in `PLAN_LIST_PRICE` (`premium.ts`) are what the Play products are
+configured with. Play's own localized price wins wherever it is available; the
+constants are the fallback for the browser build, which has no Play Billing, and
+for the moment before Play answers on Android. **Change one and change the
+other**, or the app quotes a price that checkout then contradicts.
 
-To end early access: set `VITE_PREMIUM_FREE_FOR_ALL=false` (build env) or change
-the default in `premium.ts`. Everything below describes the paid behaviour that
-returns when it's off.
+150 zł is a little under ten months of the subscription, which is why the
+one-off carries a plain "best value" note. That is the only steer between the
+two — no countdown, no crossed-out price.
+
+## Early access is over — and who was grandfathered
+
+`PREMIUM_FREE_FOR_ALL` now defaults to **off**. Premium has to be bought.
+
+The switch itself could never grandfather anyone, and that is worth
+understanding before touching any of this. It deliberately wrote **nothing** to
+storage or to sync, so on the day it went off every account would have read as
+"never paid" — including people who had been using FlowDay for months. Being an
+early user had to be turned into durable state first:
+
+```bash
+node scripts/grandfather-premium.mjs          # dry run: how many, writes nothing
+node scripts/grandfather-premium.mjs --apply  # write the rows
+```
+
+That writes a real `ff.premium.v1` row with `source: "grandfathered"` for every
+account that has no premium row yet, so it reaches every device that account
+signs in on through the ordinary sync path. It is the sanctioned way to create
+an entitlement — `sync.ts` refuses to invent one from local state, and the
+browser deletes any local entitlement the server has never heard of.
+
+**Order matters.** Run the backfill *before* the build with the switch off
+reaches anyone. Two harmless things follow from that ordering: someone who signs
+up after the script has run has no row and so pays, which is the point; and
+someone still on an older APK keeps free Premium until they update, because the
+flag is baked in at build time. A release that lands *before* the backfill is
+not harmless — it would silently lock out every existing user.
+
+The script never overwrites an existing row, which is what protects two cases
+that look alike from a distance: a real purchase keeps its own record, and a
+**revocation tombstone stays a tombstone** — a refunded customer does not get
+access handed back.
+
+### Guests keep voice input
+
+Android guest mode has no account, so there is no row to write for someone who
+never signed up. `isGrandfatheredInstall()` in `premium.ts` is the local stand-in:
+on first launch of the new build it checks for keys only a *previous run on this
+device* could have left — `whatsNew`, `deviceId`, `endOfDay`, `widgetPrompt`,
+all device-local and absent from `SYNC_KEYS` — and freezes the answer in
+`ff.grandfathered.v1`.
+
+Two properties do the work:
+
+- **Timing.** It is decided once, at module load, before the app mounts. Later
+  in the same boot this build starts writing those keys itself, at which point
+  every install would look old. The evidence keys are also never synced, so a
+  fresh install signing into an old account pulls tasks and stats down without
+  ever looking like an old install.
+- **Android only.** The flag lives in localStorage, where anyone can set it. On
+  the phone the most it unlocks is dictation on a free, ad-supported install. In
+  the browser it would hand over the paid product, so the browser never asks —
+  that check is the security boundary, not a nicety.
+
+A grandfathered guest keeps voice input and still sees ads, because `ads.ts`
+asks `hasPurchasedPremium()`, which only a stored record satisfies. A
+grandfathered *account* has a stored record, so it does lose the ads — they were
+promised Premium, and ad-free is part of Premium.
+
+Settings tells the two apart with `hasPurchasedPremium()` rather than sign-in
+state: someone can be signed in on an old install the backfill never reached,
+and claiming Premium is on their account while ads still run would be a promise
+the app immediately breaks.
+
+### Turning it back on
+
+`VITE_PREMIUM_FREE_FOR_ALL=true` still opens everything for everyone — the right
+switch for a demo deploy or a test track where nobody can reach Play checkout.
+Nothing is written for it, so turning it off again returns every account to its
+real state.
 
 ## How an unlock travels
 
 ```
 Android: Play checkout -> BillingPlugin.java -> billing.ts -> grantPremium()
+             (either plan; same entitlement)
              writes ff.premium.v1 in localStorage
                         |
              sync.ts pushes the key to user_data (Neon)
@@ -94,17 +163,46 @@ the client.
 | `src/components/Premium.tsx` | Settings section: buy / restore / link / email |
 | `src/components/PremiumGate.tsx` | Full-screen lock for the browser build |
 | `src/lib/ads.ts` | Skips and removes the banner when premium is active |
+| `scripts/grandfather-premium.mjs` | One-time backfill: free Premium for accounts that predate the paid release |
 | `workers/premium-unlock/` | Optional: Play verification + welcome email |
 
 ## Play Console setup
 
+Both products have to exist and be **active**, or the plan they back shows the
+fallback list price and its button fails at checkout with "Product not found in
+Play Console".
+
 1. **Monetize → In-app products** → create a product with id
    `focus_flow_premium` (must match `PREMIUM_PRODUCT_ID` in `premium.ts`),
-   type *one-time*, and **activate** it.
-2. Upload a build signed with the upload key to at least an internal test
+   type *one-time*, price **150 zł**, and **activate** it.
+2. **Monetize → Subscriptions** → create a subscription with id
+   `focus_flow_premium_monthly` (`PREMIUM_SUBSCRIPTION_ID`), then add a base
+   plan with id `monthly` (`PREMIUM_BASE_PLAN_ID`): **auto-renewing**, monthly,
+   **14,99 zł**. Activate both the subscription and the base plan — a
+   subscription with no active base plan returns no offers, and the app refuses
+   to open checkout rather than guessing one.
+   The base plan must be *auto-renewing*, not prepaid: `BillingPlugin.load()`
+   enables pending purchases for one-time products only, and a prepaid plan
+   additionally needs `enablePrepaidPlans()`.
+3. Upload a build signed with the upload key to at least an internal test
    track. `queryProductDetailsAsync` returns nothing for unsigned/unpublished
    builds — that's the usual cause of "Product not found in Play Console".
-3. Add testers under **License testing** so they can buy without being charged.
+4. Add testers under **License testing** so they can buy without being charged.
+   Test subscriptions renew on an accelerated clock (a monthly plan renews
+   every few minutes), which is how to exercise renewal and expiry.
+
+### What the app does with each
+
+`BillingPlugin.java` carries the product *type* on every call, because Play
+keeps the two apart everywhere: separate `queryProductDetails` queries,
+separate `queryPurchases` queries (`restore()` asks for both and merges), and
+subscriptions additionally need an **offer token** naming the base plan being
+bought. The token is resolved inside the plugin from the same query that
+launches checkout — it is only valid for the `ProductDetails` it came from, so
+it is deliberately not passed in from JS.
+
+A customer holding both keeps the one-time entitlement: `restorePremium()`
+prefers it, because it is the one that never needs re-checking.
 
 Billing Library is pinned to **9.1.0** in `android/gradle/libs.versions.toml`.
 Play enforces a minimum library version on a rolling deadline — 8.0.0+ from
@@ -113,6 +211,36 @@ uses has the same shape in 8.x and 9.x, so 9.1.0 also covers the next deadline.
 The one API that changed is the `queryProductDetailsAsync` callback: since 8.0
 its second argument is a `QueryProductDetailsResult` (call
 `getProductDetailsList()`) rather than a bare `List<ProductDetails>`.
+
+## Subscription lifetime
+
+A one-time purchase is settled once and never changes. A subscription does, and
+the client cannot see that on its own — Play's on-device `queryPurchases` says
+only "this is currently valid", with no expiry attached. So:
+
+- The unlock service reports `expiresAt` and `autoRenewing` from
+  `purchases.subscriptionsv2`, and the entitlement stores both.
+- Those fields are **informational, never a gate**. A date in the past does not
+  lock anyone out: a renewal we haven't heard about yet is indistinguishable
+  from a lapse, and this codebase's standing rule is that a paying customer is
+  never locked out by our uncertainty.
+- What *does* end access is the service answering `revoked`, exactly as it does
+  for a refund. `syncEntitlementWithService()` re-asks once the recorded period
+  is inside its last day, which is what turns a real cancellation into a
+  tombstone that syncs to every device.
+- With no `VITE_PREMIUM_UNLOCK_URL` configured there is no `expiresAt` and no
+  `revoked` answer, so subscriptions are trusted client-side for as long as
+  they sit in local storage. That is the same trade already made for one-time
+  purchases without the service, and it's why the service is worth deploying
+  once subscriptions are live.
+- A subscription keeps its purchase token across renewals, so `grantPremium()`
+  treats a re-grant as the same purchase. It drops a recorded expiry that has
+  already passed: Play only hands back a subscription it still considers live,
+  so being re-granted with a stale date means the period rolled over.
+
+Settings shows a subscriber "Renews on …" (or "Ends on …" once auto-renew is
+off) and a link to Play, which is where cancelling and changing plans happens.
+Play policy requires that link; the app never cancels on a customer's behalf.
 
 ## Verification and the welcome email
 
@@ -167,6 +295,9 @@ select u.email,
        u.id                             as user_id,
        coalesce((ud.value->>'active')::boolean, false) as premium,
        ud.value->>'source'              as source,
+       -- Written since subscriptions arrived; older rows are all one-time.
+       coalesce(ud.value->>'plan', 'lifetime') as plan,
+       ud.value->>'expiresAt'           as expires_at,
        (ud.value->>'verified')::boolean as verified,
        ud.value->>'purchasedAt'         as purchased_at,
        ud.updated_at
@@ -212,7 +343,7 @@ it without touching the database:
 ```js
 localStorage.setItem('ff.premium.v1', JSON.stringify({
   active: true, source: 'manual', productId: 'focus_flow_premium',
-  orderId: null, purchasedAt: new Date().toISOString(),
+  plan: 'lifetime', orderId: null, purchasedAt: new Date().toISOString(),
   verified: true, emailSent: true,
 }));
 location.reload();
@@ -230,17 +361,31 @@ Android install if you want a grant to stay on one machine.
 | `VITE_WEB_APP_URL` | https://flowday.day/ | Link shown in Settings and sent by email |
 | `VITE_PREMIUM_UNLOCK_URL` | *(empty)* | Unlock service; empty = trust locally, no email |
 | `VITE_PREMIUM_WEB_GATE` | `true` | `false` leaves the browser build open (demo deploys) |
+| `VITE_PREMIUM_FREE_FOR_ALL` | `false` | `true` unlocks every feature for everyone, storing nothing (demo deploys, test tracks) |
 
 All three are baked into the bundle at build time — changing one needs a rebuild
 of both the web bundle and the APK.
 
 ## Testing checklist
 
-- [ ] Android, non-premium: banner shows, Settings offers the price from Play
-- [ ] Android, buy: Play sheet completes, banner disappears without a restart
-- [ ] Android, reinstall: "Restore purchase" re-unlocks
+- [ ] Android, non-premium: banner shows, Settings offers both plans with the
+      prices coming from Play (not the fallback constants)
+- [ ] Android, buy monthly: Play sheet completes, banner disappears without a
+      restart, Settings says "Monthly plan"
+- [ ] Android, buy one-off: same, and Settings says "One-off purchase"
+- [ ] Android, subscriber: "Manage subscription" opens the Play subscription page
+- [ ] Android, reinstall: "Restore purchase" re-unlocks, on either plan
 - [ ] Browser, non-premium: `PremiumGate` blocks the app
 - [ ] Browser, same account after a phone purchase: unlocks within ~15s, or
       immediately via "Check again"
 - [ ] Browser, signed out: `AuthGate` shows with no "continue as guest" option
+- [ ] Grandfathered account: signs in on a clean browser and is *not* gated
+- [ ] Grandfathered guest (no account, Android): voice input works, ads still show
+- [ ] Fresh install, new account: gated on web, both plans offered on Android
+- [ ] Backfill is idempotent: a second `--apply` writes 0 rows
+- [ ] Backfill leaves a revocation tombstone alone (refunded user stays revoked)
 - [ ] Play refund → unlock service returns `revoked` → access is withdrawn
+- [ ] Subscription cancelled → Settings switches to "Ends on", access survives
+      to the end of the paid period
+- [ ] Subscription expired (test track's accelerated clock) → next launch
+      re-checks, unlock service returns `revoked`, access is withdrawn

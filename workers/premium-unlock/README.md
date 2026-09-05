@@ -63,6 +63,7 @@ Rebuild the web bundle and the Android APK — the value is baked in at build ti
 {
   "email": "user@example.com",   // signed-in Neon Auth address; the recipient
   "productId": "focus_flow_premium",
+  "plan": "lifetime",             // "monthly" for the subscription; optional
   "purchaseToken": "...",         // from Play Billing
   "orderId": "GPA.1234-...",
   "appUrl": "https://…",          // link to put in the email
@@ -70,13 +71,38 @@ Rebuild the web bundle and the Android APK — the value is baked in at build ti
 }
 ```
 
+`plan` picks which Play endpoint the token is checked against: `lifetime` goes
+to `purchases.products`, `monthly` to `purchases.subscriptionsv2`. It is
+optional — a request without it is routed by `productId` instead, so a client
+built before subscriptions existed still verifies correctly.
+
 Replies:
 
 | Response | Meaning | App behaviour |
 | --- | --- | --- |
 | `{ "verified": true, "emailSent": true }` | Play confirms the purchase | Entitlement marked verified |
 | `{ "verified": false, "error": "verification_unavailable" }` | Play or config problem | Entitlement kept, retried at next launch |
-| `{ "revoked": true }` | Play says the token is cancelled/refunded/unknown | Entitlement removed |
+| `{ "revoked": true }` | Play says the token is cancelled/refunded/expired/unknown | Entitlement removed |
+
+Subscription replies also carry `expiresAt` (ISO, end of the paid period) and
+`autoRenewing`. The app stores both: `autoRenewing` decides whether Settings
+says "renews on" or "ends on", and `expiresAt` is what tells it when asking
+again is worthwhile. Neither is a gate — a date that has passed does not lock
+anyone out on its own, because a renewal we simply haven't heard about looks
+exactly the same. Only a `revoked` reply withdraws access.
+
+Which subscription states count as revoked:
+
+| `subscriptionState` | Verdict |
+| --- | --- |
+| `ACTIVE`, `IN_GRACE_PERIOD` | entitled |
+| `CANCELED` | entitled until `expiryTime` — auto-renew is off, the period is not over |
+| `ON_HOLD`, `PAUSED`, `EXPIRED`, `PENDING_PURCHASE_CANCELED` | revoked |
+| `PENDING`, anything unrecognised | pending — changes nothing |
+
+`ON_HOLD` and `PAUSED` are recoverable: once the customer fixes payment or
+resumes, Play lists the subscription again, the Android app's restore re-grants
+it, and sync carries that back to their other devices.
 
 `revoked` is the only response that takes access away. Outages, misconfiguration
 and rate limits all fall back to "keep the customer unlocked, retry later" — a

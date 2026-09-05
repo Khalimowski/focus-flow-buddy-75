@@ -12,11 +12,21 @@
  * which is fragile and must keep emitting a static SPA for Capacitor. Deploy it
  * separately with wrangler and point VITE_PREMIUM_UNLOCK_URL at the result.
  *
- * Request:  POST { email, productId, purchaseToken, orderId, appUrl, sendEmail }
- * Response: 200 { verified, emailSent } | 200 { revoked: true } | 4xx { error }
+ * Premium sells two ways, and Play checks them at different endpoints: the
+ * one-time unlock through purchases.products, the monthly plan through
+ * purchases.subscriptionsv2. The client says which it holds; the id is used as
+ * a fallback so an older client still verifies correctly.
+ *
+ * Request:  POST { email, productId, plan?, purchaseToken, orderId, appUrl, sendEmail }
+ * Response: 200 { verified, emailSent, expiresAt?, autoRenewing? }
+ *         | 200 { revoked: true }
+ *         | 4xx { error }
  */
 
 const PLAY_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
+
+/** Must match PREMIUM_SUBSCRIPTION_ID in src/lib/premium.ts. */
+const SUBSCRIPTION_PRODUCT_ID = "focus_flow_premium_monthly";
 
 export default {
   async fetch(request, env) {
@@ -33,22 +43,33 @@ export default {
       return json({ error: "Invalid JSON" }, 400, cors);
     }
 
-    const { email, productId, purchaseToken, appUrl, sendEmail } = body ?? {};
+    const { email, productId, plan, purchaseToken, appUrl, sendEmail } = body ?? {};
     if (!purchaseToken || !productId) {
       return json({ error: "productId and purchaseToken are required" }, 400, cors);
     }
 
+    const isSubscription = plan === "monthly" || productId === SUBSCRIPTION_PRODUCT_ID;
+
     // --- 1. Verify with Google Play ---
     let verified = false;
+    let period = {};
     try {
-      const result = await verifyPlayPurchase(env, productId, purchaseToken);
+      const result = isSubscription
+        ? await verifyPlaySubscription(env, productId, purchaseToken)
+        : await verifyPlayPurchase(env, productId, purchaseToken);
       if (result.status === "revoked") {
         // Play is certain this token is not a live purchase (cancelled,
-        // refunded, or never existed). This is the only answer that takes
-        // premium away from someone.
+        // refunded, expired, or never existed). This is the only answer that
+        // takes premium away from someone.
         return json({ revoked: true }, 200, cors);
       }
       verified = result.status === "purchased";
+      // Only present for subscriptions; the client stores it to know when the
+      // period is up and it is worth asking again.
+      if (result.expiresAt !== undefined) period = {
+        expiresAt: result.expiresAt,
+        autoRenewing: result.autoRenewing,
+      };
     } catch (e) {
       // Misconfiguration or a Play outage must not cost a paying customer
       // their access — report unverified and let the app retry later.
@@ -68,7 +89,7 @@ export default {
       }
     }
 
-    return json({ verified, emailSent }, 200, cors);
+    return json({ verified, emailSent, ...period }, 200, cors);
   },
 };
 
@@ -92,6 +113,65 @@ async function verifyPlayPurchase(env, productId, purchaseToken) {
   if (purchase.purchaseState === 0) return { status: "purchased" };
   if (purchase.purchaseState === 1) return { status: "revoked" };
   return { status: "pending" };
+}
+
+/**
+ * Subscriptions live at a different endpoint, and "is this person entitled?"
+ * is a different question for them: a cancelled subscription is still paid up
+ * until its expiry, while one on hold or paused is not entitled even though it
+ * still exists. Play's subscriptionState says which, so it is mapped rather
+ * than guessed at.
+ *
+ * Anything that answers "revoked" here withdraws access on every device the
+ * customer signs in on, so only states Google defines as not-entitled do.
+ * Anything unrecognised is reported as pending, which changes nothing.
+ */
+async function verifyPlaySubscription(env, productId, purchaseToken) {
+  const accessToken = await getPlayAccessToken(env);
+  const url =
+    `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/` +
+    `${encodeURIComponent(env.PLAY_PACKAGE_NAME)}/purchases/subscriptionsv2/tokens/` +
+    `${encodeURIComponent(purchaseToken)}`;
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+  // 404/410 = Play has no such subscription for this app.
+  if (res.status === 404 || res.status === 410) return { status: "revoked" };
+  if (!res.ok) throw new Error(`Play API ${res.status}: ${await res.text()}`);
+
+  const subscription = await res.json();
+  const lineItems = subscription.lineItems || [];
+  const item = lineItems.find((line) => line.productId === productId) || lineItems[0] || {};
+  const period = {
+    expiresAt: item.expiryTime ?? null,
+    // A cancelled-but-not-yet-expired plan reports auto-renew off, which is
+    // what lets the app say "ends on" instead of "renews on".
+    autoRenewing: !!item.autoRenewingPlan?.autoRenewEnabled,
+  };
+
+  switch (subscription.subscriptionState) {
+    // Paid up. CANCELED means auto-renew is switched off, not that the current
+    // period has ended — access runs to expiryTime, and Play moves it to
+    // EXPIRED when it really finishes.
+    case "SUBSCRIPTION_STATE_ACTIVE":
+    case "SUBSCRIPTION_STATE_IN_GRACE_PERIOD":
+    case "SUBSCRIPTION_STATE_CANCELED":
+      return { status: "purchased", ...period };
+
+    // Not entitled. Both are recoverable: when the customer fixes payment or
+    // un-pauses, Play lists the subscription again and the Android app's
+    // restore re-grants it, which syncs back out to their other devices.
+    case "SUBSCRIPTION_STATE_ON_HOLD":
+    case "SUBSCRIPTION_STATE_PAUSED":
+    case "SUBSCRIPTION_STATE_EXPIRED":
+    case "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED":
+      return { status: "revoked" };
+
+    // First payment hasn't settled yet, or a state this code doesn't know.
+    // Neither is grounds for taking anything away.
+    default:
+      return { status: "pending", ...period };
+  }
 }
 
 /** Service-account JWT -> OAuth access token, cached for the token's lifetime. */

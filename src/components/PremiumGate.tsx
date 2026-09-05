@@ -4,6 +4,7 @@ import { Sparkles, Smartphone, RefreshCw, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n";
 import { PremiumPerks } from "@/components/Premium";
+import { PLAN_LIST_PRICE } from "@/lib/premium";
 import { getSyncUser, fullSync, signOut } from "@/lib/sync";
 
 /**
@@ -60,6 +61,27 @@ export function PremiumGate() {
 
         <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
           <PremiumPerks />
+          {/* Both prices, on the one screen that has to sell this. Checkout is
+              on the phone, so someone reading here should already know what
+              the two options cost before they go and find it. */}
+          <div className="mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 text-center">
+            <div>
+              <p className="font-serif text-base leading-tight">
+                {t("premium_plan_monthly_price").replace("{price}", PLAN_LIST_PRICE.monthly)}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("premium_plan_monthly")}
+              </p>
+            </div>
+            <div>
+              <p className="font-serif text-base leading-tight">
+                {t("premium_plan_lifetime_price").replace("{price}", PLAN_LIST_PRICE.lifetime)}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("premium_plan_lifetime")}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* No guest branch here: the browser version has no guest mode, so

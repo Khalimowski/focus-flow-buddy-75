@@ -67,6 +67,10 @@ const value = revoke
       active: true,
       source: "manual",
       productId: PRODUCT_ID,
+      // A comp never expires, so it is recorded as the one-time plan — that is
+      // also what an entitlement with no plan reads as, but writing it makes
+      // the admin view say so rather than leaving it to be inferred.
+      plan: "lifetime",
       orderId: null,
       purchasedAt: new Date().toISOString(),
       verified: true,
