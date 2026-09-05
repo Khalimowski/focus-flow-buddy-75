@@ -22,6 +22,7 @@
 //      (revokePremium), never because a query came back empty — an offline or
 //      rate-limited Play query looks exactly like "no purchase".
 import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { getSyncUser, REMOTE_UPDATE_EVENT } from "./sync";
 
@@ -111,27 +112,95 @@ export const WEB_GATE_ENABLED =
 /**
  * Early-access switch: treat everyone as Premium, with no purchase.
  *
- * On while the app isn't on Play production — testers have no way to buy the
- * product, so gating features behind it would leave most of the app untestable.
- * Every premium *feature* (browser access, dictation) is open; the AdMob banner
- * is deliberately not affected, so the free Android tier still looks the way it
- * will ship (see hasPurchasedPremium in ads.ts).
+ * **Now off by default — early access is over.** It stays here because it is
+ * still the right switch for a demo build or a test track where nobody can
+ * reach Play checkout; set VITE_PREMIUM_FREE_FOR_ALL=true to turn it back on.
  *
  * Nothing is written to storage for this — no synthetic entitlement reaches
- * sync — so flipping it back off returns every account to its real state, and
- * genuine purchases made meanwhile are untouched.
- *
- * To end early access: set VITE_PREMIUM_FREE_FOR_ALL=false, or change the
- * default below once the paid release is live.
+ * sync — which is exactly why it could not grandfather anyone on its own: when
+ * it went off, every account would have gone back to "never paid". The people
+ * who were here during early access keep their access through real rows
+ * written by scripts/grandfather-premium.mjs instead, and guests through
+ * isGrandfatheredInstall() below.
  */
 export const PREMIUM_FREE_FOR_ALL =
-  (import.meta.env.VITE_PREMIUM_FREE_FOR_ALL as string | undefined) !== "false";
+  (import.meta.env.VITE_PREMIUM_FREE_FOR_ALL as string | undefined) === "true";
 
 export function isUnlockServiceConfigured(): boolean {
   return UNLOCK_ENDPOINT.length > 0;
 }
 
-export type PremiumSource = "play" | "manual" | "free";
+/**
+ * Keys that only a *previous run of the app on this device* can have written.
+ * Every one of them is device-local and absent from SYNC_KEYS, which is the
+ * whole point: a fresh install that signs into an old account pulls tasks,
+ * habits and stats down from the server, so none of those prove anything about
+ * this install's age. These cannot arrive over the wire.
+ */
+const EARLY_ACCESS_EVIDENCE_KEYS = [
+  STORAGE_KEYS.whatsNew,
+  STORAGE_KEYS.deviceId,
+  STORAGE_KEYS.endOfDay,
+  STORAGE_KEYS.widgetPrompt,
+];
+
+/**
+ * Whether this install was already running FlowDay when early access ended.
+ *
+ * Android guest mode has no account, so there is nowhere to put a real
+ * entitlement for someone who never signed up — the backfill can only reach
+ * rows in `user_data`. This is the local stand-in that keeps voice input
+ * working for a guest who has been using the app all along.
+ *
+ * Decided **once**, at module load, and then frozen. Timing is the whole
+ * design: premium.ts is imported before the app mounts, so the evidence keys
+ * present at this moment are necessarily leftovers from an earlier build —
+ * later in the same boot this build would start writing them itself and every
+ * install would look old.
+ */
+function resolveGrandfatheredInstall(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const decided = window.localStorage.getItem(STORAGE_KEYS.grandfathered);
+    if (decided !== null) return decided === "true";
+    const wasHere = EARLY_ACCESS_EVIDENCE_KEYS.some(
+      (key) => window.localStorage.getItem(key) !== null,
+    );
+    window.localStorage.setItem(STORAGE_KEYS.grandfathered, String(wasHere));
+    return wasHere;
+  } catch {
+    // Private mode, or storage disabled. Nothing to grandfather from.
+    return false;
+  }
+}
+
+const GRANDFATHERED_INSTALL = resolveGrandfatheredInstall();
+
+/**
+ * The local grandfather, honoured on Android only.
+ *
+ * The web check is not belt-and-braces, it is the security boundary: this flag
+ * lives in localStorage, where anyone can set it. On the phone the most it
+ * unlocks is dictation on a free, ad-supported install. In the browser it would
+ * hand over the paid product itself, so the browser never asks.
+ */
+export function isGrandfatheredInstall(): boolean {
+  if (!GRANDFATHERED_INSTALL) return false;
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Where an entitlement came from.
+ *   play          — a real purchase, either plan
+ *   manual        — an admin grant (comp, tester, refund handled out of band)
+ *   grandfathered — was already using FlowDay when early access ended
+ *   free          — the PREMIUM_FREE_FOR_ALL stand-in; never stored
+ */
+export type PremiumSource = "play" | "manual" | "grandfathered" | "free";
 
 export type Entitlement = {
   active: true;
@@ -198,9 +267,29 @@ export function getEntitlement(): Entitlement | null {
   return stored;
 }
 
-/** What the feature gates ask: a purchase, or early access standing in for one. */
+/**
+ * Stands in for an entitlement on an Android install that predates the end of
+ * early access but has no account to carry a real one. Never written to
+ * storage, so it cannot reach sync — see isGrandfatheredInstall().
+ */
+const GRANDFATHERED_ENTITLEMENT: Entitlement = Object.freeze({
+  active: true,
+  source: "grandfathered",
+  productId: PREMIUM_PRODUCT_ID,
+  plan: "lifetime",
+  orderId: null,
+  purchasedAt: new Date(0).toISOString(),
+  verified: true,
+  emailSent: true,
+});
+
+/**
+ * What the feature gates ask: a real entitlement, or one of the two stand-ins
+ * (early access, or a grandfathered guest install) standing in for one.
+ */
 export function getEffectiveEntitlement(): Entitlement | null {
-  return getEntitlement() ?? (PREMIUM_FREE_FOR_ALL ? FREE_ENTITLEMENT : null);
+  if (PREMIUM_FREE_FOR_ALL) return getEntitlement() ?? FREE_ENTITLEMENT;
+  return getEntitlement() ?? (isGrandfatheredInstall() ? GRANDFATHERED_ENTITLEMENT : null);
 }
 
 export function isPremium(): boolean {

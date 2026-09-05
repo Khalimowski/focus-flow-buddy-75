@@ -15,6 +15,7 @@ import { useTranslation } from "@/lib/i18n";
 import { notify } from "@/lib/notifications";
 import {
   entitlementPlan,
+  hasPurchasedPremium,
   isUnlockServiceConfigured,
   PLAN_LIST_PRICE,
   PLAY_SUBSCRIPTIONS_URL,
@@ -278,6 +279,36 @@ export function PremiumSection() {
       <RotateCw className="mr-1.5 size-3.5" /> {t("premium_restore")}
     </Button>
   );
+
+  // Grandfathered: they were here during early access and keep Premium for
+  // nothing. Say why, so it doesn't read as a billing mistake, and never show a
+  // buy button for something they already have. The guest wording is narrower
+  // on purpose — with no account this is one phone's voice input, not the
+  // browser version, and promising otherwise would be a lie they'd catch.
+  if (entitlement?.source === "grandfathered") {
+    // A real backfilled row versus the local guest stand-in. Sign-in state is
+    // the wrong question: someone can be signed in on an old install the
+    // backfill never reached, and telling them Premium is on their *account*
+    // when ads are still running and the browser is still locked would be a
+    // promise the app immediately breaks. Only a stored record means that.
+    const onAccount = hasPurchasedPremium();
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-mint" />
+          <span className="font-serif text-base leading-tight">
+            {t("premium_grandfathered_title")}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {t(onAccount ? "premium_grandfathered_body" : "premium_grandfathered_guest_body")}
+        </p>
+        <PremiumPerks withoutAds={!onAccount} />
+        {onAccount && <PremiumWebAddress />}
+        {isBillingSupported() && restoreButton}
+      </div>
+    );
+  }
 
   // Early access: everyone has the features, nobody has a purchase. Say so
   // plainly instead of showing "Premium is active" (which would claim a

@@ -30,30 +30,76 @@ other**, or the app quotes a price that checkout then contradicts.
 one-off carries a plain "best value" note. That is the only steer between the
 two — no countdown, no crossed-out price.
 
-## Early access: premium is currently free for everyone
+## Early access is over — and who was grandfathered
 
-`PREMIUM_FREE_FOR_ALL` in `premium.ts` is **on**. The app is not on Play
-production yet, so nobody can buy the product — gating features behind it would
-leave most of the app untestable for testers.
+`PREMIUM_FREE_FOR_ALL` now defaults to **off**. Premium has to be bought.
 
-What the switch does:
+The switch itself could never grandfather anyone, and that is worth
+understanding before touching any of this. It deliberately wrote **nothing** to
+storage or to sync, so on the day it went off every account would have read as
+"never paid" — including people who had been using FlowDay for months. Being an
+early user had to be turned into durable state first:
 
-- `isPremium()` / `usePremium()` return a stand-in entitlement with
-  `source: "free"`, so the web `PremiumGate` never appears and dictation works
-  for everyone.
-- **Nothing is written to storage**, so no synthetic entitlement reaches sync.
-  Flipping the switch off returns every account to its real state, and real
-  purchases made meanwhile are untouched.
-- The AdMob banner is *not* affected: `ads.ts` asks `hasPurchasedPremium()`,
-  which only a real purchase satisfies. The free tier keeps looking the way it
-  will ship, and the banner keeps getting exercised.
-- Settings shows an "Everything is unlocked" card instead of a buy button —
-  offering to sell what's currently free would be misleading. Restore stays
-  available on Android.
+```bash
+node scripts/grandfather-premium.mjs          # dry run: how many, writes nothing
+node scripts/grandfather-premium.mjs --apply  # write the rows
+```
 
-To end early access: set `VITE_PREMIUM_FREE_FOR_ALL=false` (build env) or change
-the default in `premium.ts`. Everything below describes the paid behaviour that
-returns when it's off.
+That writes a real `ff.premium.v1` row with `source: "grandfathered"` for every
+account that has no premium row yet, so it reaches every device that account
+signs in on through the ordinary sync path. It is the sanctioned way to create
+an entitlement — `sync.ts` refuses to invent one from local state, and the
+browser deletes any local entitlement the server has never heard of.
+
+**Order matters.** Run the backfill *before* the build with the switch off
+reaches anyone. Two harmless things follow from that ordering: someone who signs
+up after the script has run has no row and so pays, which is the point; and
+someone still on an older APK keeps free Premium until they update, because the
+flag is baked in at build time. A release that lands *before* the backfill is
+not harmless — it would silently lock out every existing user.
+
+The script never overwrites an existing row, which is what protects two cases
+that look alike from a distance: a real purchase keeps its own record, and a
+**revocation tombstone stays a tombstone** — a refunded customer does not get
+access handed back.
+
+### Guests keep voice input
+
+Android guest mode has no account, so there is no row to write for someone who
+never signed up. `isGrandfatheredInstall()` in `premium.ts` is the local stand-in:
+on first launch of the new build it checks for keys only a *previous run on this
+device* could have left — `whatsNew`, `deviceId`, `endOfDay`, `widgetPrompt`,
+all device-local and absent from `SYNC_KEYS` — and freezes the answer in
+`ff.grandfathered.v1`.
+
+Two properties do the work:
+
+- **Timing.** It is decided once, at module load, before the app mounts. Later
+  in the same boot this build starts writing those keys itself, at which point
+  every install would look old. The evidence keys are also never synced, so a
+  fresh install signing into an old account pulls tasks and stats down without
+  ever looking like an old install.
+- **Android only.** The flag lives in localStorage, where anyone can set it. On
+  the phone the most it unlocks is dictation on a free, ad-supported install. In
+  the browser it would hand over the paid product, so the browser never asks —
+  that check is the security boundary, not a nicety.
+
+A grandfathered guest keeps voice input and still sees ads, because `ads.ts`
+asks `hasPurchasedPremium()`, which only a stored record satisfies. A
+grandfathered *account* has a stored record, so it does lose the ads — they were
+promised Premium, and ad-free is part of Premium.
+
+Settings tells the two apart with `hasPurchasedPremium()` rather than sign-in
+state: someone can be signed in on an old install the backfill never reached,
+and claiming Premium is on their account while ads still run would be a promise
+the app immediately breaks.
+
+### Turning it back on
+
+`VITE_PREMIUM_FREE_FOR_ALL=true` still opens everything for everyone — the right
+switch for a demo deploy or a test track where nobody can reach Play checkout.
+Nothing is written for it, so turning it off again returns every account to its
+real state.
 
 ## How an unlock travels
 
@@ -117,6 +163,7 @@ the client.
 | `src/components/Premium.tsx` | Settings section: buy / restore / link / email |
 | `src/components/PremiumGate.tsx` | Full-screen lock for the browser build |
 | `src/lib/ads.ts` | Skips and removes the banner when premium is active |
+| `scripts/grandfather-premium.mjs` | One-time backfill: free Premium for accounts that predate the paid release |
 | `workers/premium-unlock/` | Optional: Play verification + welcome email |
 
 ## Play Console setup
@@ -314,6 +361,7 @@ Android install if you want a grant to stay on one machine.
 | `VITE_WEB_APP_URL` | https://flowday.day/ | Link shown in Settings and sent by email |
 | `VITE_PREMIUM_UNLOCK_URL` | *(empty)* | Unlock service; empty = trust locally, no email |
 | `VITE_PREMIUM_WEB_GATE` | `true` | `false` leaves the browser build open (demo deploys) |
+| `VITE_PREMIUM_FREE_FOR_ALL` | `false` | `true` unlocks every feature for everyone, storing nothing (demo deploys, test tracks) |
 
 All three are baked into the bundle at build time — changing one needs a rebuild
 of both the web bundle and the APK.
@@ -331,6 +379,11 @@ of both the web bundle and the APK.
 - [ ] Browser, same account after a phone purchase: unlocks within ~15s, or
       immediately via "Check again"
 - [ ] Browser, signed out: `AuthGate` shows with no "continue as guest" option
+- [ ] Grandfathered account: signs in on a clean browser and is *not* gated
+- [ ] Grandfathered guest (no account, Android): voice input works, ads still show
+- [ ] Fresh install, new account: gated on web, both plans offered on Android
+- [ ] Backfill is idempotent: a second `--apply` writes 0 rows
+- [ ] Backfill leaves a revocation tombstone alone (refunded user stays revoked)
 - [ ] Play refund → unlock service returns `revoked` → access is withdrawn
 - [ ] Subscription cancelled → Settings switches to "Ends on", access survives
       to the end of the paid period

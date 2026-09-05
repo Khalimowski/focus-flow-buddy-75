@@ -531,6 +531,11 @@ export const translations = {
     premium_email_unavailable: "Email delivery isn't set up for this build.",
     premium_verified: "Purchase verified with Google Play",
     premium_unverified: "Waiting on verification from Google Play",
+    premium_grandfathered_title: "Premium is yours, free",
+    premium_grandfathered_body:
+      "You were using FlowDay while it was still in early access, so Premium stays free on this account — no subscription, no payment, nothing to do.",
+    premium_grandfathered_guest_body:
+      "You were using FlowDay while it was still in early access, so voice input stays free on this phone. Sign in and Premium follows you to the browser too.",
     premium_free_all_title: "Everything is unlocked",
     premium_free_all_body:
       "While FlowDay is in early access, every Premium feature is free for everyone — no purchase needed. Try it all and tell us what breaks.",
@@ -945,6 +950,11 @@ export const translations = {
     premium_email_unavailable: "Wysyłka e-maili nie jest skonfigurowana w tej wersji.",
     premium_verified: "Zakup potwierdzony przez Google Play",
     premium_unverified: "Oczekiwanie na potwierdzenie z Google Play",
+    premium_grandfathered_title: "Premium masz za darmo",
+    premium_grandfathered_body:
+      "Korzystasz z FlowDay jeszcze z czasów wczesnego dostępu, więc Premium zostaje na tym koncie za darmo — bez subskrypcji, bez płatności, nie musisz nic robić.",
+    premium_grandfathered_guest_body:
+      "Korzystasz z FlowDay jeszcze z czasów wczesnego dostępu, więc dyktowanie zostaje na tym telefonie za darmo. Zaloguj się, a Premium pojedzie z Tobą również do przeglądarki.",
     premium_free_all_title: "Wszystko jest odblokowane",
     premium_free_all_body:
       "Dopóki FlowDay jest we wczesnym dostępie, każda funkcja Premium jest darmowa dla wszystkich — bez żadnego zakupu. Przetestuj wszystko i daj znać, co nie działa.",

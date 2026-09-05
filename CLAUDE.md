@@ -122,12 +122,29 @@ informational and **never a gate** — only the unlock service answering `revoke
 withdraws access, because a renewal we haven't heard about and a lapse look
 identical from the client.
 
-**Currently switched off**: `PREMIUM_FREE_FOR_ALL` in `premium.ts` is on while
-the app is not on Play production, so `isPremium()`/`usePremium()` answer yes for
-everyone (browser access and dictation are open) without writing anything to
-storage or sync. Ads are exempt — `ads.ts` uses `hasPurchasedPremium()`, which
-only a real purchase satisfies. Turn it off with `VITE_PREMIUM_FREE_FOR_ALL=false`
-or by changing the default.
+**Early access is over.** `PREMIUM_FREE_FOR_ALL` now defaults to **off**;
+`VITE_PREMIUM_FREE_FOR_ALL=true` turns it back on for a demo deploy or a test
+track. It writes nothing to storage or sync, which is precisely why it could not
+grandfather anyone by itself — when it went off, every account would have read
+as "never paid".
+
+Two mechanisms carry the early users instead, and neither is optional reading
+before touching this area:
+
+- **Accounts**: `scripts/grandfather-premium.mjs` backfills a real
+  `ff.premium.v1` row with `source: "grandfathered"` for every account without
+  one. **Run it before shipping a build with the flag off**, or every existing
+  user is locked out. It never overwrites an existing row, so purchases keep
+  their record and a revocation tombstone stays revoked.
+- **Android guests** (no account, so no row to write): `isGrandfatheredInstall()`
+  freezes a decision in the device-local, never-synced `ff.grandfathered.v1` at
+  module load, from keys only a previous run could have left. It is honoured on
+  **Android only** — the flag is localStorage, so on the web it would hand over
+  the paid product; that check is the security boundary, not a nicety.
+
+Ads are exempt from both stand-ins — `ads.ts` uses `hasPurchasedPremium()`,
+which only a stored record satisfies, so a grandfathered guest keeps seeing
+them and a grandfathered account does not.
 
 The entitlement is just another synced localStorage key (`ff.premium.v1` in
 SYNC_KEYS), so a phone purchase reaches the browser through the existing sync —
