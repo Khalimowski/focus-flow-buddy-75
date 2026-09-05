@@ -1,10 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ListTodo, Repeat, CheckSquare, BarChart3 } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  ListTodo,
+  Repeat,
+  CheckSquare,
+  BarChart3,
+  CalendarSync,
+} from "lucide-react";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { TaskList } from "@/components/TaskList";
 import { Reminders } from "@/components/Reminders";
+import { RecurringEvents } from "@/components/RecurringEvents";
 import { SimpleToDo } from "@/components/SimpleToDo";
 import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
@@ -43,7 +52,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-type Tab = "tasks" | "reminders" | "todo" | "insights";
+type Tab = "tasks" | "reminders" | "todo" | "cycles" | "insights";
 
 // Radix layers (dialogs, sheets, popovers, menus) all dismiss on Escape and
 // mark themselves open in the DOM, so the hardware back button can close the
@@ -177,6 +186,7 @@ function Home() {
     { id: "tasks", label: t('tasks'), icon: ListTodo },
     { id: "todo", label: t('todo'), icon: CheckSquare },
     { id: "reminders", label: t('habits'), icon: Repeat },
+    { id: "cycles", label: t('cycles'), icon: CalendarSync },
     ...(showInsights ? [{ id: "insights" as const, label: t('insights'), icon: BarChart3 }] : []),
   ];
 
@@ -257,6 +267,7 @@ function Home() {
         {tab === "tasks" && <TaskList onComplete={markToday} />}
         {tab === "todo" && <SimpleToDo />}
         {tab === "reminders" && <Reminders />}
+        {tab === "cycles" && <RecurringEvents />}
         {tab === "insights" && showInsights && <Analytics />}
       </motion.section>
 

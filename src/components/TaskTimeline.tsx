@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Clock, Edit2, Sparkles, Trash2 } from "lucide-react";
+import { CalendarSync, Check, Clock, Edit2, Sparkles, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 export type TimelineTask = {
@@ -23,13 +23,24 @@ export type TimelineHabit = {
   originalId: string;
 };
 
-export type TimelineItem = TimelineTask | TimelineHabit;
+/** A recurring event (lib/recurring.ts) landing on the day being shown. */
+export type TimelineCycle = {
+  kind: "cycle";
+  id: string;
+  title: string;
+  done: boolean;
+  time: string; // "HH:mm"
+  originalId: string;
+};
+
+export type TimelineItem = TimelineTask | TimelineHabit | TimelineCycle;
 
 type Props = {
   items: TimelineItem[];
   isToday: boolean;
   onToggleTask: (id: string) => void;
   onToggleHabit: (originalId: string, time: string) => void;
+  onToggleCycle: (originalId: string) => void;
   onSetTaskTime: (id: string, minutes: number | null) => void;
   onEditTask: (task: TimelineTask) => void;
   onDeleteTask: (id: string) => void;
@@ -52,7 +63,9 @@ const TOUCH_CANCEL_DIST = 10;
 const MOUSE_START_DIST = 4;
 
 const itemMinutes = (item: TimelineItem): number | null => {
-  if (item.kind === "habit") {
+  // Habits and cycles are both anchored to an "HH:mm"; only a task can be
+  // sitting on the day with no time at all.
+  if (item.kind !== "task") {
     const [h, m] = item.time.split(":").map(Number);
     return h * 60 + m;
   }
@@ -109,6 +122,7 @@ export function TaskTimeline({
   isToday,
   onToggleTask,
   onToggleHabit,
+  onToggleCycle,
   onSetTaskTime,
   onEditTask,
   onDeleteTask,
@@ -368,7 +382,8 @@ export function TaskTimeline({
       onClick={(e) => {
         e.stopPropagation();
         if (item.kind === "task") onToggleTask(item.id);
-        else onToggleHabit(item.originalId, item.time);
+        else if (item.kind === "habit") onToggleHabit(item.originalId, item.time);
+        else onToggleCycle(item.originalId);
       }}
       aria-label={item.title}
       aria-pressed={item.done}
@@ -376,10 +391,14 @@ export function TaskTimeline({
         item.done
           ? item.kind === "habit"
             ? "border-amber-500 bg-amber-500 text-white"
-            : "border-mint bg-mint text-mint-foreground"
+            : item.kind === "cycle"
+              ? "border-sky-500 bg-sky-500 text-white"
+              : "border-mint bg-mint text-mint-foreground"
           : item.kind === "habit"
             ? "border-border hover:border-amber-500"
-            : "border-border hover:border-primary"
+            : item.kind === "cycle"
+              ? "border-border hover:border-sky-500"
+              : "border-border hover:border-primary"
       }`}
     >
       {item.done && <Check className="size-3" strokeWidth={3} />}
@@ -490,7 +509,9 @@ export function TaskTimeline({
                   } ${
                     item.kind === "habit"
                       ? "bg-amber-500/10 border-amber-500/20"
-                      : "bg-card border-border"
+                      : item.kind === "cycle"
+                        ? "bg-sky-500/10 border-sky-500/20"
+                        : "bg-card border-border"
                   } ${draggable ? "cursor-grab active:cursor-grabbing touch-pan-y" : ""} ${
                     isDragged
                       ? dragging.minutes === null
@@ -527,8 +548,13 @@ export function TaskTimeline({
                       </div>
                     )}
                   </div>
-                  {item.kind === "habit"
-                    ? !compact && <Sparkles className="size-3.5 shrink-0 text-amber-500/50" />
+                  {item.kind !== "task"
+                    ? !compact &&
+                      (item.kind === "habit" ? (
+                        <Sparkles className="size-3.5 shrink-0 text-amber-500/50" />
+                      ) : (
+                        <CalendarSync className="size-3.5 shrink-0 text-sky-500/50" />
+                      ))
                     : (!compact || expanded) && (
                         <div className="flex shrink-0 items-center">
                           <button

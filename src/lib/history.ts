@@ -9,6 +9,9 @@ export type UserAction =
   | 'task_edited'
   | 'habit_created'
   | 'habit_deleted'
+  | 'cycle_created'
+  | 'cycle_completed'
+  | 'cycle_deleted'
   | 'ai_suggestion_accepted'
   | 'ai_suggestion_refused'
   | 'profile_updated';

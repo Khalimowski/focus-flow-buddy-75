@@ -55,6 +55,10 @@ export function saveJSON<T>(key: string, value: T): void {
 export const STORAGE_KEYS = {
   tasks: "ff.tasks.v1",
   reminders: "ff.reminders.v1",
+  // Recurring events on a custom cycle — every 5 weeks, every year (see
+  // lib/recurring.ts). Kept apart from `reminders` because that key holds the
+  // weekly habit model and is already on users' devices in that shape.
+  recurring: "ff.recurring.v1",
   streak: "ff.streak.v1",
   settings: "ff.settings.v1",
   inAppNotifs: "ff.notifs.v1",
