@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.0";
+export const APP_VERSION = "1.14.1";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.1",
+    items: {
+      en: [
+        "The tour you get on a fresh install has caught up with the app: it now walks you through Habits and the days they run on, the Cycles tab, and giving a task a duration as well as a time.",
+        "It also stops promising the microphone to everyone — without Premium it now says what dictation does and where it comes from, instead of asking you to tap a locked button.",
+      ],
+      pl: [
+        "Samouczek po świeżej instalacji nadgonił aplikację: przeprowadza teraz przez Nawyki i dni, w które działają, zakładkę Cykle oraz czas trwania zadania obok godziny.",
+        "Nie obiecuje też już mikrofonu każdemu — bez Premium mówi, co daje dyktowanie i skąd je wziąć, zamiast kazać dotykać zablokowanego przycisku.",
+      ],
+    },
+  },
   {
     version: "1.14.0",
     items: {

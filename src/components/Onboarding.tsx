@@ -12,6 +12,8 @@ import {
   CalendarDays,
   CalendarClock,
   Mic,
+  Repeat,
+  CalendarSync,
   Settings as SettingsIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -55,19 +57,32 @@ const OPEN_LAYER_SELECTOR = ['[role="dialog"]', '[role="alertdialog"]']
 
 /**
  * The first-run tour, built for the device it's running on: the mic step is
- * dropped where dictation isn't offered (that anchor simply isn't rendered) and
- * Insights only exists in the browser. Finishing it counts as having seen the
- * follow-up tours too — it already covered their ground.
+ * dropped where dictation isn't offered (that anchor simply isn't rendered),
+ * reads as locked without Premium, and Insights only exists in the browser.
+ * Finishing it counts as having seen the follow-up tours too — it already
+ * covered their ground.
  */
-function mainSteps(t: T, native: boolean): Step[] {
+function mainSteps(t: T, native: boolean, premium: boolean): Step[] {
   return [
     { target: null, icon: Sparkles, title: t("onboarding_welcome"), desc: t("tagline") },
     { target: "streak", icon: Flame, title: t("tour_streak_title"), desc: t("tour_streak_desc") },
     { target: "tabs", icon: ListTodo, title: t("tour_tabs_title"), desc: t("tour_tabs_desc") },
     { target: "days", icon: CalendarDays, title: t("tour_days_title"), desc: t("tour_days_desc") },
     { target: "add-task", icon: Check, title: t("onboarding_tasks_title"), desc: t("onboarding_tasks_desc") },
-    { target: "voice", icon: Mic, title: t("tour_voice_title"), desc: t("tour_voice_desc") },
+    {
+      target: "voice",
+      icon: Mic,
+      title: t("tour_voice_title"),
+      // Early access is over, so on the free Android tier the mic is there but
+      // locked. Telling that user to tap it and start talking is a dead end —
+      // say what it does and where it comes from instead.
+      desc: premium ? t("tour_voice_desc") : t("tour_voice_locked_desc"),
+    },
     { target: "view-toggle", icon: CalendarClock, title: t("tour_views_title"), desc: t("tour_views_desc") },
+    // Habits and Cycles are spotlit on their own tabs rather than opened: the
+    // tour never switches tab, and an empty list teaches nothing anyway.
+    { target: "tab-reminders", icon: Repeat, title: t("onboarding_habits_title"), desc: t("onboarding_habits_desc") },
+    { target: "tab-cycles", icon: CalendarSync, title: t("tour_cycles_title"), desc: t("tour_cycles_desc") },
     ...(native
       ? []
       : [{ target: "insights", icon: BarChart3, title: t("tour_insights_title"), desc: t("tour_insights_desc") }]),
@@ -129,13 +144,13 @@ export function Onboarding() {
   const tour = pending[0] ?? null;
 
   const allSteps = useMemo<Step[]>(() => {
-    if (tour === "main") return mainSteps(t, native);
+    if (tour === "main") return mainSteps(t, native, !!entitlement);
     if (tour === "premium") return premiumSteps(t);
     if (tour === "web") return webSteps(t);
     return [];
     // `language` is what changes the strings `t` returns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tour, native, language]);
+  }, [tour, native, language, entitlement]);
 
   // Drop steps whose anchor isn't on screen — a feature this build doesn't
   // show (no mic, no Insights on Android) shouldn't leave a dangling card.
@@ -263,7 +278,10 @@ export function Onboarding() {
             <p className="text-sm leading-relaxed text-muted-foreground">{current.desc}</p>
 
             <div className="mt-4 flex items-center justify-between gap-3">
-              <div className="flex gap-1.5">
+              {/* Wraps rather than pushing the buttons off: the main tour is
+                  eleven steps in the browser, which is more dots than a 375px
+                  card fits on one line beside Skip and Next. */}
+              <div className="flex min-w-0 flex-wrap gap-1.5">
                 {steps.map((_, i) => (
                   <div
                     key={i}
