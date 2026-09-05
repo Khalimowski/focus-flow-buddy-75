@@ -16,6 +16,9 @@ import { mergeRemoteStats } from "./stats";
 const SYNC_KEYS: string[] = [
   STORAGE_KEYS.tasks,
   STORAGE_KEYS.reminders,
+  // Recurring events (every 5 weeks, every year). A vaccination date is worth
+  // as much on the tablet as on the phone, so it travels like the lists do.
+  STORAGE_KEYS.recurring,
   STORAGE_KEYS.streak,
   STORAGE_KEYS.todo,
   STORAGE_KEYS.profile,

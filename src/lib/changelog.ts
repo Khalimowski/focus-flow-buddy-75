@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.13.0";
+export const APP_VERSION = "1.14.0";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.0",
+    items: {
+      en: [
+        "New Cycles tab, for everything that comes round every few weeks, months or years — a pet's flea and tick dose every 5 weeks, a rabies booster every year, a birthday. Each one shows its next date and the days left until it.",
+        "Tick one off and the next date sets itself: counting from the day you actually did it, or landing on the same calendar date every time — you pick per event.",
+      ],
+      pl: [
+        "Nowa zakładka Cykle — wszystko, co wraca co kilka tygodni, miesięcy albo lat: ochrona na pchły i kleszcze co 5 tygodni, szczepienie co rok, urodziny. Każdy wpis pokazuje najbliższą datę i ile dni do niej zostało.",
+        "Po odhaczeniu kolejny termin ustawia się sam: liczony od dnia, w którym faktycznie to zrobisz, albo zawsze tego samego dnia w kalendarzu — wybierasz przy każdym wpisie.",
+      ],
+    },
+  },
   {
     version: "1.13.0",
     items: {
