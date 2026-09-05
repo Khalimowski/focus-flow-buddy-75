@@ -32,22 +32,35 @@ const PRODUCT_ID = "focus_flow_premium";
 
 const apply = process.argv.includes("--apply");
 
-const env = Object.fromEntries(
-  readFileSync(".env.local", "utf8")
-    .split(/\r?\n/)
-    .filter((l) => l.includes("="))
-    .map((l) => [
-      l.slice(0, l.indexOf("=")),
-      l.slice(l.indexOf("=") + 1).trim().replace(/^["']|["']$/g, ""),
-    ])
-);
+// .env.local is gitignored — it holds admin credentials, so a fresh clone
+// never has one. Fall back to the environment so this can also be run as
+// DATABASE_URL=... node scripts/grandfather-premium.mjs.
+function readEnvFile(path) {
+  try {
+    return Object.fromEntries(
+      readFileSync(path, "utf8")
+        .split(/\r?\n/)
+        .filter((l) => l.includes("="))
+        .map((l) => [
+          l.slice(0, l.indexOf("=")),
+          l.slice(l.indexOf("=") + 1).trim().replace(/^["']|["']$/g, ""),
+        ])
+    );
+  } catch {
+    return {};
+  }
+}
 
-if (!env.DATABASE_URL) {
-  console.error("DATABASE_URL not found in .env.local");
+const databaseUrl = process.env.DATABASE_URL || readEnvFile(".env.local").DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error("No DATABASE_URL found.");
+  console.error("Put it in .env.local (same file setup-neon.mjs and grant-premium.mjs use),");
+  console.error("or pass it inline:  DATABASE_URL=... node scripts/grandfather-premium.mjs");
   process.exit(1);
 }
 
-const sql = neon(env.DATABASE_URL);
+const sql = neon(databaseUrl);
 
 // Matches the Entitlement shape in src/lib/premium.ts. verified/emailSent are
 // pre-set so the client never asks the unlock service to check a Play purchase
