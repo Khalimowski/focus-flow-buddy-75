@@ -8,7 +8,14 @@ import { translations, useI18nStore, type VibrationType } from "./i18n";
 import { recordStat } from "./stats";
 import { dateKey } from "./utils";
 import { habitSlots, nextOccurrence, runsOn } from "./habits";
-import { completeEvent, notifKey, occurrenceAt, normalizeEvents, type RecurringEvent } from "./recurring";
+import {
+  completeEvent,
+  notifKey,
+  occurrenceAt,
+  occurrenceDay,
+  normalizeEvents,
+  type RecurringEvent,
+} from "./recurring";
 
 // Capacitor runtime helpers — isNative() guards all plugin calls, making static imports safe in browser & SSR
 
@@ -265,7 +272,10 @@ export async function scheduleNativeDaily(id: number, title: string, body: strin
  * Android forgets on reboot — `reconcileNotifications` re-arms them at boot,
  * which is why the id is derived from the occurrence rather than random.
  *
- * `canonical` marks exactly that reconcilable id. A postponed copy is scheduled
+ * `occurrence` is the day this one is *for*, carried so the Done action can
+ * tick off that day rather than whichever day the notification is answered on.
+ *
+ * `canonical` marks exactly the reconcilable id. A postponed copy is scheduled
  * with a throwaway id and `canonical: false`, so the reconcile pass leaves it
  * alone instead of cancelling it as stale.
  */
@@ -275,6 +285,7 @@ export async function scheduleNativeCycle(
   body: string,
   at: Date,
   cycleId: string,
+  occurrence: string,
   canonical = true,
 ) {
   if (!isNative()) return;
@@ -292,7 +303,7 @@ export async function scheduleNativeCycle(
           smallIcon: "ic_stat_icon",
           sound: "boink",
           actionTypeId: "CYCLE_ACTIONS",
-          extra: { type: 'cycle', cycleId, title, canonical },
+          extra: { type: 'cycle', cycleId, title, occurrence, canonical },
         },
       ],
     });
@@ -324,7 +335,7 @@ export async function syncCycleNotification(
   // Already behind us: it has fired, or it was missed. Either way the app's own
   // list is what carries an overdue cycle from here.
   if (at.getTime() <= Date.now()) return;
-  await scheduleNativeCycle(hashId(nextKey), next.label, body, at, next.id);
+  await scheduleNativeCycle(hashId(nextKey), next.label, body, at, next.id, occurrenceDay(next));
 }
 
 /** Drop the notification armed for this event's current occurrence. */
@@ -730,7 +741,14 @@ export async function reconcileNotifications() {
     }
     for (const [id, { ev, at }] of wantCycle) {
       if (!pendingIds.has(id)) {
-        await scheduleNativeCycle(id, ev.label, lang.cycle_notification_body, at, ev.id);
+        await scheduleNativeCycle(
+          id,
+          ev.label,
+          lang.cycle_notification_body,
+          at,
+          ev.id,
+          occurrenceDay(ev),
+        );
         added++;
       }
     }
@@ -740,9 +758,17 @@ export async function reconcileNotifications() {
   }
 }
 
+// Set once initNative has run. The screen re-runs its boot effect on every
+// theme change, and a second pass would add a second
+// localNotificationActionPerformed listener — harmless for a task tick, which
+// is idempotent, but a cycle's Done *advances* its date, so two listeners moved
+// it two intervals.
+let nativeInitialized = false;
+
 // Call once at app boot
 export async function initNative() {
-  if (!isNative()) return;
+  if (!isNative() || nativeInitialized) return;
+  nativeInitialized = true;
   console.log("[Native] Initializing features...");
 
   // Register notification actions
@@ -804,8 +830,19 @@ export async function initNative() {
         const events = normalizeEvents(loadJSON<unknown>(STORAGE_KEYS.recurring, []));
         const target = events.find(e => e.id === cycleId);
         if (!target) return;
+        // The day this notification was for. A shade left unread until tomorrow
+        // still answers *yesterday's* occurrence.
+        const occurrence = typeof extra.occurrence === 'string' ? extra.occurrence : undefined;
         if (actionId === 'done') {
-          saveJSON(STORAGE_KEYS.recurring, events.map(e => e.id === cycleId ? completeEvent(e) : e));
+          // A fixed-date cycle ticks off the occurrence that fired: answering
+          // Monday's notification on Tuesday would otherwise mark the *next*
+          // date done and skip it entirely. A completion-mode cycle still
+          // counts from today — restarting on the day you did it is the mode.
+          const on = target.mode === 'schedule' && occurrence ? occurrence : dateKey();
+          saveJSON(
+            STORAGE_KEYS.recurring,
+            events.map(e => (e.id === cycleId ? completeEvent(e, on) : e)),
+          );
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           // The next occurrence can be a year out; arm it now rather than
           // waiting for the app to be opened.
@@ -819,6 +856,8 @@ export async function initNative() {
             lang.cycle_notification_body,
             nextAt,
             target.id,
+            // Still the same occurrence — only the reminder moved.
+            occurrence ?? occurrenceDay(target),
             false,
           );
         }
@@ -904,6 +943,10 @@ export async function initNative() {
     });
     void App.addListener("resume", () => {
       void syncWidgetTicks();
+      // A one-shot cycle notification is spent once it fires, and the next
+      // occurrence can only be armed by code that runs. Cold start already
+      // reconciles; this catches the app merely coming back to the foreground.
+      void reconcileNotifications();
     });
     await syncWidgetTicks();
   } catch (e) {
