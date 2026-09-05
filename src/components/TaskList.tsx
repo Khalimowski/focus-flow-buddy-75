@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Sparkles, CheckSquare, List, CalendarClock, CalendarDays } from "lucide-react";
+import { Check, Plus, Trash2, Clock, Edit2, X, Save, Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, Sparkles, CheckSquare, List, CalendarClock, CalendarDays, CalendarSync } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
 import { generateId } from "@/lib/utils";
-import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar } from "@/lib/native";
+import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar, syncCycleNotification } from "@/lib/native";
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
 import { TaskTimeline, type TimelineTask } from "@/components/TaskTimeline";
@@ -19,6 +19,15 @@ import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
 import { runsOn } from "@/lib/habits";
+import {
+  completeEvent,
+  daysLeft,
+  normalizeEvents,
+  showsOnDay,
+  uncompleteEvent,
+  wasDoneOn,
+  type RecurringEvent,
+} from "@/lib/recurring";
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -68,6 +77,9 @@ const sortTasks = (list: Task[]) => {
 export function TaskList({ onComplete }: { onComplete?: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  // Recurring events (lib/recurring.ts) join the day they're due, so a dose or
+  // a booster isn't only visible on its own tab.
+  const [cycles, setCycles] = useState<RecurringEvent[]>([]);
   const [loaded, setLoaded] = useState(false);
   // Set when the next setTasks comes from re-reading storage (see reload below)
   const skipNextSave = useRef(false);
@@ -120,6 +132,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       const data = loadJSON<Task[]>(STORAGE_KEYS.tasks, []);
       const reminderData = loadJSON<Reminder[]>(STORAGE_KEYS.reminders, []);
       setReminders(reminderData);
+      setCycles(normalizeEvents(loadJSON<unknown>(STORAGE_KEYS.recurring, [])));
 
       // Migration: ensure all tasks have a dueDate and handle missing createdAt
       const migrated = data.map(task => ({
@@ -159,6 +172,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
 
   const displayItems = useMemo(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
     const filteredTasks = tasks.filter(t => t.dueDate === dateStr).map(t => ({ ...t, kind: 'task' as const }));
 
     const habitItems = reminders
@@ -173,11 +187,32 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         time: time
       })));
 
-    return [...filteredTasks, ...habitItems].sort((a, b) => {
+    // Which cycles belong on this day — its own occurrence, the day it was
+    // ticked, and (on today only) anything already overdue. See showsOnDay.
+    const cycleItems = cycles
+      .filter(ev => showsOnDay(ev, dateStr, todayStr))
+      .map(ev => ({
+        id: `cycle-${ev.id}`,
+        title: ev.label,
+        done: wasDoneOn(ev, dateStr),
+        kind: 'cycle' as const,
+        originalId: ev.id,
+        time: ev.time,
+        // Only ever set on today's list: on the day it was actually due, it
+        // isn't late yet.
+        overdueBy: dateStr === todayStr ? Math.max(0, -daysLeft(ev, todayStr)) : 0
+      }));
+
+    return [...filteredTasks, ...habitItems, ...cycleItems].sort((a, b) => {
       // Sort logic: Done items at bottom
       if (a.done !== b.done) return a.done ? 1 : -1;
 
-      const getMinutes = (item: (typeof filteredTasks)[number] | (typeof habitItems)[number]) => {
+      const getMinutes = (
+        item:
+          | (typeof filteredTasks)[number]
+          | (typeof habitItems)[number]
+          | (typeof cycleItems)[number],
+      ) => {
         if (item.kind === 'task') {
           if (!item.remindAt) return 9999;
           const d = new Date(item.remindAt);
@@ -193,7 +228,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       if (minA !== minB) return minA - minB;
       return 0;
     });
-  }, [tasks, reminders, selectedDate]);
+  }, [tasks, reminders, cycles, selectedDate]);
 
   const openItems = useMemo(() => displayItems.filter((item) => !item.done), [displayItems]);
   const doneItems = useMemo(() => displayItems.filter((item) => item.done), [displayItems]);
@@ -524,6 +559,27 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (ticked) recordStat('habitCompleted', 1, dateStr);
   };
 
+  /**
+   * Tick a recurring event off for the day being viewed — or put it back.
+   *
+   * Unlike a habit tick, this moves the event's date, so the same tap has to be
+   * able to undo it (uncompleteEvent restores the anchor it kept). Completion
+   * is anchored to the day on screen for the same reason habits are: catching
+   * up on yesterday belongs to yesterday.
+   */
+  const toggleCycle = (cycleId: string) => {
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const target = cycles.find(ev => ev.id === cycleId);
+    if (!target) return;
+    const ticking = !wasDoneOn(target, dateStr);
+    const next = ticking ? completeEvent(target, dateStr) : uncompleteEvent(target);
+    const updated = cycles.map(ev => (ev.id === cycleId ? next : ev));
+    setCycles(updated);
+    saveJSON(STORAGE_KEYS.recurring, updated);
+    void syncCycleNotification(next, t('cycle_notification_body'), target);
+    if (ticking) addEvent('cycle_completed', { label: target.label });
+  };
+
   const remove = async (id: string) => {
     try {
       const taskToDelete = tasks.find(item => item.id === id);
@@ -562,10 +618,14 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
         nested
           ? item.kind === 'habit'
             ? "rounded-xl bg-amber-500/[0.06] border-amber-500/25"
-            : "rounded-xl border-border bg-surface"
+            : item.kind === 'cycle'
+              ? "rounded-xl bg-sky-500/[0.06] border-sky-500/25"
+              : "rounded-xl border-border bg-surface"
           : item.kind === 'habit'
             ? "rounded-2xl bg-amber-500/[0.06] border-amber-500/25 shadow-soft"
-            : "rounded-2xl bg-card border-border shadow-soft"
+            : item.kind === 'cycle'
+              ? "rounded-2xl bg-sky-500/[0.06] border-sky-500/25 shadow-soft"
+              : "rounded-2xl bg-card border-border shadow-soft"
       }`}
     >
       {item.kind === 'task' && editingId === item.id ? (
@@ -633,13 +693,25 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       ) : (
         <>
           <button
-            onClick={() => item.kind === 'task' ? toggle(item.id) : toggleHabit(item.originalId, item.time)}
+            onClick={() => {
+              if (item.kind === 'task') toggle(item.id);
+              else if (item.kind === 'habit') toggleHabit(item.originalId, item.time);
+              else toggleCycle(item.originalId);
+            }}
             aria-label={item.title}
             aria-pressed={item.done}
             className={`grid size-6 shrink-0 place-items-center rounded-full border transition ${
               item.done
-                ? item.kind === 'habit' ? "border-amber-500 bg-amber-500 text-white" : "border-mint bg-mint text-mint-foreground"
-                : item.kind === 'habit' ? "border-border hover:border-amber-500" : "border-border hover:border-primary"
+                ? item.kind === 'habit'
+                  ? "border-amber-500 bg-amber-500 text-white"
+                  : item.kind === 'cycle'
+                    ? "border-sky-500 bg-sky-500 text-white"
+                    : "border-mint bg-mint text-mint-foreground"
+                : item.kind === 'habit'
+                  ? "border-border hover:border-amber-500"
+                  : item.kind === 'cycle'
+                    ? "border-border hover:border-sky-500"
+                    : "border-border hover:border-primary"
             }`}
           >
             {item.done && <Check className="size-3.5" strokeWidth={3} />}
@@ -656,17 +728,29 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
                   {t('habits')}
                 </span>
               )}
+              {item.kind === 'cycle' && (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-600">
+                  {t('cycles')}
+                </span>
+              )}
+              {/* Why an overdue cycle is on today's list rather than the day it
+                  was due. */}
+              {item.kind === 'cycle' && item.overdueBy > 0 && !item.done && (
+                <span className="inline-flex shrink-0 items-center rounded-full bg-destructive/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-destructive">
+                  {item.overdueBy} {item.overdueBy === 1 ? t('cycle_days_over_one') : t('cycle_days_over_other')}
+                </span>
+              )}
             </div>
             <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground font-mono">
               <Clock className="size-3" />
-              {item.kind === 'task' && item.remindAt ? (
-                new Date(item.remindAt).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              ) : (
-                item.kind === 'habit' ? item.time : ""
-              )}
+              {item.kind === 'task'
+                ? item.remindAt
+                  ? new Date(item.remindAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : ""
+                : item.time}
             </div>
           </div>
           {item.kind === 'task' && (
@@ -709,6 +793,11 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
           {item.kind === 'habit' && (
             <div className="flex items-center justify-center size-8 text-amber-500/40">
               <Sparkles className="size-4" />
+            </div>
+          )}
+          {item.kind === 'cycle' && (
+            <div className="flex items-center justify-center size-8 text-sky-500/40">
+              <CalendarSync className="size-4" />
             </div>
           )}
         </>
@@ -901,6 +990,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
             isToday={isSameDay(selectedDate, new Date())}
             onToggleTask={toggle}
             onToggleHabit={toggleHabit}
+            onToggleCycle={toggleCycle}
             onSetTaskTime={setTaskTime}
             onEditTask={(task: TimelineTask) => {
               switchView('list');

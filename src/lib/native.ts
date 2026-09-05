@@ -301,6 +301,38 @@ export async function scheduleNativeCycle(
   }
 }
 
+/**
+ * Put a recurring event's notification where the event now says it belongs.
+ *
+ * `previous` is the version being replaced, if any. Its notification is only
+ * cancelled when the new one lands under a *different* id — scheduling an id
+ * again replaces what's pending under it, and cancelling then re-scheduling the
+ * same id is a race between two calls that can arrive in either order.
+ */
+export async function syncCycleNotification(
+  next: RecurringEvent,
+  body: string,
+  previous?: RecurringEvent,
+) {
+  if (!isNative()) return;
+  const nextKey = notifKey(next);
+  if (previous && (!next.enabled || notifKey(previous) !== nextKey)) {
+    await cancelNative([hashId(notifKey(previous))]);
+  }
+  if (!next.enabled) return;
+  const at = occurrenceAt(next);
+  // Already behind us: it has fired, or it was missed. Either way the app's own
+  // list is what carries an overdue cycle from here.
+  if (at.getTime() <= Date.now()) return;
+  await scheduleNativeCycle(hashId(nextKey), next.label, body, at, next.id);
+}
+
+/** Drop the notification armed for this event's current occurrence. */
+export async function cancelCycleNotification(ev: RecurringEvent) {
+  if (!isNative()) return;
+  await cancelNative([hashId(notifKey(ev))]);
+}
+
 // --- End-of-day review reminder ---
 // One notification, re-armed from storage rather than left repeating: a daily
 // `repeats: true` schedule would fire on evenings with nothing left to move.

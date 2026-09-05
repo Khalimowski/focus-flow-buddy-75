@@ -27,7 +27,7 @@ import { notify } from "@/lib/notifications";
 import { cn, dateKey, generateId } from "@/lib/utils";
 import { useTranslation, type Language } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
-import { cancelNative, hashId, isNative, scheduleNativeCycle } from "@/lib/native";
+import { cancelCycleNotification, syncCycleNotification } from "@/lib/native";
 import {
   INTERVAL_UNITS,
   MAX_EVERY,
@@ -35,7 +35,6 @@ import {
   cycleProgress,
   daysLeft,
   normalizeEvents,
-  notifKey,
   occurrenceAt,
   occurrenceDay,
   parseDayKey,
@@ -257,35 +256,14 @@ export function RecurringEvents() {
   }, []);
 
   // --- Native notifications -------------------------------------------------
-  // One per event, at its next occurrence. The id is derived from that
-  // occurrence (see notifKey), so an event that moves is disarmed with its old
-  // values before the new ones are armed.
+  // One per event, at its next occurrence, moved by native.ts as the event
+  // moves (no-op on the web).
 
-  const arm = (ev: RecurringEvent) => {
-    if (!isNative() || !ev.enabled) return;
-    const at = occurrenceAt(ev);
-    if (at.getTime() <= Date.now()) return;
-    void scheduleNativeCycle(
-      hashId(notifKey(ev)),
-      ev.label,
-      t("cycle_notification_body"),
-      at,
-      ev.id,
-    );
-  };
-
-  const disarm = (ev: RecurringEvent) => {
-    if (!isNative()) return;
-    void cancelNative([hashId(notifKey(ev))]);
-  };
+  const arm = (ev: RecurringEvent, previous?: RecurringEvent) =>
+    void syncCycleNotification(ev, t("cycle_notification_body"), previous);
 
   const replace = (previous: RecurringEvent, next: RecurringEvent) => {
-    // Scheduling an id again replaces what's pending under it, so the old
-    // notification only needs cancelling when the new one lands under a
-    // different id — cancelling and re-scheduling the same id would be a race
-    // between two calls that could arrive in either order.
-    if (!next.enabled || notifKey(next) !== notifKey(previous)) disarm(previous);
-    arm(next);
+    arm(next, previous);
     setItems((list) => list.map((ev) => (ev.id === next.id ? next : ev)));
   };
 
@@ -367,14 +345,11 @@ export function RecurringEvents() {
   };
 
   const toggle = (ev: RecurringEvent) => {
-    const next = { ...ev, enabled: !ev.enabled };
-    if (next.enabled) arm(next);
-    else disarm(next);
-    setItems((list) => list.map((item) => (item.id === ev.id ? next : item)));
+    replace(ev, { ...ev, enabled: !ev.enabled });
   };
 
   const remove = (ev: RecurringEvent) => {
-    disarm(ev);
+    void cancelCycleNotification(ev);
     addEvent("cycle_deleted", { label: ev.label });
     if (editingId === ev.id) setEditingId(null);
     setItems((list) => list.filter((item) => item.id !== ev.id));

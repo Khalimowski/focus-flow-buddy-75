@@ -47,6 +47,12 @@ export type RecurringEvent = {
   enabled: boolean;
   /** The occurrence day most recently ticked off, if any. */
   lastDone?: string;
+  /**
+   * The anchor as it stood before that tick, so it can be put back — a tap on
+   * the wrong row of the day list must not silently move a medication date.
+   * Only meaningful alongside `lastDone`; see uncompleteEvent.
+   */
+  previousAnchor?: string;
   /** Occurrence the in-app (browser) reminder has already fired for. */
   notifiedFor?: string;
   createdAt: number;
@@ -182,9 +188,41 @@ export function cycleProgress(ev: RecurringEvent, today: string = dateKey()): nu
 export function completeEvent(ev: RecurringEvent, on: string = dateKey()): RecurringEvent {
   const { notifiedFor: _drop, ...rest } = ev;
   if (ev.mode === "completion") {
-    return { ...rest, anchor: addInterval(on, ev.every, ev.unit), lastDone: on };
+    return {
+      ...rest,
+      anchor: addInterval(on, ev.every, ev.unit),
+      lastDone: on,
+      previousAnchor: ev.anchor,
+    };
   }
-  return { ...rest, lastDone: occurrenceDay(ev, on) };
+  return { ...rest, lastDone: occurrenceDay(ev, on), previousAnchor: ev.anchor };
+}
+
+/** Undo the most recent tick, putting the cycle back where it was. */
+export function uncompleteEvent(ev: RecurringEvent): RecurringEvent {
+  const { lastDone: _wasDone, previousAnchor, notifiedFor: _drop, ...rest } = ev;
+  return { ...rest, anchor: previousAnchor ?? ev.anchor };
+}
+
+/** Was this event ticked off on `day`? */
+export function wasDoneOn(ev: RecurringEvent, day: string): boolean {
+  return ev.lastDone === day;
+}
+
+/**
+ * Does this event belong on the day list for `day`?
+ *
+ * Its own occurrence, obviously; the day it was ticked off, so a tick doesn't
+ * make the row vanish out from under the finger that made it; and, on today
+ * only, anything already overdue — an overdue dose that stayed behind on the
+ * day it was due would be a reminder nobody ever sees again.
+ */
+export function showsOnDay(ev: RecurringEvent, day: string, today: string = dateKey()): boolean {
+  if (!ev.enabled) return false;
+  if (wasDoneOn(ev, day)) return true;
+  const due = occurrenceDay(ev, today);
+  if (due === day) return true;
+  return day === today && due < today;
 }
 
 /**
@@ -229,6 +267,9 @@ export function normalizeEvent(raw: unknown): RecurringEvent | null {
     enabled: ev.enabled !== false,
     ...(typeof ev.lastDone === "string" && DAY_KEY_RE.test(ev.lastDone)
       ? { lastDone: ev.lastDone }
+      : {}),
+    ...(typeof ev.previousAnchor === "string" && DAY_KEY_RE.test(ev.previousAnchor)
+      ? { previousAnchor: ev.previousAnchor }
       : {}),
     ...(typeof ev.notifiedFor === "string" && DAY_KEY_RE.test(ev.notifiedFor)
       ? { notifiedFor: ev.notifiedFor }
