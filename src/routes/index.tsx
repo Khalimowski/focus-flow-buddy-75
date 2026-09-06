@@ -294,8 +294,10 @@ function Home() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                // Insights is the one tab the tours point at on its own.
-                data-tour={t.id === "insights" ? "insights" : undefined}
+                // Every tab is its own tour anchor, so a step can spotlight
+                // one list instead of the whole bar. Insights keeps the bare
+                // name the Premium and browser tours already point at.
+                data-tour={t.id === "insights" ? "insights" : `tab-${t.id}`}
                 // min-w-0 + truncate: the labels are translated, and a long
                 // translation used to run off the right edge of a 375px screen.
                 // `hover:` earns its keep on the desktop build — on the phone
