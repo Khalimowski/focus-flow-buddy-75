@@ -25,8 +25,8 @@ export const Route = createFileRoute("/privacy")({
 });
 
 const UPDATED: Record<Language, string> = {
-  en: "Last updated: August 25, 2026",
-  pl: "Ostatnia aktualizacja: 25 sierpnia 2026",
+  en: "Last updated: September 5, 2026",
+  pl: "Ostatnia aktualizacja: 5 września 2026",
 };
 
 type Block = { p: string } | { ul: string[] };
@@ -81,7 +81,7 @@ const POLICY: Record<Language, Section[]> = {
       blocks: [
         {
           ul: [
-            "**Guest mode keeps everything on your phone.** No account, no server, nothing transmitted. It is available on Android only.",
+            "**Guest mode keeps your data on your phone.** No account, and nothing you write reaches our database. The app still talks to Google's ad service and the update check, as the free version always does. Android only.",
             "**With an account, your task data syncs** to a private row in our database in the EU so your phone and your browser stay in step. We do not read, mine, profile or sell it.",
             "**There is no analytics SDK and no crash-reporting SDK.** The Insights screen is calculated on your device from your own data.",
             "**The free Android version shows ads** (Google AdMob), which use the Android advertising ID. Premium removes them.",
@@ -107,7 +107,7 @@ const POLICY: Record<Language, Section[]> = {
         { p: "Saved in the app's private storage (Android) or your browser's local storage:" },
         {
           ul: [
-            "Tasks, to-do items, and habits (recurring reminders) you create",
+            "Tasks, to-do items, habits (daily and weekly reminders) and cycles (anything that comes round every few weeks, months or years) you create",
             "Your streak, and per-day activity counters that power the Insights screen",
             "The short “AI coach” profile you can fill in: life stage, usual work or school hours, and which sports you do on which days",
             "App preferences (theme, language, notification, calendar and vibration settings)",
@@ -129,7 +129,7 @@ const POLICY: Record<Language, Section[]> = {
         },
         {
           ul: [
-            "Tasks, to-do items, habits, and your streak",
+            "Tasks, to-do items, habits, cycles, and your streak",
             "The AI-coach profile answers listed above",
             "The Insights activity counters",
             "Your Premium entitlement",
@@ -160,7 +160,7 @@ const POLICY: Record<Language, Section[]> = {
       blocks: [
         {
           ul: [
-            "**Notifications** — to show the task reminders and daily habits you schedule. Optional.",
+            "**Notifications** — to show the task reminders, habits and cycles you schedule. Optional.",
             "**Exact alarms** — so reminders fire at the exact time you chose, even when the app is closed.",
             "**Calendar (read/write)** — only if you enable “Sync to Calendar” in Settings, to add and remove your own tasks and habits in your device calendar. Optional; off by default.",
             "**Microphone** — only for voice dictation, which runs offline. Optional; decline it and the dictation button stays hidden.",
@@ -198,7 +198,7 @@ const POLICY: Record<Language, Section[]> = {
           p: "Speech recognition runs **offline, inside the app**, using a WebAssembly build of Vosk. Your audio is never uploaded, never recorded and never stored — it is turned into text on the device and discarded.",
         },
         {
-          p: "The first time you use dictation, the app downloads a speech model (tens of megabytes) from a public static host. That host sees an ordinary file download — IP address and user agent, as any web server does. No audio and no personal data are sent with it.",
+          p: "The first time you use dictation, the app downloads a speech model (tens of megabytes) from a public static file host — GitHub Pages for the English model, our own Cloudflare R2 storage for the Polish one. That host sees an ordinary file download — IP address and user agent, as any web server does. No audio and no personal data are sent with it.",
         },
       ],
     },
@@ -217,7 +217,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Purchases",
       blocks: [
         {
-          p: "Premium is a one-time purchase through **Google Play**. Google handles the payment; we never see your card or billing details.",
+          p: "Premium is sold through **Google Play**, either as a monthly subscription or as a one-time purchase — both unlock exactly the same thing. Google handles the payment; we never see your card or billing details. A subscription renews until you cancel it, which you can do at any time in Google Play; cancelling stops future charges and Premium runs to the end of the period you have already paid for.",
         },
         {
           p: "To confirm that a purchase is genuine and to email you the link to the browser version, the app can send your **purchase token, order id, product id and account email** to a small service we run on Cloudflare Workers. That service checks the token against Google Play's API and sends you a single email through the delivery provider Resend. The address is not added to any list and is not used for anything else.",
@@ -313,7 +313,7 @@ const POLICY: Record<Language, Section[]> = {
       blocks: [
         {
           ul: [
-            "**Tryb gościa zostawia wszystko w telefonie.** Bez konta, bez serwera, nic nie jest wysyłane. Dostępny tylko na Androidzie.",
+            "**Tryb gościa zostawia Twoje dane w telefonie.** Bez konta — nic, co zapiszesz, nie trafia do naszej bazy. Aplikacja nadal łączy się z serwisem reklamowym Google i sprawdza dostępność aktualizacji, tak jak zawsze w wersji darmowej. Tylko na Androidzie.",
             "**Z kontem Twoje zadania synchronizują się** do prywatnego wiersza w naszej bazie danych w UE, żeby telefon i przeglądarka miały to samo. Nie czytamy ich, nie analizujemy, nie profilujemy i nie sprzedajemy.",
             "**Nie ma tu żadnego SDK analitycznego ani zgłaszania awarii.** Ekran Statystyk liczy się na Twoim urządzeniu, z Twoich własnych danych.",
             "**Darmowa wersja na Androida wyświetla reklamy** (Google AdMob), które korzystają z identyfikatora reklamowego. Premium je usuwa.",
@@ -341,7 +341,7 @@ const POLICY: Record<Language, Section[]> = {
         },
         {
           ul: [
-            "Zadania, lista do zrobienia i nawyki (cykliczne przypomnienia), które tworzysz",
+            "Zadania, lista do zrobienia, nawyki (przypomnienia dzienne i tygodniowe) oraz cykle (wszystko, co wraca co kilka tygodni, miesięcy lub lat), które tworzysz",
             "Twoja passa oraz dzienne liczniki aktywności zasilające ekran Statystyk",
             "Krótki profil „asystenta AI”, jeśli go wypełnisz: etap życia, zwykłe godziny pracy lub szkoły oraz w które dni uprawiasz sport",
             "Ustawienia aplikacji (motyw, język, powiadomienia, kalendarz, wibracje)",
@@ -363,7 +363,7 @@ const POLICY: Record<Language, Section[]> = {
         },
         {
           ul: [
-            "Zadania, lista do zrobienia, nawyki i passa",
+            "Zadania, lista do zrobienia, nawyki, cykle i passa",
             "Odpowiedzi z profilu asystenta wymienione wyżej",
             "Liczniki aktywności ze Statystyk",
             "Uprawnienie Premium",
@@ -394,7 +394,7 @@ const POLICY: Record<Language, Section[]> = {
       blocks: [
         {
           ul: [
-            "**Powiadomienia** — żeby pokazywać zaplanowane przypomnienia o zadaniach i codzienne nawyki. Opcjonalne.",
+            "**Powiadomienia** — żeby pokazywać zaplanowane przypomnienia o zadaniach, nawyki i cykle. Opcjonalne.",
             "**Dokładne alarmy** — żeby przypomnienia odpalały o wybranej godzinie, nawet gdy aplikacja jest zamknięta.",
             "**Kalendarz (odczyt/zapis)** — tylko jeśli włączysz „Synchronizuj z kalendarzem” w Ustawieniach, żeby dodawać i usuwać Twoje własne zadania i nawyki w kalendarzu urządzenia. Opcjonalne, domyślnie wyłączone.",
             "**Mikrofon** — wyłącznie do dyktowania, które działa offline. Opcjonalne; jeśli odmówisz, przycisk dyktowania po prostu się nie pokaże.",
@@ -432,7 +432,7 @@ const POLICY: Record<Language, Section[]> = {
           p: "Rozpoznawanie mowy działa **offline, wewnątrz aplikacji**, na kompilacji Vosk w WebAssembly. Twoje nagranie nigdy nie jest wysyłane, zapisywane ani przechowywane — zamienia się w tekst na urządzeniu i znika.",
         },
         {
-          p: "Przy pierwszym użyciu dyktowania aplikacja pobiera model mowy (kilkadziesiąt megabajtów) z publicznego serwera plików. Ten serwer widzi zwykłe pobranie pliku — adres IP i wersję przeglądarki, jak każdy serwer WWW. Nie wysyłamy przy tym żadnego dźwięku ani danych osobowych.",
+          p: "Przy pierwszym użyciu dyktowania aplikacja pobiera model mowy (kilkadziesiąt megabajtów) z publicznego serwera plików — model angielski z GitHub Pages, polski z naszego własnego magazynu Cloudflare R2. Ten serwer widzi zwykłe pobranie pliku — adres IP i wersję przeglądarki, jak każdy serwer WWW. Nie wysyłamy przy tym żadnego dźwięku ani danych osobowych.",
         },
       ],
     },
@@ -451,7 +451,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Zakupy",
       blocks: [
         {
-          p: "Premium to jednorazowy zakup przez **Google Play**. Płatność obsługuje Google; nigdy nie widzimy danych Twojej karty ani rozliczeń.",
+          p: "Premium kupujesz przez **Google Play** — w abonamencie miesięcznym albo jednorazowo; obie opcje odblokowują dokładnie to samo. Płatność obsługuje Google; nigdy nie widzimy danych Twojej karty ani rozliczeń. Abonament odnawia się do momentu anulowania, a anulować możesz go w każdej chwili w Google Play; anulowanie wstrzymuje kolejne płatności, a Premium działa do końca opłaconego okresu.",
         },
         {
           p: "Żeby potwierdzić, że zakup jest prawdziwy, i wysłać Ci link do wersji przeglądarkowej, aplikacja może przesłać **token zakupu, identyfikator zamówienia, identyfikator produktu i adres e-mail konta** do niewielkiej usługi, którą prowadzimy na Cloudflare Workers. Usługa sprawdza token w API Google Play i wysyła jeden e-mail przez dostawcę Resend. Adres nie trafia na żadną listę i nie jest używany do niczego innego.",

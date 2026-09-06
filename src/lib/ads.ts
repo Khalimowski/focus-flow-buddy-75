@@ -20,12 +20,13 @@ const BANNER_AD_ID = "ca-app-pub-4324430922370171/5044191074";
 // consent flow, layout padding, banner request — stays wired up and dormant).
 const ADS_ENABLED = true;
 
-// TEMPORARY (testing): show the banner to everyone, including people who
-// actually bought premium to remove it. Set back to false before the app goes
-// to Play production — shipping this on would take ad removal away from paying
-// customers. Only affects Android; the isNative() guard still keeps ads off
-// the web build either way.
-const ADS_IGNORE_PREMIUM = true;
+// Show the banner to everyone, including people who actually bought premium to
+// remove it. This exists only to exercise ad serving on a test build: ad
+// removal is half of what Premium sells, so shipping it on charges customers
+// for something they then don't get. It must be false in anything that reaches
+// Play production. Only affects Android; the isNative() guard still keeps ads
+// off the web build either way.
+const ADS_IGNORE_PREMIUM = false;
 
 /** Whether a real purchase should suppress the banner right now. */
 function premiumSuppressesAds(): boolean {
