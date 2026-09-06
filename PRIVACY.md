@@ -1,6 +1,6 @@
 # Privacy Policy — FlowDay
 
-_Last updated: August 25, 2026_
+_Last updated: September 5, 2026_
 
 > The version users and Play reviewers read is served by the app itself at
 > [flowday.day/privacy](https://flowday.day/privacy), in English and Polish.
@@ -17,8 +17,9 @@ FlowDay is made by an independent developer. Questions, requests or complaints:
 
 ## The short version
 
-- **Guest mode keeps everything on your phone.** No account, no server, nothing
-  transmitted. It is available on Android only.
+- **Guest mode keeps your data on your phone.** No account, and nothing you
+  write reaches our database. The app still talks to Google's ad service and
+  the update check, as the free version always does. Android only.
 - **With an account, your task data syncs** to a private row in our database in
   the EU so your phone and your browser stay in step. We do not read, mine,
   profile or sell it.
@@ -43,7 +44,8 @@ guest mode on the web.
 
 Saved in the app's private storage (Android) or your browser's local storage:
 
-- Tasks, to-do items, and habits (recurring reminders) you create
+- Tasks, to-do items, habits (daily and weekly reminders) and cycles (anything
+  that comes round every few weeks, months or years) you create
 - Your streak, and per-day activity counters that power the Insights screen
 - The short "AI coach" profile you can fill in: life stage, usual work or school
   hours, and which sports you do on which days
@@ -61,7 +63,7 @@ Inspect AI Memory**.
 When you are signed in, these values are mirrored to your own row in our
 database and pulled back onto your other devices:
 
-- Tasks, to-do items, habits, and your streak
+- Tasks, to-do items, habits, cycles, and your streak
 - The AI-coach profile answers listed above
 - The Insights activity counters
 - Your Premium entitlement
@@ -89,8 +91,8 @@ the link to the browser version. It is not used for marketing and is not shared.
 
 ## Permissions the app requests and why
 
-- **Notifications** — to show the task reminders and daily habits you schedule.
-  Optional.
+- **Notifications** — to show the task reminders, habits and cycles you
+  schedule. Optional.
 - **Exact alarms** — so reminders fire at the exact time you chose, even when the
   app is closed.
 - **Calendar (read/write)** — only if you enable "Sync to Calendar" in Settings,
@@ -134,9 +136,10 @@ Vosk. Your audio is never uploaded, never recorded and never stored — it is
 turned into text on the device and discarded.
 
 The first time you use dictation, the app downloads a speech model (tens of
-megabytes) from a public static host (`ccoreilly.github.io`, GitHub Pages). That
-host sees an ordinary file download — IP address and user agent, as any web
-server does. No audio and no personal data are sent with it.
+megabytes) from a public static file host — GitHub Pages for the English model,
+our own Cloudflare R2 storage for the Polish one. That host sees an ordinary
+file download — IP address and user agent, as any web server does. No audio and
+no personal data are sent with it.
 
 ## Ads (free Android version)
 
