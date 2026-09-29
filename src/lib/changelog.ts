@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.3";
+export const APP_VERSION = "1.14.4";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,15 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.4",
+    items: {
+      en: [
+        "Premium removes the ad banner again. With Premium, the banner at the bottom of the screen is gone.",
+      ],
+      pl: ["Premium znowu usuwa baner reklamowy. Z Premium baner na dole ekranu znika."],
+    },
+  },
   {
     version: "1.14.3",
     items: {
@@ -155,7 +164,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.10.1",
     items: {
       en: [
-        "Habits can now repeat on chosen days instead of every day — set \"Gym\" for Mondays at 18:00 and it only shows up on Mondays.",
+        'Habits can now repeat on chosen days instead of every day — set "Gym" for Mondays at 18:00 and it only shows up on Mondays.',
         "A habit's days appear next to its times in the list, and it only turns up in Tasks on the days it runs.",
         "The home-screen task widget has been redrawn to match the rest of the app.",
       ],
@@ -180,9 +189,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.9.9",
     items: {
-      en: [
-        "Fixed a gap that could show up between the ad banner and the bottom navigation bar.",
-      ],
+      en: ["Fixed a gap that could show up between the ad banner and the bottom navigation bar."],
       pl: [
         "Naprawiono lukę, która mogła pojawić się między banerem reklamowym a dolnym paskiem nawigacji.",
       ],
@@ -284,12 +291,8 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.8.3",
     items: {
-      en: [
-        "AI Flow Coach now shows it's in testing so you know what to expect.",
-      ],
-      pl: [
-        "Asystent AI Flow Coach teraz wyraźnie pokazuje, że jest testowany.",
-      ],
+      en: ["AI Flow Coach now shows it's in testing so you know what to expect."],
+      pl: ["Asystent AI Flow Coach teraz wyraźnie pokazuje, że jest testowany."],
     },
   },
   {
