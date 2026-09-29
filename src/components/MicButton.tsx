@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Mic, Sparkles } from "lucide-react";
+import { Loader2, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -11,7 +11,6 @@ import {
   type DictationErrorKind,
 } from "@/lib/speech";
 import { useTranslation } from "@/lib/i18n";
-import { usePremium } from "@/lib/premium";
 
 type Status = "idle" | "preparing" | "listening";
 
@@ -61,10 +60,6 @@ export function MicButton({
   const [percent, setPercent] = useState(0);
   const [needsDownload, setNeedsDownload] = useState(false);
   const [error, setError] = useState<DictationErrorKind | null>(null);
-  // Dictation is part of Premium. usePremium re-reads on purchase and on a sync
-  // pull, so buying on the phone unlocks the mic here without a restart.
-  const premium = !!usePremium();
-  const [showLocked, setShowLocked] = useState(false);
   const session = useRef<Dictation | null>(null);
   /** Whether this session ever put words in the caller's hands. */
   const heardAnything = useRef(false);
@@ -77,12 +72,6 @@ export function MicButton({
     const timer = setTimeout(() => setError(null), ERROR_MS);
     return () => clearTimeout(timer);
   }, [error]);
-
-  useEffect(() => {
-    if (!showLocked) return;
-    const timer = setTimeout(() => setShowLocked(false), ERROR_MS);
-    return () => clearTimeout(timer);
-  }, [showLocked]);
 
   // Drop the mic if the tab unmounts mid-sentence.
   useEffect(() => () => session.current?.stop(), []);
@@ -101,15 +90,6 @@ export function MicButton({
   const toggle = useCallback(async () => {
     if (status !== "idle") {
       stop();
-      return;
-    }
-
-    // The button stays on screen without Premium rather than disappearing: a
-    // paid feature nobody can see is one nobody buys, and a control that
-    // vanishes reads as a bug. Tapping it says where to get it instead of
-    // starting a session — and never touches the field, so nothing is cleared.
-    if (!premium) {
-      setShowLocked(true);
       return;
     }
 
@@ -144,21 +124,19 @@ export function MicButton({
         if (!heardAnything.current) onEmpty?.();
       },
     });
-  }, [language, onEmpty, onStart, onTranscript, premium, status, stop]);
+  }, [language, onEmpty, onStart, onTranscript, status, stop]);
 
   if (!available) return null;
 
-  const hint = showLocked
-    ? t("voice_premium_locked")
-    : error
-      ? t(ERROR_KEYS[error])
-      : status === "listening"
-        ? t("voice_listening")
-        : status === "preparing"
-          ? needsDownload
-            ? `${t("voice_downloading")} ${percent}% · ${modelSizeMb(language)} MB`
-            : t("voice_starting")
-          : null;
+  const hint = error
+    ? t(ERROR_KEYS[error])
+    : status === "listening"
+      ? t("voice_listening")
+      : status === "preparing"
+        ? needsDownload
+          ? `${t("voice_downloading")} ${percent}% · ${modelSizeMb(language)} MB`
+          : t("voice_starting")
+        : null;
 
   return (
     // The tour anchor lives here rather than around the caller's slot: it must
@@ -191,11 +169,6 @@ export function MicButton({
           className,
         )}
       >
-        {/* A sparkle marks the mic as a paid feature, so it reads as locked
-            rather than broken and doesn't invite a second tap. */}
-        {!premium && (
-          <Sparkles className="absolute -right-0.5 -top-0.5 size-3 text-primary" aria-hidden />
-        )}
         {status === "preparing" ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (

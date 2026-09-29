@@ -42,7 +42,6 @@ export function PremiumPerks({ withoutAds = false }: { withoutAds?: boolean } = 
   const perks = [
     t("premium_perk_web"),
     t("premium_perk_insights"),
-    t("premium_perk_voice"),
     ...(withoutAds ? [] : [t("premium_perk_ads")]),
     t("premium_perk_sync"),
   ];
@@ -283,8 +282,8 @@ export function PremiumSection() {
   // Grandfathered: they were here during early access and keep Premium for
   // nothing. Say why, so it doesn't read as a billing mistake, and never show a
   // buy button for something they already have. The guest wording is narrower
-  // on purpose — with no account this is one phone's voice input, not the
-  // browser version, and promising otherwise would be a lie they'd catch.
+  // on purpose — with no account there is nothing to carry to the browser yet,
+  // and promising otherwise would be a lie they'd catch.
   if (entitlement?.source === "grandfathered") {
     // A real backfilled row versus the local guest stand-in. Sign-in state is
     // the wrong question: someone can be signed in on an old install the

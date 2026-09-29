@@ -411,7 +411,6 @@ export const translations = {
     tour_views_desc: "See your tasks as a simple List, or switch to Timeline to lay them out by hour — drag a task to a new time to reschedule it. The calendar button opens the whole month.",
     tour_voice_title: "Say It Instead of Typing",
     tour_voice_desc: "Tap the mic and say the task — \"dentist tomorrow at half past four\" lands on the right day, at the right time, reminder on. Recognition runs on your device, so nothing is sent anywhere.",
-    tour_voice_locked_desc: "The mic turns a spoken task into a written one — day and time included. It's part of Premium, along with FlowDay in your browser and no ads; Settings has the details.",
     tour_cycles_title: "Cycles",
     tour_cycles_desc: "For what comes round every few weeks, months or years — a flea dose every 5 weeks, a booster every year, a birthday. Each shows its next date and the days left; tick it off and the next one sets itself.",
     tour_insights_title: "Insights",
@@ -423,8 +422,6 @@ export const translations = {
     tour_premium_welcome_desc: "Thanks for backing FlowDay. Here's what just opened up — it takes a few taps.",
     tour_premium_web_title: "FlowDay in your browser",
     tour_premium_web_desc: "Open flowday.day and sign in with the same account — your tasks, habits and streak are already there. Settings can email you the link.",
-    tour_premium_voice_title: "Voice input unlocked",
-    tour_premium_voice_desc: "The mic next to Add is live now. Say the task out loud instead of typing it — the recognition happens on your device.",
     tour_premium_extras_title: "Ad-free, plus Insights",
     tour_premium_extras_desc: "The banner is gone for good. And the browser version adds Insights: how much of what you plan actually gets done, over days, weeks and months.",
     tour_web_welcome_title: "FlowDay on the big screen",
@@ -443,7 +440,6 @@ export const translations = {
     voice_error_permission: "Microphone blocked",
     voice_error_download: "Voice model download failed",
     voice_error_engine: "Voice input unavailable",
-    voice_premium_locked: "Premium unlocks voice — see Settings",
     ai_insights: "AI Coach Insights",
     collected_data: "Collected Data",
     data_points: "data points",
@@ -538,7 +534,6 @@ export const translations = {
     premium_tagline: "Use FlowDay in your browser, with no ads on your phone.",
     premium_perk_web: "Full access to the browser version on any computer",
     premium_perk_ads: "No banner ads in the Android app",
-    premium_perk_voice: "Add tasks by voice — say the day and time and they're filled in for you",
     premium_perk_sync: "Everything stays in sync with your phone",
     premium_buy: "Unlock Premium",
     premium_buy_price: "Unlock Premium — {price}",
@@ -583,7 +578,7 @@ export const translations = {
     premium_grandfathered_body:
       "You were using FlowDay while it was still in early access, so Premium stays free on this account — no subscription, no payment, nothing to do.",
     premium_grandfathered_guest_body:
-      "You were using FlowDay while it was still in early access, so voice input stays free on this phone. Sign in and Premium follows you to the browser too.",
+      "You were using FlowDay while it was still in early access, so Premium stays free for you. Sign in and it follows you to the browser too.",
     premium_free_all_title: "Everything is unlocked",
     premium_free_all_body:
       "While FlowDay is in early access, every Premium feature is free for everyone — no purchase needed. Try it all and tell us what breaks.",
@@ -876,7 +871,6 @@ export const translations = {
     tour_views_desc: "Zobacz zadania jako prostą Listę albo przełącz się na Oś czasu, żeby rozłożyć je godzinowo — przeciągnij zadanie na inną godzinę, a samo się przeniesie. Przycisk kalendarza pokazuje cały miesiąc.",
     tour_voice_title: "Powiedz zamiast pisać",
     tour_voice_desc: "Dotknij mikrofonu i powiedz zadanie — „dentysta jutro o wpół do piątej” trafi na właściwy dzień i godzinę, od razu z przypomnieniem. Rozpoznawanie działa na Twoim urządzeniu, więc nic nigdzie nie jest wysyłane.",
-    tour_voice_locked_desc: "Mikrofon zamienia wypowiedziane zadanie w zapisane — razem z dniem i godziną. Należy do Premium, tak jak FlowDay w przeglądarce i brak reklam; szczegóły znajdziesz w Ustawieniach.",
     tour_cycles_title: "Cykle",
     tour_cycles_desc: "Do tego, co wraca co kilka tygodni, miesięcy albo lat — ochrona na pchły co 5 tygodni, szczepienie co rok, urodziny. Każdy wpis pokazuje najbliższą datę i ile dni zostało; po odhaczeniu kolejny termin ustawia się sam.",
     tour_insights_title: "Podsumowania",
@@ -888,8 +882,6 @@ export const translations = {
     tour_premium_welcome_desc: "Dziękujemy za wsparcie FlowDay. Zobacz, co się właśnie otworzyło — to tylko kilka kliknięć.",
     tour_premium_web_title: "FlowDay w przeglądarce",
     tour_premium_web_desc: "Wejdź na flowday.day i zaloguj się na to samo konto — Twoje zadania, nawyki i seria już tam są. W Ustawieniach wyślesz sobie link mailem.",
-    tour_premium_voice_title: "Dyktowanie odblokowane",
-    tour_premium_voice_desc: "Mikrofon obok przycisku dodawania już działa. Powiedz zadanie na głos zamiast je pisać — rozpoznawanie dzieje się na Twoim urządzeniu.",
     tour_premium_extras_title: "Bez reklam i z Podsumowaniami",
     tour_premium_extras_desc: "Baner znika na dobre. A wersja w przeglądarce dokłada Podsumowania: ile z tego, co planujesz, faktycznie robisz — w dniach, tygodniach i miesiącach.",
     tour_web_welcome_title: "FlowDay na dużym ekranie",
@@ -908,7 +900,6 @@ export const translations = {
     voice_error_permission: "Mikrofon zablokowany",
     voice_error_download: "Nie udało się pobrać modelu",
     voice_error_engine: "Dyktowanie niedostępne",
-    voice_premium_locked: "Dyktowanie odblokujesz w Premium — Ustawienia",
     ai_insights: "Spostrzeżenia asystenta AI",
     collected_data: "Zebrane dane",
     data_points: "pkt danych",
@@ -1003,7 +994,6 @@ export const translations = {
     premium_tagline: "Korzystaj z FlowDay w przeglądarce, bez reklam w telefonie.",
     premium_perk_web: "Pełny dostęp do wersji przeglądarkowej na każdym komputerze",
     premium_perk_ads: "Brak banerów reklamowych w aplikacji na Androida",
-    premium_perk_voice: "Dodawaj zadania głosem — powiedz dzień i godzinę, a wpiszą się same",
     premium_perk_sync: "Wszystko na bieżąco synchronizuje się z telefonem",
     premium_buy: "Odblokuj Premium",
     premium_buy_price: "Odblokuj Premium — {price}",
@@ -1050,7 +1040,7 @@ export const translations = {
     premium_grandfathered_body:
       "Korzystasz z FlowDay jeszcze z czasów wczesnego dostępu, więc Premium zostaje na tym koncie za darmo — bez subskrypcji, bez płatności, nie musisz nic robić.",
     premium_grandfathered_guest_body:
-      "Korzystasz z FlowDay jeszcze z czasów wczesnego dostępu, więc dyktowanie zostaje na tym telefonie za darmo. Zaloguj się, a Premium pojedzie z Tobą również do przeglądarki.",
+      "Korzystasz z FlowDay jeszcze z czasów wczesnego dostępu, więc Premium zostaje dla Ciebie za darmo. Zaloguj się, a pojedzie z Tobą również do przeglądarki.",
     premium_free_all_title: "Wszystko jest odblokowane",
     premium_free_all_body:
       "Dopóki FlowDay jest we wczesnym dostępie, każda funkcja Premium jest darmowa dla wszystkich — bez żadnego zakupu. Przetestuj wszystko i daj znać, co nie działa.",
