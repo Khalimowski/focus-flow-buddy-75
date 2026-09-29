@@ -30,7 +30,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         "Tasks ticked off from a notification or the home-screen widget now count towards your streak too.",
       ],
       pl: [
-        "Odznaczenie zadania cofa teraz dzisiejszy dzień w serii, jeśli było jedynym ukończonym dziś zadaniem, więc seria liczy tylko dni, w których naprawdę coś zrobiłeś.",
+        "Odznaczenie zadania cofa teraz dzisiejszy dzień w serii, jeśli było jedynym ukończonym dziś zadaniem, więc seria liczy tylko dni, w których naprawdę coś zostało ukończone.",
         "Zadania odhaczone z powiadomienia lub z widżetu na ekranie głównym też liczą się teraz do serii.",
       ],
     },
