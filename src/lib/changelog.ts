@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.1";
+export const APP_VERSION = "1.14.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.2",
+    items: {
+      en: [
+        "The Current Streak card no longer sits flush against whatever comes under it — every tab now leaves the same gap below it as between its other sections.",
+      ],
+      pl: [
+        "Karta Aktualnej serii nie przykleja się już do tego, co jest pod nią — w każdej zakładce zostaje pod nią taki sam odstęp jak między pozostałymi sekcjami.",
+      ],
+    },
+  },
   {
     version: "1.14.1",
     items: {
