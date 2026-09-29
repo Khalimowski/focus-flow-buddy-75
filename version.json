@@ -1,6 +1,6 @@
 {
-  "versionCode": 79,
-  "versionName": "1.14.1",
+  "versionCode": 80,
+  "versionName": "1.14.2",
   "url": "https://play.google.com/store/apps/details?id=com.khalimowski.focusflow",
-  "notes": "New Cycles tab for things that come round every few weeks, months or years, and a first-run tour that covers Habits, Cycles and task durations."
+  "notes": "A proper gap under the Current Streak card on every tab."
 }
