@@ -6,6 +6,7 @@ import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
 import { recordStat } from "./stats";
+import { markToday } from "./streak";
 import { dateKey } from "./utils";
 import { habitSlots, nextOccurrence, runsOn } from "./habits";
 import {
@@ -506,6 +507,7 @@ type WidgetTask = {
   remindAt: string | null;
   dueDate: string;
   createdAt: number;
+  completedOn?: string;
 };
 
 // Same ordering as the app's task list: reminder time first, then creation;
@@ -560,8 +562,13 @@ export async function syncWidgetTicks() {
     console.log(`[Widget] Applying ${ids.length} tick(s) from widget`);
     const idSet = new Set(ids);
     const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
-    const updated = tasks.map((t) => (idSet.has(t.id) ? { ...t, done: true } : t));
+    const today = dateKey();
+    const updated = tasks.map((t) =>
+      idSet.has(t.id) && !t.done ? { ...t, done: true, completedOn: today } : t,
+    );
     saveJSON(STORAGE_KEYS.tasks, updated); // fires ff.tasks_saved -> widget re-push
+    // A tick on the widget is a completion like any other.
+    if (tasks.some((t) => idSet.has(t.id) && !t.done)) markToday();
     void cancelNative(ids.map((id) => hashId("task:" + id)));
     window.dispatchEvent(new CustomEvent("ff.data_updated"));
   } catch (e) {
@@ -812,13 +819,20 @@ export async function initNative() {
         const taskId = extra.taskId;
         if (actionId === 'done') {
           const tasks = loadJSON<any[]>(STORAGE_KEYS.tasks, []);
-          const updated = tasks.map(t => t.id === taskId ? { ...t, done: true } : t);
+          const wasOpen = tasks.some(t => t.id === taskId && !t.done);
+          const updated = tasks.map(t =>
+            t.id === taskId && !t.done ? { ...t, done: true, completedOn: dateKey() } : t,
+          );
           saveJSON(STORAGE_KEYS.tasks, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
           // Ticked off from the notification shade — same completion as
-          // tapping the circle in the app, and Insights must see both.
-          if (tasks.some(t => t.id === taskId && !t.done)) recordStat('taskCompleted');
+          // tapping the circle in the app, and Insights and the streak must
+          // see both.
+          if (wasOpen) {
+            recordStat('taskCompleted');
+            markToday();
+          }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
           const id = hashId("task:" + taskId + Date.now()); // New ID to avoid conflicts

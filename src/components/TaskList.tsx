@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
-import { generateId } from "@/lib/utils";
+import { dateKey, generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar, syncCycleNotification } from "@/lib/native";
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
@@ -18,6 +18,7 @@ import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
+import { markToday, unmarkToday } from "@/lib/streak";
 import { runsOn } from "@/lib/habits";
 import {
   completeEvent,
@@ -42,6 +43,7 @@ type Task = {
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
+  completedOn?: string; // YYYY-MM-DD it was ticked; lets an untick roll the streak back
 };
 
 type Reminder = {
@@ -74,7 +76,7 @@ const sortTasks = (list: Task[]) => {
   });
 };
 
-export function TaskList({ onComplete }: { onComplete?: () => void }) {
+export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   // Recurring events (lib/recurring.ts) join the day they're due, so a dose or
@@ -499,12 +501,29 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     if (!task) return;
     const becoming = !task.done;
 
+    const today = dateKey();
     setTasks(prev =>
-      sortTasks(prev.map((item) => (item.id === id ? { ...item, done: becoming } : item))),
+      sortTasks(
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, done: becoming, completedOn: becoming ? today : undefined }
+            : item,
+        ),
+      ),
     );
 
-    if (!becoming) return;
-    onComplete?.();
+    if (!becoming) {
+      // Today stays counted while any other task ticked today is still done.
+      // Tasks ticked before completedOn existed carry no date, so they can't
+      // hold today up — worst case an untick un-counts a day that another
+      // (pre-update) tick had earned, and ticking anything puts it back.
+      const stillDoneToday = tasks.some(
+        (item) => item.id !== id && item.done && item.completedOn === today,
+      );
+      if (!stillDoneToday) unmarkToday();
+      return;
+    }
+    markToday();
     addEvent('task_completed', { title: task.title });
     recordStat('taskCompleted');
 

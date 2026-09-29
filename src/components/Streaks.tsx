@@ -1,65 +1,30 @@
 import { useEffect, useState } from "react";
 import { Flame } from "lucide-react";
-import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { useTranslation } from "@/lib/i18n";
-import { dateKey, shiftDateKey } from "@/lib/utils";
-
-type Streak = { days: string[]; current: number; best: number };
-
-const today = () => dateKey();
-const yesterday = () => shiftDateKey(-1);
-
-/**
- * Length of the unbroken run ending today (or yesterday, so a day still in
- * progress doesn't read as broken). Derived from `days` rather than trusted
- * from storage: the stored counter only ever moved on a completion, so after a
- * week away the header kept advertising the old streak over an empty strip.
- */
-function currentStreak(days: string[], stored = 0): number {
-  const seen = new Set(days);
-  let start = 0;
-  if (!seen.has(today())) {
-    if (!seen.has(yesterday())) return 0;
-    start = 1;
-  }
-  let count = 0;
-  while (seen.has(shiftDateKey(-(start + count)))) count++;
-  // `days` only retains the last 60 entries. If the run swallowed every one of
-  // them it may reach further back than we can see, so keep the stored counter
-  // when it's longer — otherwise a 90-day streak would visibly reset to 60.
-  return count >= seen.size ? Math.max(count, stored) : count;
-}
+import { dateKey } from "@/lib/utils";
+import { currentStreak, loadStreak, STREAK_EVENT, type Streak } from "@/lib/streak";
 
 export function useStreak() {
   const [s, setS] = useState<Streak>({ days: [], current: 0, best: 0 });
 
   useEffect(() => {
     const load = () => {
-      const stored = loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 });
+      const stored = loadStreak();
       const current = currentStreak(stored.days ?? [], stored.current ?? 0);
       setS({ ...stored, current, best: Math.max(stored.best ?? 0, current) });
     };
     load();
-    // Re-read after cloud sync applies remote data
+    // Re-read after cloud sync applies remote data, and after any tick or
+    // untick (the task list, a notification action or the widget).
     window.addEventListener("ff.remote-update", load);
-    return () => window.removeEventListener("ff.remote-update", load);
+    window.addEventListener(STREAK_EVENT, load);
+    return () => {
+      window.removeEventListener("ff.remote-update", load);
+      window.removeEventListener(STREAK_EVENT, load);
+    };
   }, []);
 
-  const markToday = () => {
-    // Read back from storage rather than from state: this runs from a click
-    // handler that may fire twice in a tick, and storage is the source of
-    // truth that both calls agree on (it's also what sync pushes).
-    const stored = loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 });
-    const days = stored.days ?? [];
-    if (days.includes(today())) return;
-    const nextDays = [...days, today()].slice(-60);
-    const current = currentStreak(nextDays, stored.current ?? 0);
-    const next = { days: nextDays, current, best: Math.max(stored.best ?? 0, current) };
-    saveJSON(STORAGE_KEYS.streak, next);
-    setS(next);
-  };
-
-  return { streak: s, markToday };
+  return { streak: s };
 }
 
 export function StreakStrip({ streak }: { streak: Streak }) {

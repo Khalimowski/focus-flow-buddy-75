@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.3";
+export const APP_VERSION = "1.14.4";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.4",
+    items: {
+      en: [
+        "Unticking a task now takes today back off your streak if it was the only one you'd finished today, so the streak only counts days you really completed something.",
+        "Tasks ticked off from a notification or the home-screen widget now count towards your streak too.",
+      ],
+      pl: [
+        "Odznaczenie zadania cofa teraz dzisiejszy dzień w serii, jeśli było jedynym ukończonym dziś zadaniem, więc seria liczy tylko dni, w których naprawdę coś zrobiłeś.",
+        "Zadania odhaczone z powiadomienia lub z widżetu na ekranie głównym też liczą się teraz do serii.",
+      ],
+    },
+  },
   {
     version: "1.14.3",
     items: {
