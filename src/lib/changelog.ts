@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.1";
+export const APP_VERSION = "1.14.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.2",
+    items: {
+      en: [
+        "Tasks, to-dos, Habits and Cycles read as one list again in the browser. On a wide screen they used to split into two or three side-by-side columns, which scattered the order of your day; now every list runs straight down a single, comfortable column.",
+      ],
+      pl: [
+        "Zadania, lista do zrobienia, Nawyki i Cykle znów czytają się w przeglądarce jak jedna lista. Na szerokim ekranie rozbijały się na dwie lub trzy kolumny obok siebie, co rozsypywało kolejność dnia; teraz każda lista biegnie prosto w dół, w jednej wygodnej kolumnie.",
+      ],
+    },
+  },
   {
     version: "1.14.1",
     items: {

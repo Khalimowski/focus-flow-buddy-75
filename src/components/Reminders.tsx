@@ -337,10 +337,11 @@ export function Reminders() {
         <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t('your_daily_habits')}
         </h3>
-        <ul className="flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3">
+        {/* Single column at every width — see the note in TaskList. */}
+        <ul className="flex flex-col gap-2">
           <AnimatePresence initial={false}>
             {items.length === 0 && (
-              <li className="flex items-center justify-center gap-2 rounded-2xl border border-dashed py-8 text-sm text-muted-foreground lg:col-span-2 2xl:col-span-3">
+              <li className="flex items-center justify-center gap-2 rounded-2xl border border-dashed py-8 text-sm text-muted-foreground">
                 <Sparkles className="size-4" /> {t('add_preset_or_own')}
               </li>
             )}

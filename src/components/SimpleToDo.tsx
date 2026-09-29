@@ -184,7 +184,8 @@ export function SimpleToDo() {
   const openItems = useMemo(() => items.filter((item) => !item.done), [items]);
   const doneItems = useMemo(() => items.filter((item) => item.done), [items]);
 
-  const listClass = "flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3";
+  // Single column at every width — see the note in TaskList.
+  const listClass = "flex flex-col gap-2";
 
   // `nested` items sit inside the Done card, so they drop the standalone card
   // treatment and read as rows within it.
@@ -342,7 +343,7 @@ export function SimpleToDo() {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed border-border bg-card/60 py-12 text-center font-serif text-sm italic text-muted-foreground lg:col-span-2 2xl:col-span-3"
+              className="rounded-2xl border border-dashed border-border bg-card/60 py-12 text-center font-serif text-sm italic text-muted-foreground"
             >
               {items.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>

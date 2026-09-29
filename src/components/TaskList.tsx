@@ -603,7 +603,10 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     }
   };
 
-  const listClass = "flex flex-col gap-2 lg:grid lg:grid-cols-2 lg:gap-3 2xl:grid-cols-3";
+  // One column at every width. The list used to fan out into two or three
+  // columns on wide screens; a task list that wraps sideways is unreadable —
+  // the eye loses the single top-to-bottom order the day is actually in.
+  const listClass = "flex flex-col gap-2";
 
   // `nested` items sit inside the Done card, so they drop the standalone card
   // treatment and read as rows within it.
@@ -1008,7 +1011,7 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed border-border py-12 text-center font-serif text-sm italic text-muted-foreground bg-card/60 lg:col-span-2 2xl:col-span-3"
+              className="rounded-2xl border border-dashed border-border py-12 text-center font-serif text-sm italic text-muted-foreground bg-card/60"
             >
               {displayItems.length === 0 ? t('tasks_empty') : t('todo_all_done')}
             </motion.li>

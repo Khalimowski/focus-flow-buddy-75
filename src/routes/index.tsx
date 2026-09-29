@@ -212,8 +212,12 @@ function Home() {
   // free, ad-supported tier, and where the purchase is made.
   if (WEB_GATE_ENABLED && !isNative() && !premium) return <PremiumGate />;
 
+  // One centred reading column at every width. The shell used to widen to
+  // 1600px on big monitors, which is what pushed the task/habit lists into
+  // two- and three-column grids to fill the space; capped here, each list
+  // stays a single top-to-bottom sequence on a desktop as on a phone.
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-safe-nav xl:max-w-6xl 2xl:max-w-[1600px]">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-4 pb-safe-nav">
       {/* Decides for itself which tour is due — first run, or a follow-up once
           Premium or the browser version brings new things into reach. */}
       <Onboarding />
