@@ -63,7 +63,7 @@ that look alike from a distance: a real purchase keeps its own record, and a
 **revocation tombstone stays a tombstone** — a refunded customer does not get
 access handed back.
 
-### Guests keep voice input
+### Grandfathered guests
 
 Android guest mode has no account, so there is no row to write for someone who
 never signed up. `isGrandfatheredInstall()` in `premium.ts` is the local stand-in:
@@ -80,11 +80,12 @@ Two properties do the work:
   fresh install signing into an old account pulls tasks and stats down without
   ever looking like an old install.
 - **Android only.** The flag lives in localStorage, where anyone can set it. On
-  the phone the most it unlocks is dictation on a free, ad-supported install. In
+  the phone it unlocks no feature (dictation has been free for everyone since
+  1.14.3, and ads stay). In
   the browser it would hand over the paid product, so the browser never asks —
   that check is the security boundary, not a nicety.
 
-A grandfathered guest keeps voice input and still sees ads, because `ads.ts`
+A grandfathered guest reads as Premium in Settings and still sees ads, because `ads.ts`
 asks `hasPurchasedPremium()`, which only a stored record satisfies. A
 grandfathered *account* has a stored record, so it does lose the ads — they were
 promised Premium, and ad-free is part of Premium.

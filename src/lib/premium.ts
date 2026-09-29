@@ -149,8 +149,8 @@ const EARLY_ACCESS_EVIDENCE_KEYS = [
  *
  * Android guest mode has no account, so there is nowhere to put a real
  * entitlement for someone who never signed up — the backfill can only reach
- * rows in `user_data`. This is the local stand-in that keeps voice input
- * working for a guest who has been using the app all along.
+ * rows in `user_data`. This is the local stand-in that keeps Premium for a
+ * guest who has been using the app all along.
  *
  * Decided **once**, at module load, and then frozen. Timing is the whole
  * design: premium.ts is imported before the app mounts, so the evidence keys
@@ -180,8 +180,8 @@ const GRANDFATHERED_INSTALL = resolveGrandfatheredInstall();
  * The local grandfather, honoured on Android only.
  *
  * The web check is not belt-and-braces, it is the security boundary: this flag
- * lives in localStorage, where anyone can set it. On the phone the most it
- * unlocks is dictation on a free, ad-supported install. In the browser it would
+ * lives in localStorage, where anyone can set it. On the phone it unlocks
+ * no feature at all — dictation is free and ads stay (see `hasPurchasedPremium`). In the browser it would
  * hand over the paid product itself, so the browser never asks.
  */
 export function isGrandfatheredInstall(): boolean {

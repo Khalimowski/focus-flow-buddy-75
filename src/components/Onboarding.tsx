@@ -58,26 +58,18 @@ const OPEN_LAYER_SELECTOR = ['[role="dialog"]', '[role="alertdialog"]']
 /**
  * The first-run tour, built for the device it's running on: the mic step is
  * dropped where dictation isn't offered (that anchor simply isn't rendered),
- * reads as locked without Premium, and Insights only exists in the browser.
+ * and Insights only exists in the browser.
  * Finishing it counts as having seen the follow-up tours too — it already
  * covered their ground.
  */
-function mainSteps(t: T, native: boolean, premium: boolean): Step[] {
+function mainSteps(t: T, native: boolean): Step[] {
   return [
     { target: null, icon: Sparkles, title: t("onboarding_welcome"), desc: t("tagline") },
     { target: "streak", icon: Flame, title: t("tour_streak_title"), desc: t("tour_streak_desc") },
     { target: "tabs", icon: ListTodo, title: t("tour_tabs_title"), desc: t("tour_tabs_desc") },
     { target: "days", icon: CalendarDays, title: t("tour_days_title"), desc: t("tour_days_desc") },
     { target: "add-task", icon: Check, title: t("onboarding_tasks_title"), desc: t("onboarding_tasks_desc") },
-    {
-      target: "voice",
-      icon: Mic,
-      title: t("tour_voice_title"),
-      // Early access is over, so on the free Android tier the mic is there but
-      // locked. Telling that user to tap it and start talking is a dead end —
-      // say what it does and where it comes from instead.
-      desc: premium ? t("tour_voice_desc") : t("tour_voice_locked_desc"),
-    },
+    { target: "voice", icon: Mic, title: t("tour_voice_title"), desc: t("tour_voice_desc") },
     { target: "view-toggle", icon: CalendarClock, title: t("tour_views_title"), desc: t("tour_views_desc") },
     // Habits and Cycles are spotlit on their own tabs rather than opened: the
     // tour never switches tab, and an empty list teaches nothing anyway.
@@ -95,7 +87,6 @@ function premiumSteps(t: T): Step[] {
   return [
     { target: null, icon: BadgeCheck, title: t("tour_premium_welcome_title"), desc: t("tour_premium_welcome_desc") },
     { target: "settings", icon: Globe, title: t("tour_premium_web_title"), desc: t("tour_premium_web_desc") },
-    { target: "voice", icon: Mic, title: t("tour_premium_voice_title"), desc: t("tour_premium_voice_desc") },
     { target: null, icon: Sparkles, title: t("tour_premium_extras_title"), desc: t("tour_premium_extras_desc") },
   ];
 }
@@ -144,13 +135,13 @@ export function Onboarding() {
   const tour = pending[0] ?? null;
 
   const allSteps = useMemo<Step[]>(() => {
-    if (tour === "main") return mainSteps(t, native, !!entitlement);
+    if (tour === "main") return mainSteps(t, native);
     if (tour === "premium") return premiumSteps(t);
     if (tour === "web") return webSteps(t);
     return [];
     // `language` is what changes the strings `t` returns.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tour, native, language, entitlement]);
+  }, [tour, native, language]);
 
   // Drop steps whose anchor isn't on screen — a feature this build doesn't
   // show (no mic, no Insights on Android) shouldn't leave a dangling card.

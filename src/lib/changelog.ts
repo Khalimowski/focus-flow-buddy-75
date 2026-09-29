@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.2";
+export const APP_VERSION = "1.14.3";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,17 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.3",
+    items: {
+      en: [
+        "Voice input is now free for everyone. Tap the mic next to Add and say the task — no Premium needed.",
+      ],
+      pl: [
+        "Dyktowanie jest teraz darmowe dla wszystkich. Dotknij mikrofonu obok przycisku dodawania i powiedz zadanie — Premium nie jest potrzebne.",
+      ],
+    },
+  },
   {
     version: "1.14.2",
     items: {

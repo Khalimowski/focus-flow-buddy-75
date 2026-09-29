@@ -1,20 +1,8 @@
 # Voice input (offline dictation)
 
-**Dictation is a Premium feature** (`premium_perk_voice` in the perk list).
-`MicButton` checks `usePremium()`; without an entitlement the button still
-renders — a paid feature nobody can see is one nobody buys, and a control that
-vanishes reads as a bug — but tapping it shows `voice_premium_locked` instead
-of starting a session, and a sparkle marks it as locked rather than broken.
-Because the check is `usePremium()` it re-reads on `ff.premium-changed` and on a
-sync pull, so a purchase made on the phone unlocks the mic without a restart.
-
-In practice this only bites on Android, which is otherwise free and
-ad-supported; the browser build is behind `PremiumGate` in its entirety, so
-anyone who can see the composer already has premium.
-
-While `PREMIUM_FREE_FOR_ALL` is on (see `docs/PREMIUM.md`), `usePremium()`
-answers yes for everyone, so the locked state above is unreachable — the mic
-just works. It comes back when early access ends.
+**Dictation is free for everyone.** It was a Premium perk until 1.14.3; the
+mic now works the same on every install, signed in or not, with or without
+Premium, and `MicButton` no longer reads the entitlement at all.
 
 The mic next to the add button on the **Tasks** tab dictates a task title.
 Recognition is [Vosk](https://alphacephei.com/vosk/) — a WASM build of Kaldi via
