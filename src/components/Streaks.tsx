@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
-import { Flame } from "lucide-react";
+import { Flame, Snowflake } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { dateKey } from "@/lib/utils";
-import { currentStreak, loadStreak, STREAK_EVENT, type Streak } from "@/lib/streak";
+import { loadStreak, resolveStreak, STREAK_EVENT, type Streak } from "@/lib/streak";
 
 export function useStreak() {
   const [s, setS] = useState<Streak>({ days: [], current: 0, best: 0 });
 
   useEffect(() => {
     const load = () => {
-      const stored = loadStreak();
-      const current = currentStreak(stored.days ?? [], stored.current ?? 0);
-      setS({ ...stored, current, best: Math.max(stored.best ?? 0, current) });
+      setS(resolveStreak(loadStreak()));
     };
     load();
     // Re-read after cloud sync applies remote data, and after any tick or
@@ -36,7 +34,12 @@ export function StreakStrip({ streak }: { streak: Streak }) {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
     const key = dateKey(d);
-    return { key, done: streak.days.includes(key), label: d.getDate() };
+    return {
+      key,
+      done: streak.days.includes(key),
+      frozen: streak.frozen?.includes(key) ?? false,
+      label: d.getDate(),
+    };
   });
 
   return (
@@ -55,9 +58,18 @@ export function StreakStrip({ streak }: { streak: Streak }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs">
-          <Flame className="size-3.5 text-mint" />
-          <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs">
+            <Flame className="size-3.5 text-mint" />
+            <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
+          </div>
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs"
+            title={t('streak_freezes_hint')}
+          >
+            <Snowflake className="size-3.5 text-mint" />
+            <span className="tabular-nums">{t('streak_freezes')} {streak.freezes ?? 0}</span>
+          </div>
         </div>
       </div>
       {/* 14 across is tight on a 390px phone (~17px a cell), which is why the
@@ -76,7 +88,9 @@ export function StreakStrip({ streak }: { streak: Streak }) {
             className={`grid aspect-square place-items-center rounded-md border font-mono text-[10px] leading-none transition ${
               c.done
                 ? "border-mint bg-mint/80 text-mint-foreground shadow-soft"
-                : "border-border bg-surface text-muted-foreground"
+                : c.frozen
+                  ? "border-dashed border-mint bg-mint/15 text-foreground"
+                  : "border-border bg-surface text-muted-foreground"
             }`}
           >
             {c.label}

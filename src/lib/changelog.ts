@@ -26,12 +26,16 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: "1.14.4",
     items: {
       en: [
-        "Unticking a task now takes today back off your streak if it was the only one you'd finished today, so the streak only counts days you really completed something.",
-        "Tasks ticked off from a notification or the home-screen widget now count towards your streak too.",
+        "Your streak now counts to-dos and habits too, not just tasks: finish any one of them to keep the day.",
+        "Streak freezes: every 7 days in a row earns a freeze (you can hold 2). If you miss a day, a freeze covers it automatically and the day shows with a dashed outline.",
+        "Unticking something takes today back off your streak if it was the only thing you'd finished today.",
+        "Tasks and habits ticked off from a notification or the home-screen widget now count towards your streak.",
       ],
       pl: [
-        "Odznaczenie zadania cofa teraz dzisiejszy dzień w serii, jeśli było jedynym ukończonym dziś zadaniem, więc seria liczy tylko dni, w których naprawdę coś zostało ukończone.",
-        "Zadania odhaczone z powiadomienia lub z widżetu na ekranie głównym też liczą się teraz do serii.",
+        "Seria liczy teraz także to-do i nawyki, nie tylko zadania: wystarczy ukończyć cokolwiek jednego, żeby zaliczyć dzień.",
+        "Zamrożenia serii: każde 7 dni z rzędu daje zamrożenie (można mieć 2). Opuszczony dzień zostaje nim automatycznie pokryty i ma przerywaną ramkę.",
+        "Odznaczenie czegoś cofa dzisiejszy dzień w serii, jeśli była to jedyna rzecz ukończona dzisiaj.",
+        "Zadania i nawyki odhaczone z powiadomienia lub z widżetu na ekranie głównym też liczą się teraz do serii.",
       ],
     },
   },

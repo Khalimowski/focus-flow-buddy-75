@@ -18,7 +18,7 @@ import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
-import { markToday, unmarkToday } from "@/lib/streak";
+import { setDoneToday } from "@/lib/streak";
 import { runsOn } from "@/lib/habits";
 import {
   completeEvent,
@@ -43,7 +43,6 @@ type Task = {
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
-  completedOn?: string; // YYYY-MM-DD it was ticked; lets an untick roll the streak back
 };
 
 type Reminder = {
@@ -501,29 +500,12 @@ export function TaskList() {
     if (!task) return;
     const becoming = !task.done;
 
-    const today = dateKey();
     setTasks(prev =>
-      sortTasks(
-        prev.map((item) =>
-          item.id === id
-            ? { ...item, done: becoming, completedOn: becoming ? today : undefined }
-            : item,
-        ),
-      ),
+      sortTasks(prev.map((item) => (item.id === id ? { ...item, done: becoming } : item))),
     );
 
-    if (!becoming) {
-      // Today stays counted while any other task ticked today is still done.
-      // Tasks ticked before completedOn existed carry no date, so they can't
-      // hold today up — worst case an untick un-counts a day that another
-      // (pre-update) tick had earned, and ticking anything puts it back.
-      const stillDoneToday = tasks.some(
-        (item) => item.id !== id && item.done && item.completedOn === today,
-      );
-      if (!stillDoneToday) unmarkToday();
-      return;
-    }
-    markToday();
+    setDoneToday("task:" + id, becoming);
+    if (!becoming) return;
     addEvent('task_completed', { title: task.title });
     recordStat('taskCompleted');
 
@@ -576,6 +558,9 @@ export function TaskList() {
     // Counted against the day being ticked off, not the moment of the click —
     // catching up on yesterday's habit belongs to yesterday.
     if (ticked) recordStat('habitCompleted', 1, dateStr);
+    // The streak only takes today's ticks; catching up on yesterday's habit
+    // is logged for Insights but can't rescue a day that already passed.
+    if (dateStr === dateKey()) setDoneToday(`habit:${reminderId}:${time}`, ticked);
   };
 
   /**

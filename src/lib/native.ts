@@ -507,7 +507,6 @@ type WidgetTask = {
   remindAt: string | null;
   dueDate: string;
   createdAt: number;
-  completedOn?: string;
 };
 
 // Same ordering as the app's task list: reminder time first, then creation;
@@ -562,13 +561,10 @@ export async function syncWidgetTicks() {
     console.log(`[Widget] Applying ${ids.length} tick(s) from widget`);
     const idSet = new Set(ids);
     const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
-    const today = dateKey();
-    const updated = tasks.map((t) =>
-      idSet.has(t.id) && !t.done ? { ...t, done: true, completedOn: today } : t,
-    );
+    const updated = tasks.map((t) => (idSet.has(t.id) ? { ...t, done: true } : t));
     saveJSON(STORAGE_KEYS.tasks, updated); // fires ff.tasks_saved -> widget re-push
     // A tick on the widget is a completion like any other.
-    if (tasks.some((t) => idSet.has(t.id) && !t.done)) markToday();
+    for (const t of tasks) if (idSet.has(t.id) && !t.done) markToday("task:" + t.id);
     void cancelNative(ids.map((id) => hashId("task:" + id)));
     window.dispatchEvent(new CustomEvent("ff.data_updated"));
   } catch (e) {
@@ -819,19 +815,16 @@ export async function initNative() {
         const taskId = extra.taskId;
         if (actionId === 'done') {
           const tasks = loadJSON<any[]>(STORAGE_KEYS.tasks, []);
-          const wasOpen = tasks.some(t => t.id === taskId && !t.done);
-          const updated = tasks.map(t =>
-            t.id === taskId && !t.done ? { ...t, done: true, completedOn: dateKey() } : t,
-          );
+          const updated = tasks.map(t => t.id === taskId ? { ...t, done: true } : t);
           saveJSON(STORAGE_KEYS.tasks, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
           // Ticked off from the notification shade — same completion as
           // tapping the circle in the app, and Insights and the streak must
           // see both.
-          if (wasOpen) {
+          if (tasks.some(t => t.id === taskId && !t.done)) {
             recordStat('taskCompleted');
-            markToday();
+            markToday("task:" + taskId);
           }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
@@ -888,6 +881,7 @@ export async function initNative() {
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           if (reminders.some(r => r.id === nudgeId && r.lastFired?.[time] !== dateStr)) {
             recordStat('habitCompleted', 1, dateStr);
+            markToday(`habit:${nudgeId}:${time}`);
           }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
