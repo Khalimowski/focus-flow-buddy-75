@@ -251,7 +251,9 @@ function Home() {
 
       <UpdateBanner />
       <WidgetPrompt />
-      <div data-tour="streak">
+      {/* mb-5 matches the header's gap above: every tab starts flush with
+          its first section, so without it that section touched the card. */}
+      <div data-tour="streak" className="mb-5">
         <StreakStrip streak={streak} />
       </div>
 
