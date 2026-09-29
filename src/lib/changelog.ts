@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.4";
+export const APP_VERSION = "1.14.5";
 
 export type ChangelogEntry = {
   version: string;
@@ -23,7 +23,7 @@ export type ChangelogEntry = {
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.14.4",
+    version: "1.14.5",
     items: {
       en: [
         "Your streak now counts to-dos and habits too, not just tasks: finish any one of them to keep the day.",
