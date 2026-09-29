@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { notify } from "@/lib/notifications";
-import { generateId } from "@/lib/utils";
+import { dateKey, generateId } from "@/lib/utils";
 import { isNative, scheduleNativeAt, cancelNative, hashId, deleteFromCalendar, syncCycleNotification } from "@/lib/native";
 import { isGoogleConfigured, getGoogleConnection, pushTaskToGoogleCalendar, removeTaskFromGoogleCalendar } from "@/lib/google";
 import { GmailImport } from "@/components/GmailImport";
@@ -18,6 +18,7 @@ import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
+import { setDoneToday } from "@/lib/streak";
 import { runsOn } from "@/lib/habits";
 import {
   completeEvent,
@@ -74,7 +75,7 @@ const sortTasks = (list: Task[]) => {
   });
 };
 
-export function TaskList({ onComplete }: { onComplete?: () => void }) {
+export function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   // Recurring events (lib/recurring.ts) join the day they're due, so a dose or
@@ -503,8 +504,8 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
       sortTasks(prev.map((item) => (item.id === id ? { ...item, done: becoming } : item))),
     );
 
+    setDoneToday("task:" + id, becoming);
     if (!becoming) return;
-    onComplete?.();
     addEvent('task_completed', { title: task.title });
     recordStat('taskCompleted');
 
@@ -557,6 +558,9 @@ export function TaskList({ onComplete }: { onComplete?: () => void }) {
     // Counted against the day being ticked off, not the moment of the click —
     // catching up on yesterday's habit belongs to yesterday.
     if (ticked) recordStat('habitCompleted', 1, dateStr);
+    // The streak only takes today's ticks; catching up on yesterday's habit
+    // is logged for Insights but can't rescue a day that already passed.
+    if (dateStr === dateKey()) setDoneToday(`habit:${reminderId}:${time}`, ticked);
   };
 
   /**

@@ -8,6 +8,7 @@ import { generateId } from "@/lib/utils";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
 import { recordStat } from "@/lib/stats";
+import { setDoneToday } from "@/lib/streak";
 import { notify } from "@/lib/notifications";
 import { isNative, scheduleNativeAt, hashId } from "@/lib/native";
 import { format, isSameDay, startOfDay } from "date-fns";
@@ -139,6 +140,7 @@ export function SimpleToDo() {
       return sortItems(updated);
     });
     if (becoming) recordStat('todoCompleted');
+    setDoneToday("todo:" + id, becoming);
   };
 
   const remove = (id: string) => {

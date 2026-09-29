@@ -1,65 +1,28 @@
 import { useEffect, useState } from "react";
-import { Flame } from "lucide-react";
-import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
+import { Flame, Snowflake } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
-import { dateKey, shiftDateKey } from "@/lib/utils";
-
-type Streak = { days: string[]; current: number; best: number };
-
-const today = () => dateKey();
-const yesterday = () => shiftDateKey(-1);
-
-/**
- * Length of the unbroken run ending today (or yesterday, so a day still in
- * progress doesn't read as broken). Derived from `days` rather than trusted
- * from storage: the stored counter only ever moved on a completion, so after a
- * week away the header kept advertising the old streak over an empty strip.
- */
-function currentStreak(days: string[], stored = 0): number {
-  const seen = new Set(days);
-  let start = 0;
-  if (!seen.has(today())) {
-    if (!seen.has(yesterday())) return 0;
-    start = 1;
-  }
-  let count = 0;
-  while (seen.has(shiftDateKey(-(start + count)))) count++;
-  // `days` only retains the last 60 entries. If the run swallowed every one of
-  // them it may reach further back than we can see, so keep the stored counter
-  // when it's longer — otherwise a 90-day streak would visibly reset to 60.
-  return count >= seen.size ? Math.max(count, stored) : count;
-}
+import { dateKey } from "@/lib/utils";
+import { loadStreak, resolveStreak, STREAK_EVENT, type Streak } from "@/lib/streak";
 
 export function useStreak() {
   const [s, setS] = useState<Streak>({ days: [], current: 0, best: 0 });
 
   useEffect(() => {
     const load = () => {
-      const stored = loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 });
-      const current = currentStreak(stored.days ?? [], stored.current ?? 0);
-      setS({ ...stored, current, best: Math.max(stored.best ?? 0, current) });
+      setS(resolveStreak(loadStreak()));
     };
     load();
-    // Re-read after cloud sync applies remote data
+    // Re-read after cloud sync applies remote data, and after any tick or
+    // untick (the task list, a notification action or the widget).
     window.addEventListener("ff.remote-update", load);
-    return () => window.removeEventListener("ff.remote-update", load);
+    window.addEventListener(STREAK_EVENT, load);
+    return () => {
+      window.removeEventListener("ff.remote-update", load);
+      window.removeEventListener(STREAK_EVENT, load);
+    };
   }, []);
 
-  const markToday = () => {
-    // Read back from storage rather than from state: this runs from a click
-    // handler that may fire twice in a tick, and storage is the source of
-    // truth that both calls agree on (it's also what sync pushes).
-    const stored = loadJSON<Streak>(STORAGE_KEYS.streak, { days: [], current: 0, best: 0 });
-    const days = stored.days ?? [];
-    if (days.includes(today())) return;
-    const nextDays = [...days, today()].slice(-60);
-    const current = currentStreak(nextDays, stored.current ?? 0);
-    const next = { days: nextDays, current, best: Math.max(stored.best ?? 0, current) };
-    saveJSON(STORAGE_KEYS.streak, next);
-    setS(next);
-  };
-
-  return { streak: s, markToday };
+  return { streak: s };
 }
 
 export function StreakStrip({ streak }: { streak: Streak }) {
@@ -71,7 +34,12 @@ export function StreakStrip({ streak }: { streak: Streak }) {
     const d = new Date();
     d.setDate(d.getDate() - (13 - i));
     const key = dateKey(d);
-    return { key, done: streak.days.includes(key), label: d.getDate() };
+    return {
+      key,
+      done: streak.days.includes(key),
+      frozen: streak.frozen?.includes(key) ?? false,
+      label: d.getDate(),
+    };
   });
 
   return (
@@ -90,9 +58,18 @@ export function StreakStrip({ streak }: { streak: Streak }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs">
-          <Flame className="size-3.5 text-mint" />
-          <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs">
+            <Flame className="size-3.5 text-mint" />
+            <span className="tabular-nums">{t('streak_best')} {streak.best}</span>
+          </div>
+          <div
+            className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs"
+            title={t('streak_freezes_hint')}
+          >
+            <Snowflake className="size-3.5 text-mint" />
+            <span className="tabular-nums">{t('streak_freezes')} {streak.freezes ?? 0}</span>
+          </div>
         </div>
       </div>
       {/* 14 across is tight on a 390px phone (~17px a cell), which is why the
@@ -111,7 +88,9 @@ export function StreakStrip({ streak }: { streak: Streak }) {
             className={`grid aspect-square place-items-center rounded-md border font-mono text-[10px] leading-none transition ${
               c.done
                 ? "border-mint bg-mint/80 text-mint-foreground shadow-soft"
-                : "border-border bg-surface text-muted-foreground"
+                : c.frozen
+                  ? "border-dashed border-mint bg-mint/15 text-foreground"
+                  : "border-border bg-surface text-muted-foreground"
             }`}
           >
             {c.label}

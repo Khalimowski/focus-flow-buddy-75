@@ -6,6 +6,7 @@ import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
 import { recordStat } from "./stats";
+import { markToday } from "./streak";
 import { dateKey } from "./utils";
 import { habitSlots, nextOccurrence, runsOn } from "./habits";
 import {
@@ -562,6 +563,8 @@ export async function syncWidgetTicks() {
     const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
     const updated = tasks.map((t) => (idSet.has(t.id) ? { ...t, done: true } : t));
     saveJSON(STORAGE_KEYS.tasks, updated); // fires ff.tasks_saved -> widget re-push
+    // A tick on the widget is a completion like any other.
+    for (const t of tasks) if (idSet.has(t.id) && !t.done) markToday("task:" + t.id);
     void cancelNative(ids.map((id) => hashId("task:" + id)));
     window.dispatchEvent(new CustomEvent("ff.data_updated"));
   } catch (e) {
@@ -817,8 +820,12 @@ export async function initNative() {
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
           // Ticked off from the notification shade — same completion as
-          // tapping the circle in the app, and Insights must see both.
-          if (tasks.some(t => t.id === taskId && !t.done)) recordStat('taskCompleted');
+          // tapping the circle in the app, and Insights and the streak must
+          // see both.
+          if (tasks.some(t => t.id === taskId && !t.done)) {
+            recordStat('taskCompleted');
+            markToday("task:" + taskId);
+          }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);
           const id = hashId("task:" + taskId + Date.now()); // New ID to avoid conflicts
@@ -874,6 +881,7 @@ export async function initNative() {
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           if (reminders.some(r => r.id === nudgeId && r.lastFired?.[time] !== dateStr)) {
             recordStat('habitCompleted', 1, dateStr);
+            markToday(`habit:${nudgeId}:${time}`);
           }
         } else if (actionId === 'postpone') {
           const nextAt = new Date(Date.now() + 15 * 60 * 1000);

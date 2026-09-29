@@ -88,7 +88,7 @@ function Home() {
   const [mounted, setMounted] = useState(false);
   // null = session check still in flight; afterwards true/false.
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const { streak, markToday } = useStreak();
+  const { streak } = useStreak();
   const { t } = useTranslation();
   const { theme, guestMode } = useI18nStore();
   const premium = usePremium();
@@ -266,7 +266,7 @@ function Home() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        {tab === "tasks" && <TaskList onComplete={markToday} />}
+        {tab === "tasks" && <TaskList />}
         {tab === "todo" && <SimpleToDo />}
         {tab === "reminders" && <Reminders />}
         {tab === "cycles" && <RecurringEvents />}
