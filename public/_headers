@@ -1,0 +1,6 @@
+# Cloudflare Workers static-asset headers.
+# The Android app polls this from its https://localhost origin, so it needs CORS,
+# and it must never be served stale or the update banner lags a release.
+/version.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: no-cache

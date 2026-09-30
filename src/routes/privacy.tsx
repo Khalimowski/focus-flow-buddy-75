@@ -228,7 +228,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Update check",
       blocks: [
         {
-          p: "The Android app fetches a small public version file from GitHub to tell you when a newer build exists. GitHub logs standard connection metadata such as your IP address, as any web server does. No personal data is sent with the request.",
+          p: "The Android app fetches a small public version file from flowday.day (older builds: from GitHub) to tell you when a newer build exists. Cloudflare and GitHub log standard connection metadata such as your IP address, as any web server does. No personal data is sent with the request.",
         },
       ],
     },
@@ -462,7 +462,7 @@ const POLICY: Record<Language, Section[]> = {
       heading: "Sprawdzanie aktualizacji",
       blocks: [
         {
-          p: "Aplikacja na Androida pobiera z GitHuba mały publiczny plik z numerem wersji, żeby powiedzieć Ci, że jest nowsza kompilacja. GitHub zapisuje standardowe metadane połączenia, na przykład adres IP, jak każdy serwer WWW. Nie wysyłamy przy tym żadnych danych osobowych.",
+          p: "Aplikacja na Androida pobiera z flowday.day (starsze wersje: z GitHuba) mały publiczny plik z numerem wersji, żeby powiedzieć Ci, że jest nowsza kompilacja. Cloudflare i GitHub zapisują standardowe metadane połączenia, na przykład adres IP, jak każdy serwer WWW. Nie wysyłamy przy tym żadnych danych osobowych.",
         },
       ],
     },
