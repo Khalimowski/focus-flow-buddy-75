@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.5";
+export const APP_VERSION = "1.14.6";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,21 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.6",
+    items: {
+      en: [
+        "Fixed tasks added on one device sometimes never showing up on your others, or vanishing when another device saved at the same time. Changes from both devices are now combined instead of one overwriting the other.",
+        "Changes made while offline, or just before closing the app, are kept and uploaded the next time you're online.",
+        "Settings now shows when your account last synced, and warns you if this device can't reach the sync server.",
+      ],
+      pl: [
+        "Naprawiono zadania dodane na jednym urządzeniu, które czasem nie pojawiały się na pozostałych albo znikały, gdy inne urządzenie zapisało zmiany w tym samym czasie. Zmiany z obu urządzeń są teraz łączone, zamiast jedne nadpisywały drugie.",
+        "Zmiany zrobione bez internetu albo tuż przed zamknięciem aplikacji są zachowywane i wysyłane, gdy znów będziesz online.",
+        "Ustawienia pokazują teraz, kiedy konto ostatnio się zsynchronizowało, i ostrzegają, jeśli to urządzenie nie może połączyć się z serwerem synchronizacji.",
+      ],
+    },
+  },
   {
     version: "1.14.5",
     items: {
