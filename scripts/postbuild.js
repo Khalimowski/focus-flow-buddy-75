@@ -26,6 +26,16 @@ if (existsSync(shell)) {
   console.warn('⚠️ Postbuild: _shell.html not found, skipping index.html copy');
 }
 
+// Serve version.json from the app's own domain (flowday.day/version.json), so
+// the update check doesn't depend on the repo being public. Copied rather than
+// moved: the repo-root file is the one to bump, and builds up to 1.14.6 still
+// read it from raw.githubusercontent.com.
+const versionJson = resolve(root, 'version.json');
+if (existsSync(versionJson) && existsSync(resolve(root, 'dist/client'))) {
+  copyFileSync(versionJson, resolve(root, 'dist/client/version.json'));
+  console.log('✅ Postbuild: Copied version.json to dist/client');
+}
+
 // Ensure the Capacitor webDir exists and is not empty
 const clientDir = resolve(root, 'dist/client');
 if (!existsSync(clientDir)) {

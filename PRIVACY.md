@@ -164,8 +164,9 @@ used for anything else.
 
 ## Update check
 
-The Android app fetches a small public `version.json` file from GitHub
-(`raw.githubusercontent.com`) to tell you when a newer build exists. GitHub logs
+The Android app fetches a small public `version.json` file from
+`flowday.day` (older builds: GitHub's `raw.githubusercontent.com`) to tell you
+when a newer build exists. Cloudflare and GitHub log
 standard connection metadata such as your IP address, as any web server does. No
 personal data is sent with the request.
 
