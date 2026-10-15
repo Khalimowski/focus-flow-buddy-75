@@ -14,7 +14,7 @@ import { isNative, scheduleNativeAt, hashId } from "@/lib/native";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar-lazy";
 import { TimePicker } from "@/components/TimePicker";
 
 type ToDoItem = {

@@ -90,6 +90,8 @@ function notifyAuthChanged() {
 export type SyncUser = { id: string; email: string };
 
 type UserDataRow = { user_id?: string; key: string; value: unknown; updated_at: string };
+/** A pulled row; without `value` when only its stamp was fetched (see pullRows). */
+type PulledRow = Omit<UserDataRow, "value"> & { value?: unknown };
 
 let currentUser: SyncUser | null = null;
 let initialized = false;
@@ -269,6 +271,76 @@ export async function fullSync(): Promise<void> {
   }
 }
 
+// The first pull after launch or sign-in fetches every value in one request,
+// since the app waits on it before showing anything and something has usually
+// changed by then. After that, see pullRows.
+let pulledOnce = false;
+
+/**
+ * The server's rows for SYNC_KEYS, or null if the pull failed.
+ *
+ * The 15-second poll used to download every value each time, the whole task
+ * list included, although almost every poll finds nothing new. Once one full
+ * pull has landed, a pull asks for the stamps (key, updated_at) first and then
+ * fetches values only for the keys doFullSync would actually read: ones whose
+ * stamp differs from meta, and merged keys with unpushed local changes. Every
+ * other row comes back without a value; doFullSync counts it as present on the
+ * server and otherwise skips it, as it skipped those rows when they carried one
+ * (and if a push moved meta on while this was in flight, the next poll's stamps
+ * catch it up).
+ */
+async function pullRows(
+  client: NonNullable<ReturnType<typeof getNeonClient>>,
+  userId: string,
+): Promise<PulledRow[] | null> {
+  // user_id is filtered explicitly and selected back deliberately — see doFullSync.
+  const select = (columns: string, keys: string[]) =>
+    client.from("user_data").select(columns).eq("user_id", userId).in("key", keys);
+
+  if (!pulledOnce) {
+    const { data, error } = await select("user_id,key,value,updated_at", SYNC_KEYS);
+    if (error) {
+      console.error("[Sync] Pull failed:", error);
+      return null;
+    }
+    pulledOnce = true;
+    return (data ?? []) as unknown as UserDataRow[];
+  }
+
+  const stampsRes = await select("user_id,key,updated_at", SYNC_KEYS);
+  if (stampsRes.error) {
+    console.error("[Sync] Pull failed:", stampsRes.error);
+    return null;
+  }
+  const stamps = (stampsRes.data ?? []) as unknown as PulledRow[];
+  const meta = loadMeta();
+  const dirtyKeys = dirty.load();
+  const wanted = stamps
+    .filter(
+      (s) =>
+        meta[s.key] !== s.updated_at || (MERGE_ON_PULL[s.key] !== undefined && dirtyKeys.has(s.key)),
+    )
+    .map((s) => s.key);
+  if (wanted.length === 0) return stamps;
+
+  const fullRes = await select("user_id,key,value,updated_at", wanted);
+  if (fullRes.error) {
+    console.error("[Sync] Pull failed:", fullRes.error);
+    return null;
+  }
+  const full = new Map(
+    ((fullRes.data ?? []) as unknown as UserDataRow[]).map((r) => [r.key, r] as const),
+  );
+  const rows: PulledRow[] = [];
+  for (const s of stamps) {
+    if (!wanted.includes(s.key)) rows.push(s);
+    // Its value can only be used as fetched just now. A row that vanished
+    // between the two requests is left out, as if the first had missed it too.
+    else if (full.has(s.key)) rows.push(full.get(s.key)!);
+  }
+  return rows;
+}
+
 /** Returns true when a push hit a conflict and another pass is needed. */
 async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>): Promise<boolean> {
   if (!currentUser) return false;
@@ -279,19 +351,13 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
   // that ever fails open silently hands every account everyone else's data —
   // including the premium entitlement, which would look like "everyone is
   // suddenly premium". Belt and braces on both sides of the wire.
-  const { data, error } = await client
-    .from("user_data")
-    .select("user_id,key,value,updated_at")
-    .eq("user_id", currentUser.id)
-    .in("key", SYNC_KEYS);
-  if (error) {
-    console.error("[Sync] Pull failed:", error);
+  const rows = await pullRows(client, currentUser.id);
+  if (!rows) {
     setStatus(false);
     return false;
   }
   setStatus(true);
 
-  const rows = (data ?? []) as UserDataRow[];
   const meta = loadMeta();
   const serverKeys = new Set<string>();
   let changed = false;
@@ -306,6 +372,8 @@ async function doFullSync(client: NonNullable<ReturnType<typeof getNeonClient>>)
       continue;
     }
     serverKeys.add(row.key);
+    // Only the stamp was fetched: nothing here changed since we last synced it.
+    if (!("value" in row)) continue;
 
     const merge = MERGE_ON_PULL[row.key];
     if (merge) {
@@ -777,6 +845,7 @@ export async function signOut(): Promise<void> {
     console.error("[Sync] signOut failed:", e);
   }
   currentUser = null;
+  pulledOnce = false;
   dirty.clear();
   // Local data stays on the device; forget sync bookkeeping so a different
   // account doesn't inherit it.
