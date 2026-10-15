@@ -32,7 +32,7 @@ import {
 import { format, addDays, isSameDay, startOfDay, parseISO, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar-lazy";
 
 type Task = {
   id: string;
