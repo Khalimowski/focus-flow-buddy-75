@@ -47,9 +47,9 @@ linking to `url`. To ship a release:
 3. Update `version.json` at the repo root with the new `versionCode`,
    `versionName`, the download `url`, and optional `notes`.
 4. Commit and push `version.json` to `main` — no rebuild is needed for
-   existing installs to see the banner. Builds from 1.14.7 read it from
+   existing installs to see the banner. Builds from 1.14.9 read it from
    `https://flowday.day/version.json` (copied into the deploy by
-   `scripts/postbuild.js`); builds up to 1.14.6 read it from
+   `scripts/postbuild.js`); builds up to 1.14.8 read it from
    `raw.githubusercontent.com`, which works only while the repo is public.
 
 ## Notes

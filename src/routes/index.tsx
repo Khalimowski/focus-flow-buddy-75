@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Bell,
@@ -19,13 +19,14 @@ import { StreakStrip, useStreak } from "@/components/Streaks";
 import { InAppToaster } from "@/components/InAppToaster";
 import { ensurePermission, getPermission, notify } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { preloadCalendar } from "@/components/ui/calendar-lazy";
 import { Settings } from "@/components/Settings";
 import { Onboarding } from "@/components/Onboarding";
 import { AuthGate } from "@/components/AuthGate";
 import { PremiumGate } from "@/components/PremiumGate";
 import { WEB_GATE_ENABLED, usePremium } from "@/lib/premium";
 import { AICoach } from "@/components/AICoach";
-import { Analytics } from "@/components/Analytics";
 import { UpdateBanner } from "@/components/UpdateBanner";
 import { WidgetPrompt } from "@/components/WidgetPrompt";
 import { EndOfDayReview } from "@/components/EndOfDayReview";
@@ -33,6 +34,14 @@ import { WhatsNew } from "@/components/WhatsNew";
 import { LogoLockup } from "@/components/Logo";
 import { isNative, updateStatusBar } from "@/lib/native";
 import { isOAuthPopupCallback } from "@/lib/google";
+
+// Insights is the only screen that draws charts, and recharts (with its d3,
+// lodash and animation helpers) was over a third of the JavaScript every
+// launch parsed. The tab exists only in the premium browser build, so load it
+// when it is opened instead of on every start, Android included.
+const Analytics = lazy(() =>
+  import("@/components/Analytics").then((m) => ({ default: m.Analytics })),
+);
 
 
 export const Route = createFileRoute("/")({
@@ -82,6 +91,16 @@ const dismissTopLayer = (onMiss: () => void) => {
   }, 0);
 };
 
+/** Placeholder while a lazily loaded tab's code arrives. */
+function TabSkeleton() {
+  return (
+    <div className="space-y-3" aria-busy="true">
+      <Skeleton className="h-24 rounded-2xl" />
+      <Skeleton className="h-56 rounded-2xl" />
+    </div>
+  );
+}
+
 function Home() {
   const [tab, setTab] = useState<Tab>("tasks");
   const [perm, setPerm] = useState<string>("default");
@@ -115,6 +134,7 @@ function Home() {
 
     setMounted(true);
     setPerm(getPermission());
+    preloadCalendar();
     void import("@/lib/native").then((m) => {
       m.initNative();
       m.updateStatusBar(theme);
@@ -270,7 +290,11 @@ function Home() {
         {tab === "todo" && <SimpleToDo />}
         {tab === "reminders" && <Reminders />}
         {tab === "cycles" && <RecurringEvents />}
-        {tab === "insights" && showInsights && <Analytics />}
+        {tab === "insights" && showInsights && (
+          <Suspense fallback={<TabSkeleton />}>
+            <Analytics />
+          </Suspense>
+        )}
       </motion.section>
 
       {/* Bottom tab bar — "Classic Editorial" moves navigation off the top of

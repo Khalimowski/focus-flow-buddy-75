@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar } from "@/components/ui/calendar-lazy";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "@/lib/storage";
 import { dateKey, generateId, shiftDateKey } from "@/lib/utils";
 import { useI18nStore, useTranslation } from "@/lib/i18n";

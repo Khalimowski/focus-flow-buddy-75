@@ -45,9 +45,9 @@ the release is out — expect it to sit one version behind `build.gradle`
 whenever a release is in flight.
 
 It is not bundled into the app: `src/lib/updateCheck.ts` fetches it live from
-`https://flowday.day/version.json` (builds from 1.14.7; `scripts/postbuild.js`
+`https://flowday.day/version.json` (builds from 1.14.9; `scripts/postbuild.js`
 copies the root file into the deploy and `public/_headers` gives it CORS) or
-from `raw.githubusercontent.com/…/main/version.json` (builds up to 1.14.6, which
+from `raw.githubusercontent.com/…/main/version.json` (builds up to 1.14.8, which
 works only while the repo is public). It shows the "update available" banner only when its `versionCode` is **greater** than the installed
 build. So a stale file never fails loudly — it silently disables the banner and
 users are never told a new version exists. It sat at `versionCode` 37 (1.7.1)

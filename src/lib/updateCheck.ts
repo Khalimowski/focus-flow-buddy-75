@@ -5,7 +5,7 @@
 // Served from flowday.day, not GitHub, so the check keeps working if the repo
 // goes private. postbuild.js copies the root file into dist/client, and
 // public/_headers adds the CORS header the app's https://localhost origin
-// needs. The root file itself stays where it is: builds up to 1.14.6 still
+// needs. The root file itself stays where it is: builds up to 1.14.8 still
 // poll it on raw.githubusercontent.com.
 import { App } from "@capacitor/app";
 import { isNative } from "./native";

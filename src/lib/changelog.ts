@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.7";
+export const APP_VERSION = "1.14.9";
 
 export type ChangelogEntry = {
   version: string;
@@ -23,10 +23,23 @@ export type ChangelogEntry = {
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.14.7",
+    version: "1.14.9",
     items: {
       en: ["The “update available” notice now checks for new versions on flowday.day."],
       pl: ["Powiadomienie o dostępnej aktualizacji sprawdza teraz nowe wersje na flowday.day."],
+    },
+  },
+  {
+    version: "1.14.8",
+    items: {
+      en: [
+        "The app starts faster: the charts and the date picker now load only when you open them.",
+        "Uses less mobile data while open: checking for changes from your other devices no longer downloads your whole task list every 15 seconds, and opening a tab no longer re-uploads lists you haven't changed.",
+      ],
+      pl: [
+        "Aplikacja uruchamia się szybciej: wykresy i wybór daty ładują się dopiero, gdy je otworzysz.",
+        "Zużywa mniej danych komórkowych: sprawdzanie zmian z innych urządzeń nie pobiera już całej listy zadań co 15 sekund, a otwarcie karty nie wysyła ponownie list, w których nic się nie zmieniło.",
+      ],
     },
   },
   {

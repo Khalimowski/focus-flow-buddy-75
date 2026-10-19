@@ -41,11 +41,19 @@ export function saveJSON<T>(key: string, value: T): void {
       console.warn(`[Storage] Attempted to save null/undefined to ${key}. Operation ignored.`);
       return;
     }
-    window.localStorage.setItem(key, JSON.stringify(value));
-    // Let interested modules react to task changes (e.g. home-screen widget mirror)
+    const json = JSON.stringify(value);
+    // Tab components save whatever they loaded as soon as they mount, so most
+    // saves rewrite the value already stored. Telling sync about those marked
+    // the key dirty and re-uploaded the whole list on every launch and tab
+    // switch, which in turn made every other open device download it again.
+    const unchanged = window.localStorage.getItem(key) === json;
+    if (!unchanged) window.localStorage.setItem(key, json);
+    // Let interested modules react to task changes (e.g. home-screen widget
+    // mirror). Still fired when unchanged: the widget relies on it to re-push.
     if (key === STORAGE_KEYS.tasks) {
       window.dispatchEvent(new CustomEvent("ff.tasks_saved"));
     }
+    if (unchanged) return;
     for (const fn of saveListeners) fn(key);
   } catch (e) {
     console.error(`[Storage] Failed to save key ${key}:`, e);
