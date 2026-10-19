@@ -1,11 +1,16 @@
 // Self-hosted update check — compares the installed app's versionCode against
 // a version.json file you control. Bump version.json (repo root) and push to
-// main whenever you cut a new APK; the raw file is what the app polls.
+// main once a release is live on Play.
+//
+// Served from flowday.day, not GitHub, so the check keeps working if the repo
+// goes private. postbuild.js copies the root file into dist/client, and
+// public/_headers adds the CORS header the app's https://localhost origin
+// needs. The root file itself stays where it is: builds up to 1.14.8 still
+// poll it on raw.githubusercontent.com.
 import { App } from "@capacitor/app";
 import { isNative } from "./native";
 
-const VERSION_CHECK_URL =
-  "https://raw.githubusercontent.com/Khalimowski/focus-flow-buddy-75/main/version.json";
+const VERSION_CHECK_URL = "https://flowday.day/version.json";
 
 export type UpdateInfo = {
   versionCode: number;
