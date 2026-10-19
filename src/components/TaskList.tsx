@@ -17,6 +17,7 @@ import { MicButton } from "@/components/MicButton";
 import { extractSchedule } from "@/lib/voice-time";
 import { useTranslation, useI18nStore } from "@/lib/i18n";
 import { useHistoryStore } from "@/lib/history";
+import { recordHabitTick } from "@/lib/habitLog";
 import { recordStat } from "@/lib/stats";
 import { setDoneToday } from "@/lib/streak";
 import { runsOn } from "@/lib/habits";
@@ -43,6 +44,7 @@ type Task = {
   dueDate: string; // ISO date string (YYYY-MM-DD)
   notified?: boolean;
   createdAt: number;
+  completedAt?: number; // when it was ticked off; cleared on untick (Insights)
 };
 
 type Reminder = {
@@ -501,7 +503,13 @@ export function TaskList() {
     const becoming = !task.done;
 
     setTasks(prev =>
-      sortTasks(prev.map((item) => (item.id === id ? { ...item, done: becoming } : item))),
+      sortTasks(
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, done: becoming, completedAt: becoming ? Date.now() : undefined }
+            : item,
+        ),
+      ),
     );
 
     setDoneToday("task:" + id, becoming);
@@ -558,6 +566,8 @@ export function TaskList() {
     // Counted against the day being ticked off, not the moment of the click —
     // catching up on yesterday's habit belongs to yesterday.
     if (ticked) recordStat('habitCompleted', 1, dateStr);
+    const habit = reminders.find(r => r.id === reminderId);
+    if (habit) recordHabitTick(reminderId, dateStr, ticked ? 1 : -1, habit.times.length);
     // The streak only takes today's ticks; catching up on yesterday's habit
     // is logged for Insights but can't rescue a day that already passed.
     if (dateStr === dateKey()) setDoneToday(`habit:${reminderId}:${time}`, ticked);

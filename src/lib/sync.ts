@@ -12,6 +12,7 @@
 import { getNeonClient } from "./neon";
 import { STORAGE_KEYS, registerSaveListener } from "./storage";
 import { mergeRemoteStats } from "./stats";
+import { mergeRemoteHabitLog } from "./habitLog";
 
 const SYNC_KEYS: string[] = [
   STORAGE_KEYS.tasks,
@@ -32,6 +33,8 @@ const SYNC_KEYS: string[] = [
   // The Insights counters. Recorded on every device, read on the web — see the
   // merge exemption below, which is why this one key doesn't obey LWW.
   STORAGE_KEYS.stats,
+  // Per-habit tick history, also merged rather than replaced (see below).
+  STORAGE_KEYS.habitLog,
 ];
 
 /**
@@ -47,6 +50,7 @@ const MERGE_ON_PULL: Record<
   (remoteValue: unknown) => { merged: unknown; changedLocal: boolean; changedRemote: boolean }
 > = {
   [STORAGE_KEYS.stats]: mergeRemoteStats,
+  [STORAGE_KEYS.habitLog]: mergeRemoteHabitLog,
 };
 
 /**

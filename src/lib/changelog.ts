@@ -12,7 +12,7 @@
 import type { Language } from "./i18n";
 import { STORAGE_KEYS, loadJSON, saveJSON } from "./storage";
 
-export const APP_VERSION = "1.14.9";
+export const APP_VERSION = "1.14.10";
 
 export type ChangelogEntry = {
   version: string;
@@ -22,6 +22,19 @@ export type ChangelogEntry = {
 
 /** Newest first. */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.14.10",
+    items: {
+      en: [
+        "Insights (Premium, in the browser) has three new sections: your year as a day-by-day heatmap with your personal records, how consistently you keep each habit, and the hours you get the most done.",
+        "From this version on, the app remembers which habit you ticked on which day and when you ticked off each task, so those new sections fill in as you use it.",
+      ],
+      pl: [
+        "Podsumowania (Premium, w przeglądarce) mają trzy nowe sekcje: Twój rok jako mapa dzień po dniu razem z Twoimi rekordami, regularność każdego nawyku oraz godziny, w których robisz najwięcej.",
+        "Od tej wersji aplikacja zapamiętuje, który nawyk został odhaczony którego dnia i kiedy odhaczono każde zadanie, więc nowe sekcje będą się wypełniać w miarę korzystania.",
+      ],
+    },
+  },
   {
     version: "1.14.9",
     items: {
