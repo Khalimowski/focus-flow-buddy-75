@@ -80,6 +80,9 @@ export const STORAGE_KEYS = {
   // Per-day activity counters behind the Insights screen (see lib/stats.ts).
   // Synced, but merged rather than overwritten on pull — see sync.ts.
   stats: "ff.stats.v1",
+  // Slots ticked per habit per day, for the per-habit consistency in Insights
+  // (see lib/habitLog.ts). Synced and merged per (habit, day) on pull.
+  habitLog: "ff.habitlog.v1",
   // Device-local on purpose (kept out of SYNC_KEYS): whether this phone has
   // been offered the home-screen widget, and until when it's snoozed. Another
   // device's answer means nothing.

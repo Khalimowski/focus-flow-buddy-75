@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Bar,
@@ -11,18 +11,24 @@ import {
   YAxis,
 } from "recharts";
 import { CheckCircle2, MoveRight, Trash2, TrendingDown, TrendingUp, Minus } from "lucide-react";
-import { format } from "date-fns";
+import { format, type Locale } from "date-fns";
 import { pl } from "date-fns/locale";
 import { useTranslation } from "@/lib/i18n";
 import {
   BUCKET_COUNT,
   buildInsights,
+  buildTiming,
+  buildYear,
   outcomeSplit,
   rate,
   type Granularity,
   type InsightBucket,
   type Insights,
+  type TimingInsights,
+  type YearInsights,
 } from "@/lib/analytics";
+import { habitConsistency, type HabitConsistency } from "@/lib/habitLog";
+import { loadStreak, resolveStreak, STREAK_EVENT } from "@/lib/streak";
 
 const RANGES: Granularity[] = ["day", "week", "month"];
 
@@ -63,8 +69,17 @@ export function Analytics() {
   const dateLocale = language === "pl" ? pl : undefined;
   const [granularity, setGranularity] = useState<Granularity>("week");
   const [data, setData] = useState<Insights | null>(null);
+  // These three don't depend on the day/week/month switch.
+  const [year, setYear] = useState<YearInsights | null>(null);
+  const [habits, setHabits] = useState<HabitConsistency[]>([]);
+  const [timing, setTiming] = useState<TimingInsights | null>(null);
 
-  const refresh = useCallback(() => setData(buildInsights(granularity)), [granularity]);
+  const refresh = useCallback(() => {
+    setData(buildInsights(granularity));
+    setYear(buildYear(resolveStreak(loadStreak())));
+    setHabits(habitConsistency());
+    setTiming(buildTiming());
+  }, [granularity]);
 
   useEffect(() => {
     refresh();
@@ -72,9 +87,11 @@ export function Analytics() {
     // screen changes the underlying data, rather than remounting.
     window.addEventListener("ff.data_updated", refresh);
     window.addEventListener("ff.remote-update", refresh);
+    window.addEventListener(STREAK_EVENT, refresh);
     return () => {
       window.removeEventListener("ff.data_updated", refresh);
       window.removeEventListener("ff.remote-update", refresh);
+      window.removeEventListener(STREAK_EVENT, refresh);
     };
   }, [refresh]);
 
@@ -122,7 +139,7 @@ export function Analytics() {
 
   const periodKey = granularity === "day" ? "today" : granularity === "week" ? "week" : "month";
   const outcomes = outcomeSplit(rangeStats);
-  const hasHistory = data.buckets.some((b) => b.planned > 0);
+  const hasHistory = data.buckets.some((b) => b.planned > 0) || (year?.totalDone ?? 0) > 0;
 
   const bestWeekday = weekdays
     .filter((d) => d.planned >= 3)
@@ -316,6 +333,8 @@ export function Analytics() {
             </div>
           </Card>
 
+          {year && <YearCard year={year} dateLocale={dateLocale} language={language} />}
+
           <div className="grid gap-3 lg:grid-cols-2">
             {/* Follow-through */}
             <Card
@@ -478,8 +497,276 @@ export function Analytics() {
               </p>
             </Card>
           </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <HabitConsistencyCard habits={habits} />
+            {timing && <TimingCard timing={timing} />}
+          </div>
         </>
       )}
     </div>
+  );
+}
+
+/** Heatmap fill for a day: nothing, then four steps of the "done" colour. */
+function heatColor(count: number, max: number): string {
+  if (count <= 0 || max <= 0) return "var(--secondary)";
+  const level = Math.min(4, Math.ceil((count / max) * 4));
+  return `color-mix(in oklab, var(--mint) ${[0, 30, 55, 80, 100][level]}%, var(--secondary))`;
+}
+
+function YearCard({
+  year,
+  dateLocale,
+  language,
+}: {
+  year: YearInsights;
+  dateLocale: Locale | undefined;
+  language: string;
+}) {
+  const { t } = useTranslation();
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // On a phone-width window the year doesn't fit; start scrolled to today.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [year]);
+
+  const dayFormat = language === "pl" ? "d MMMM yyyy" : "MMMM d, yyyy";
+  const fmt = (day: string, pattern = dayFormat) =>
+    format(new Date(`${day}T00:00:00`), pattern, { locale: dateLocale });
+
+  const records: { label: string; value: string; sub?: string }[] = [
+    {
+      label: t("insights_records_total"),
+      value: String(year.totalDone),
+      sub: year.firstDay
+        ? t("insights_records_total_since").replace("{date}", fmt(year.firstDay))
+        : undefined,
+    },
+    {
+      label: t("insights_records_best_streak"),
+      value: `${year.bestStreak} ${t(year.bestStreak === 1 ? "day" : "days")}`,
+      sub: t("insights_records_current_streak").replace("{n}", String(year.currentStreak)),
+    },
+    ...(year.bestDay
+      ? [
+          {
+            label: t("insights_records_best_day"),
+            value: t("insights_records_items").replace("{n}", String(year.bestDay.count)),
+            sub: fmt(year.bestDay.day),
+          },
+        ]
+      : []),
+    ...(year.bestWeek
+      ? [
+          {
+            label: t("insights_records_best_week"),
+            value: t("insights_records_items").replace("{n}", String(year.bestWeek.count)),
+            sub: t("insights_records_week_of").replace(
+              "{date}",
+              fmt(year.bestWeek.start, language === "pl" ? "d MMM yyyy" : "MMM d, yyyy"),
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <Card
+      title={t("insights_year_title")}
+      hint={t("insights_year_hint").replace("{n}", String(year.activeDays))}
+    >
+      <div ref={scroller} className="overflow-x-auto pb-1">
+        <div className="flex w-max flex-col gap-1">
+          {/* Month labels, over the first week that starts in each month. */}
+          <div className="flex gap-[3px]">
+            {year.weeks.map((week, i) => {
+              const month = week[0].day.slice(0, 7);
+              const prev = i > 0 ? year.weeks[i - 1][0].day.slice(0, 7) : "";
+              return (
+                <div key={week[0].day} className="relative h-3 w-[11px]">
+                  {month !== prev && i > 0 && (
+                    <span className="absolute left-0 top-0 whitespace-nowrap text-[9px] text-muted-foreground">
+                      {format(new Date(`${week[0].day}T00:00:00`), "LLL", { locale: dateLocale })}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-[3px]">
+            {year.weeks.map((week) => (
+              <div key={week[0].day} className="flex flex-col gap-[3px]">
+                {week.map((cell) => (
+                  <div
+                    key={cell.day}
+                    title={
+                      cell.future
+                        ? undefined
+                        : t("insights_year_cell")
+                            .replace("{n}", String(cell.count))
+                            .replace("{date}", fmt(cell.day))
+                    }
+                    className="size-[11px] rounded-[3px]"
+                    style={{
+                      background: cell.future ? "transparent" : heatColor(cell.count, year.max),
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+        {t("insights_year_less")}
+        {[0, 1, 2, 3, 4].map((level) => (
+          <span
+            key={level}
+            className="size-[11px] rounded-[3px]"
+            style={{ background: heatColor(level, 4) }}
+          />
+        ))}
+        {t("insights_year_more")}
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border/50 pt-4 sm:grid-cols-4">
+        {records.map((record) => (
+          <div key={record.label}>
+            <p className="text-[11px] text-muted-foreground">{record.label}</p>
+            <div className="mt-1 font-mono text-xl font-semibold">{record.value}</div>
+            {record.sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{record.sub}</p>}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+const HABIT_DAY_COLORS: Record<HabitConsistency["days"][number]["state"], string> = {
+  full: "var(--mint)",
+  partial: "color-mix(in oklab, var(--mint) 40%, var(--secondary))",
+  missed: "var(--secondary)",
+  today: "transparent",
+};
+
+function HabitConsistencyCard({ habits }: { habits: HabitConsistency[] }) {
+  const { t } = useTranslation();
+  return (
+    <Card title={t("insights_habit_consistency_title")} hint={t("insights_habit_consistency_hint")}>
+      {habits.length === 0 ? (
+        <p className="text-xs text-muted-foreground">{t("insights_habit_consistency_empty")}</p>
+      ) : (
+        <div className="space-y-4">
+          {habits.map((habit) => {
+            const kept = habit.days.filter((d) => d.state === "full").length;
+            return (
+              <div key={habit.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="truncate text-sm">{habit.label}</span>
+                  <span className="shrink-0 font-mono text-sm font-semibold">
+                    {habit.scheduledDays > 0 ? `${habit.rate}%` : "–"}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-[3px]">
+                  {habit.days.map((day) => (
+                    <span
+                      key={day.day}
+                      title={day.day}
+                      className={`size-2.5 rounded-sm ${day.state === "today" ? "border border-border" : ""}`}
+                      style={{ background: HABIT_DAY_COLORS[day.state] }}
+                    />
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  {t("insights_habit_run").replace("{n}", String(habit.currentRun))}
+                  {" · "}
+                  {t("insights_habit_best_run").replace("{n}", String(habit.bestRun))}
+                  {" · "}
+                  {t("insights_habit_days_kept")
+                    .replace("{done}", String(kept))
+                    .replace("{total}", String(habit.scheduledDays))}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+const hourLabel = (hour: number) => `${String(hour % 24).padStart(2, "0")}:00`;
+
+function TimingCard({ timing }: { timing: TimingInsights }) {
+  const { t } = useTranslation();
+  const peak = Math.max(...timing.blocks);
+  return (
+    <Card title={t("insights_timing_title")} hint={t("insights_timing_hint")}>
+      {timing.sample === 0 ? (
+        <p className="text-xs text-muted-foreground">{t("insights_timing_empty")}</p>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <div className="flex h-24 items-end gap-1">
+              {timing.blocks.map((count, i) => (
+                <div key={i} className="flex h-full flex-1 items-end rounded-md bg-secondary/60">
+                  <div
+                    className="w-full rounded-md"
+                    title={`${hourLabel(i * 2)}–${hourLabel(i * 2 + 2)}: ${count}`}
+                    style={{
+                      height: `${count > 0 ? Math.max(6, rate(count, peak)) : 0}%`,
+                      background: i * 2 === timing.peakHour ? "var(--mint)" : "var(--primary)",
+                      opacity: i * 2 === timing.peakHour ? 1 : 0.55,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-1 flex justify-between font-mono text-[10px] text-muted-foreground">
+              {[0, 6, 12, 18, 24].map((h) => (
+                <span key={h}>{hourLabel(h)}</span>
+              ))}
+            </div>
+            {timing.peakHour !== null && (
+              <p className="mt-2 text-xs">
+                {t("insights_timing_peak")
+                  .replace("{from}", hourLabel(timing.peakHour))
+                  .replace("{to}", hourLabel(timing.peakHour + 2))}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2 border-t border-border/50 pt-3">
+            {(
+              [
+                ["insights_timing_on_time", timing.onTime, "var(--mint)"],
+                ["insights_timing_late", timing.late, "var(--primary)"],
+              ] as const
+            ).map(([key, value, color]) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="w-36 shrink-0 text-xs">{t(key)}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${rate(value, timing.sample)}%`, background: color }}
+                  />
+                </div>
+                <span className="w-14 shrink-0 text-right font-mono text-xs">
+                  {value} · {rate(value, timing.sample)}%
+                </span>
+              </div>
+            ))}
+            {timing.late > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                {t("insights_timing_avg_late").replace("{n}", String(timing.avgDaysLate))}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }

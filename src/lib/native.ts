@@ -6,6 +6,7 @@ import { App } from "@capacitor/app";
 import { loadJSON, saveJSON, STORAGE_KEYS } from "./storage";
 import { translations, useI18nStore, type VibrationType } from "./i18n";
 import { recordStat } from "./stats";
+import { recordHabitTick } from "./habitLog";
 import { markToday } from "./streak";
 import { dateKey } from "./utils";
 import { habitSlots, nextOccurrence, runsOn } from "./habits";
@@ -561,6 +562,9 @@ export async function syncWidgetTicks() {
     console.log(`[Widget] Applying ${ids.length} tick(s) from widget`);
     const idSet = new Set(ids);
     const tasks = loadJSON<WidgetTask[]>(STORAGE_KEYS.tasks, []);
+    // No completedAt here: the widget hands over ticks only when the app next
+    // opens, so "now" could be hours after the real tap and would put the task
+    // in the wrong hour of Insights' time-of-day chart.
     const updated = tasks.map((t) => (idSet.has(t.id) ? { ...t, done: true } : t));
     saveJSON(STORAGE_KEYS.tasks, updated); // fires ff.tasks_saved -> widget re-push
     // A tick on the widget is a completion like any other.
@@ -815,7 +819,9 @@ export async function initNative() {
         const taskId = extra.taskId;
         if (actionId === 'done') {
           const tasks = loadJSON<any[]>(STORAGE_KEYS.tasks, []);
-          const updated = tasks.map(t => t.id === taskId ? { ...t, done: true } : t);
+          const updated = tasks.map(t =>
+            t.id === taskId && !t.done ? { ...t, done: true, completedAt: Date.now() } : t
+          );
           saveJSON(STORAGE_KEYS.tasks, updated);
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           void deleteFromCalendar(extra.title);
@@ -881,6 +887,8 @@ export async function initNative() {
           window.dispatchEvent(new CustomEvent('ff.data_updated'));
           if (reminders.some(r => r.id === nudgeId && r.lastFired?.[time] !== dateStr)) {
             recordStat('habitCompleted', 1, dateStr);
+            const habit = reminders.find(r => r.id === nudgeId);
+            recordHabitTick(nudgeId, dateStr, 1, habit?.times?.length ?? 1);
             markToday(`habit:${nudgeId}:${time}`);
           }
         } else if (actionId === 'postpone') {
